@@ -22,5 +22,5 @@
  * local table is the graded one; the global table is an addition on top.
  */
 export const SITE_CONFIG = Object.freeze({
-    globalScoreboardUrl: '',
+    globalScoreboardUrl: 'https://counterbeatdata-default-rtdb.firebaseio.com/',
 });
