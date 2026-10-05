@@ -1,0 +1,310 @@
+/* ==========================================================================
+   base.css - design tokens, reset, typography, form and button primitives.
+   Shared by every page so the whole site keeps one visual identity.
+   ========================================================================== */
+
+:root {
+    /* Surfaces */
+    --c-bg: #0b0e15;
+    --c-bg-alt: #10141d;
+    --c-surface: #161c28;
+    --c-surface-2: #1e2533;
+    --c-line: #2a3444;
+
+    /* Text */
+    --c-text: #e8edf6;
+    --c-text-dim: #98a4b8;
+    --c-text-faint: #6b7789;
+
+    /* Accents */
+    --c-accent: #ff8a2a;
+    --c-accent-dk: #d96a12;
+    --c-mint: #7effba;
+    --c-cyan: #6ce2ff;
+    --c-pink: #ff5cb0;
+    --c-danger: #ff5f6d;
+    --c-warn: #ffd166;
+
+    /* Spacing scale */
+    --s-1: 0.25rem;
+    --s-2: 0.5rem;
+    --s-3: 0.75rem;
+    --s-4: 1rem;
+    --s-5: 1.5rem;
+    --s-6: 2rem;
+    --s-7: 3rem;
+    --s-8: 4rem;
+
+    --radius: 10px;
+    --radius-lg: 16px;
+
+    --font-body: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Segoe UI Semibold", "Trebuchet MS", Verdana, sans-serif;
+    --font-mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+
+    --transition: 160ms ease;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--c-bg);
+    background-image:
+        radial-gradient(circle at 15% -10%, rgba(255, 138, 42, 0.14), transparent 45%),
+        radial-gradient(circle at 85% 0%, rgba(108, 226, 255, 0.10), transparent 40%);
+    background-attachment: fixed;
+    color: var(--c-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-display);
+    line-height: 1.2;
+    margin: 0 0 var(--s-3);
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: clamp(2rem, 4.5vw, 3rem);
+}
+
+h2 {
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+}
+
+h3 {
+    font-size: 1.15rem;
+}
+
+p {
+    margin: 0 0 var(--s-4);
+    color: var(--c-text-dim);
+}
+
+a {
+    color: var(--c-mint);
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+a:hover,
+a:focus-visible {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+ul,
+ol {
+    color: var(--c-text-dim);
+    padding-left: 1.25rem;
+}
+
+li {
+    margin-bottom: var(--s-2);
+}
+
+code,
+kbd,
+.mono {
+    font-family: var(--font-mono);
+}
+
+kbd {
+    display: inline-block;
+    min-width: 1.9rem;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--c-line);
+    border-bottom-width: 3px;
+    border-radius: 6px;
+    background: var(--c-surface-2);
+    color: var(--c-text);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+:focus-visible {
+    outline: 3px solid var(--c-mint);
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------- buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    padding: 0.7rem 1.4rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: var(--c-surface-2);
+    color: var(--c-text);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform var(--transition), background var(--transition),
+        border-color var(--transition), color var(--transition);
+}
+
+.btn:hover,
+.btn:focus-visible {
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn--primary {
+    background: linear-gradient(135deg, var(--c-accent), var(--c-accent-dk));
+    color: #17110a;
+}
+
+.btn--primary:hover,
+.btn--primary:focus-visible {
+    background: linear-gradient(135deg, #ffa257, var(--c-accent));
+    color: #17110a;
+}
+
+.btn--ghost {
+    background: transparent;
+    border-color: var(--c-line);
+    color: var(--c-text-dim);
+}
+
+.btn--ghost:hover,
+.btn--ghost:focus-visible {
+    border-color: var(--c-mint);
+    color: var(--c-mint);
+}
+
+.btn--danger {
+    background: transparent;
+    border-color: rgba(255, 95, 109, 0.5);
+    color: var(--c-danger);
+}
+
+.btn--block {
+    width: 100%;
+}
+
+.btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ----------------------------------------------------------------- forms */
+.field {
+    margin-bottom: var(--s-4);
+}
+
+.field__label {
+    display: block;
+    margin-bottom: var(--s-2);
+    color: var(--c-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.field__hint {
+    display: block;
+    margin-top: var(--s-1);
+    color: var(--c-text-faint);
+    font-size: 0.78rem;
+}
+
+.field__control {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background: var(--c-bg-alt);
+    color: var(--c-text);
+    font: inherit;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.field__control::placeholder {
+    color: var(--c-text-faint);
+}
+
+.field__control:focus {
+    border-color: var(--c-mint);
+    box-shadow: 0 0 0 3px rgba(126, 255, 186, 0.15);
+    outline: none;
+}
+
+.field__error {
+    display: block;
+    min-height: 1.1rem;
+    margin-top: var(--s-1);
+    color: var(--c-danger);
+    font-size: 0.8rem;
+}
+
+.field--invalid .field__control {
+    border-color: var(--c-danger);
+    box-shadow: 0 0 0 3px rgba(255, 95, 109, 0.12);
+}
+
+.field--valid .field__control {
+    border-color: rgba(126, 255, 186, 0.55);
+}
+
+select.field__control {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--c-text-dim) 50%),
+        linear-gradient(135deg, var(--c-text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+}
+
+/* ------------------------------------------------------------- utilities */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-dim {
+    color: var(--c-text-dim);
+}
+
+.is-hidden {
+    display: none;
+}

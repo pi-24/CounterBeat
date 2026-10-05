@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CounterBeat &mdash; a counter-strafing rhythm game</title>
+    <meta name="description"
+        content="CounterBeat is a browser rhythm game built around counter-strafing: strafe to the window, tap the opposite key to kill your velocity, then fire on the beat.">
+    <link rel="icon" href="images/emblem.png" type="image/png">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="page site-header__inner">
+            <a class="brand" href="index.html">
+                <span class="brand__mark" aria-hidden="true"></span>
+                Counter<span class="brand__beat">Beat</span>
+            </a>
+            <nav class="nav" aria-label="Main navigation">
+                <button class="nav__toggle" type="button" id="navToggle" aria-expanded="false"
+                    aria-controls="navList">Menu</button>
+                <ul class="nav__list" id="navList">
+                    <li><a class="nav__link" href="index.html" data-nav="index">Home</a></li>
+                    <li><a class="nav__link" href="how-to-play.html" data-nav="how-to-play">How to play</a></li>
+                    <li><a class="nav__link" href="game.html" data-nav="game">Play</a></li>
+                    <li><a class="nav__link" href="rankings.html" data-nav="rankings">Rankings</a></li>
+                    <li data-nav-guest><a class="nav__link" href="login.html" data-nav="login">Log in</a></li>
+                    <li data-nav-guest><a class="nav__cta" href="register.html" data-nav="register">Register</a></li>
+                    <li class="nav__user" data-nav-user hidden>
+                        <a class="nav__user-name" href="profile.html" data-nav="profile" data-nav-username>Player</a>
+                        <button class="btn btn--ghost" type="button" data-action="logout">Log out</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="page">
+
+            <section class="hero">
+                <div class="hero__text">
+                    <span class="section__eyebrow">First-person rhythm &times; aim training</span>
+                    <h1 class="hero__title">Stop moving. <br>Then shoot on the beat.</h1>
+                    <p class="hero__lead">
+                        CounterBeat turns the single most important movement skill in tactical shooters into a
+                        first-person rhythm game. Strafe to the lit window, <strong>tap the opposite key</strong>
+                        to kill your momentum, put your crosshair on the bot and click the instant the beat lands.
+                        Move too fast and your shot sprays. Click off the beat and you lose your combo.
+                    </p>
+                    <div class="hero__actions">
+                        <a class="btn btn--primary" href="game.html">Play now</a>
+                        <a class="btn btn--ghost" href="how-to-play.html">Learn counter-strafing</a>
+                    </div>
+                </div>
+                <div class="hero__art">
+                    <img src="images/emblem.png" alt="The CounterBeat emblem: concentric rings around a crosshair.">
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section__head">
+                    <span class="section__eyebrow">The mechanic</span>
+                    <h2>Three things have to be true at once</h2>
+                    <p>Every note is judged on position, velocity and timing. Miss any one of them and the shot
+                        does not count.</p>
+                </div>
+                <div class="grid grid--3">
+                    <article class="card card--raised">
+                        <div class="card__icon" aria-hidden="true">1</div>
+                        <h3 class="card__title">Position</h3>
+                        <p>A bot steps out behind one window in the wall. You have to be standing in front of that
+                            window to have a line of sight &mdash; from anywhere else the shot hits the wall.</p>
+                    </article>
+                    <article class="card card--raised">
+                        <div class="card__icon" aria-hidden="true">2</div>
+                        <h3 class="card__title">Velocity</h3>
+                        <p>Your shot spreads with speed, exactly like running inaccuracy in a tactical shooter. A
+                            counter-strafe is the only way to reach zero velocity quickly enough.</p>
+                    </article>
+                    <article class="card card--raised">
+                        <div class="card__icon" aria-hidden="true">3</div>
+                        <h3 class="card__title">Timing &amp; aim</h3>
+                        <p>The shot must land on the bot inside the timing window around the beat. Head hits pay
+                            1.25&times;; the windows tighten on every level.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section__head">
+                    <span class="section__eyebrow">Three levels</span>
+                    <h2>The tempo climbs, the windows shrink</h2>
+                </div>
+                <div class="grid grid--3">
+                    <article class="level-card">
+                        <img class="level-card__thumb" src="images/levels/level-1.png"
+                            alt="The Range: a bright grey aim-trainer room with three windows in the wall.">
+                        <div class="level-card__body">
+                            <span class="badge badge--accent">Level 1</span>
+                            <h3 class="card__title">The Range</h3>
+                            <p>Three wide windows at a walking 90&nbsp;BPM. Room to learn the tap-and-release rhythm
+                                of a counter-strafe.</p>
+                            <p class="level-card__meta"><span>90 BPM</span><span>3 windows</span><span>&plusmn;55 ms</span>
+                            </p>
+                        </div>
+                    </article>
+                    <article class="level-card">
+                        <img class="level-card__thumb" src="images/levels/level-2.png"
+                            alt="Neon Alley: a dark arena with cyan floor lines and magenta-edged walls.">
+                        <div class="level-card__body">
+                            <span class="badge badge--cyan">Level 2</span>
+                            <h3 class="card__title">Neon Alley</h3>
+                            <p>Four narrower windows at 120&nbsp;BPM with off-beat bots that punish a lazy stop.</p>
+                            <p class="level-card__meta"><span>120 BPM</span><span>4 windows</span><span>&plusmn;45 ms</span>
+                            </p>
+                        </div>
+                    </article>
+                    <article class="level-card">
+                        <img class="level-card__thumb" src="images/levels/level-3.png"
+                            alt="Server Vault: a dark green room with five narrow windows and glowing floor lines.">
+                        <div class="level-card__body">
+                            <span class="badge badge--mint">Level 3</span>
+                            <h3 class="card__title">Server Vault</h3>
+                            <p>Five tight windows at 150&nbsp;BPM with eighth-note doubles. Chain counter-strafes or
+                                lose the run.</p>
+                            <p class="level-card__meta"><span>150 BPM</span><span>5 windows</span><span>&plusmn;38 ms</span>
+                            </p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="grid grid--2">
+                    <div class="card">
+                        <span class="section__eyebrow">Your account</span>
+                        <h2>Scores are saved to your profile</h2>
+                        <p>Register once and every run is scored, ranked and kept in your browser. Your best run on
+                            each level appears on the public rankings table.</p>
+                        <div class="hero__actions">
+                            <a class="btn btn--primary" href="register.html">Create an account</a>
+                            <a class="btn btn--ghost" href="rankings.html">See the rankings</a>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <span class="section__eyebrow">Live leaders</span>
+                        <h2>Top of the board</h2>
+                        <div id="homeLeaders" class="rail__list-wrap">
+                            <p class="text-dim">Loading scores&hellip;</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="page site-footer__inner">
+            <p class="text-dim">CounterBeat &mdash; CST2120 Coursework 1. All artwork and audio generated for this
+                project.</p>
+            <div class="site-footer__links">
+                <a href="how-to-play.html">How to play</a>
+                <a href="rankings.html">Rankings</a>
+                <a href="game.html">Play</a>
+            </div>
+        </div>
+    </footer>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <script type="module" src="js/pages/home.js"></script>
+</body>
+
+</html>

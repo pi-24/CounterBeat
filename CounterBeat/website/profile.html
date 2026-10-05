@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Your profile &mdash; CounterBeat</title>
+    <meta name="description" content="Your CounterBeat account details and your best run on every level.">
+    <link rel="icon" href="images/emblem.png" type="image/png">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="page site-header__inner">
+            <a class="brand" href="index.html">
+                <span class="brand__mark" aria-hidden="true"></span>
+                Counter<span class="brand__beat">Beat</span>
+            </a>
+            <nav class="nav" aria-label="Main navigation">
+                <button class="nav__toggle" type="button" id="navToggle" aria-expanded="false"
+                    aria-controls="navList">Menu</button>
+                <ul class="nav__list" id="navList">
+                    <li><a class="nav__link" href="index.html" data-nav="index">Home</a></li>
+                    <li><a class="nav__link" href="how-to-play.html" data-nav="how-to-play">How to play</a></li>
+                    <li><a class="nav__link" href="game.html" data-nav="game">Play</a></li>
+                    <li><a class="nav__link" href="rankings.html" data-nav="rankings">Rankings</a></li>
+                    <li data-nav-guest><a class="nav__link" href="login.html" data-nav="login">Log in</a></li>
+                    <li data-nav-guest><a class="nav__cta" href="register.html" data-nav="register">Register</a></li>
+                    <li class="nav__user" data-nav-user hidden>
+                        <a class="nav__user-name" href="profile.html" data-nav="profile" data-nav-username>Player</a>
+                        <button class="btn btn--ghost" type="button" data-action="logout">Log out</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="page">
+            <div class="section__head">
+                <span class="section__eyebrow">Account</span>
+                <h1 id="profileHeading">Your profile</h1>
+                <p id="profileSubtitle">The details stored against your account, and how your runs are going.</p>
+            </div>
+
+            <div class="notice notice--info" id="guestNotice" hidden>
+                <span>You are not logged in. <a href="login.html">Log in</a> to see your profile.</span>
+            </div>
+
+            <div id="profileContent" hidden>
+                <section class="section">
+                    <div class="stats" id="profileStats"></div>
+                </section>
+
+                <section class="section">
+                    <div class="grid grid--2">
+                        <div class="card">
+                            <h2>Account details</h2>
+                            <table class="table">
+                                <tbody id="profileDetails"></tbody>
+                            </table>
+                        </div>
+                        <div class="card">
+                            <h2>Best run per level</h2>
+                            <div id="profileBests"></div>
+                            <p class="card__foot"><a class="btn btn--primary btn--block" href="game.html">Play
+                                    again</a></p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="card">
+                        <h2>Recent runs</h2>
+                        <div class="table-wrap">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Level</th>
+                                        <th scope="col" class="table__num">Score</th>
+                                        <th scope="col" class="table__num">Accuracy</th>
+                                        <th scope="col" class="table__num">Best combo</th>
+                                        <th scope="col" class="table__num">Counter-strafes</th>
+                                        <th scope="col">Played</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profileHistory"></tbody>
+                            </table>
+                        </div>
+                        <p class="card__foot">
+                            <button class="btn btn--danger" type="button" id="clearHistoryBtn">Clear my run
+                                history</button>
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="page site-footer__inner">
+            <p class="text-dim">CounterBeat &mdash; CST2120 Coursework 1. All artwork and audio generated for this
+                project.</p>
+            <div class="site-footer__links">
+                <a href="index.html">Home</a>
+                <a href="how-to-play.html">How to play</a>
+                <a href="rankings.html">Rankings</a>
+            </div>
+        </div>
+    </footer>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <script type="module" src="js/pages/profile-page.js"></script>
+</body>
+
+</html>

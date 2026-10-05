@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>How to play &mdash; CounterBeat</title>
+    <meta name="description"
+        content="Learn the counter-strafe: hold a strafe key, tap the opposite key for about a tenth of a second, release, aim and fire while your velocity is zero.">
+    <link rel="icon" href="images/emblem.png" type="image/png">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="page site-header__inner">
+            <a class="brand" href="index.html">
+                <span class="brand__mark" aria-hidden="true"></span>
+                Counter<span class="brand__beat">Beat</span>
+            </a>
+            <nav class="nav" aria-label="Main navigation">
+                <button class="nav__toggle" type="button" id="navToggle" aria-expanded="false"
+                    aria-controls="navList">Menu</button>
+                <ul class="nav__list" id="navList">
+                    <li><a class="nav__link" href="index.html" data-nav="index">Home</a></li>
+                    <li><a class="nav__link" href="how-to-play.html" data-nav="how-to-play">How to play</a></li>
+                    <li><a class="nav__link" href="game.html" data-nav="game">Play</a></li>
+                    <li><a class="nav__link" href="rankings.html" data-nav="rankings">Rankings</a></li>
+                    <li data-nav-guest><a class="nav__link" href="login.html" data-nav="login">Log in</a></li>
+                    <li data-nav-guest><a class="nav__cta" href="register.html" data-nav="register">Register</a></li>
+                    <li class="nav__user" data-nav-user hidden>
+                        <a class="nav__user-name" href="profile.html" data-nav="profile" data-nav-username>Player</a>
+                        <button class="btn btn--ghost" type="button" data-action="logout">Log out</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="page">
+            <div class="section__head">
+                <span class="section__eyebrow">Training</span>
+                <h1>How to counter-strafe</h1>
+                <p>In tactical shooters your bullets only go where you are aiming when you are standing still.
+                    Releasing the movement key is far too slow &mdash; you slide for a third of a second. Pressing the
+                    <em>opposite</em> key cancels your momentum almost instantly. That is a counter-strafe, and it is
+                    the whole game here.
+                </p>
+            </div>
+
+            <section class="section">
+                <div class="grid grid--2">
+                    <div class="card">
+                        <h2>The four-step loop</h2>
+                        <ol class="steps">
+                            <li><strong>Read the window.</strong> Two beats before the note lands, one window in the
+                                wall lights up, a bot steps out behind it and a ring starts closing on its chest.</li>
+                            <li><strong>Strafe.</strong> Hold <kbd>A</kbd> or <kbd>D</kbd> to run in front of that
+                                window. The velocity bar at the bottom of the screen fills up.</li>
+                            <li><strong>Counter-strafe.</strong> Just before you arrive, <em>tap</em> the opposite
+                                key and let go. The velocity bar snaps into the green zone and your spread collapses.
+                            </li>
+                            <li><strong>Aim and fire on the beat.</strong> Put the crosshair on the bot &mdash; the
+                                head pays extra &mdash; and left-click (or press <kbd>Space</kbd>) as the ring
+                                closes.</li>
+                        </ol>
+                    </div>
+                    <div class="card">
+                        <h2>What the game is measuring</h2>
+                        <ul class="rail__list">
+                            <li><span>Line of sight through the lit window?</span><span class="badge badge--accent">Required</span></li>
+                            <li><span>Crosshair on the bot?</span><span class="badge badge--accent">Required</span></li>
+                            <li><span>Speed under 20&nbsp;u/s</span><span class="badge badge--mint">Pin-point</span>
+                            </li>
+                            <li><span>Speed under 65&nbsp;u/s</span><span class="badge badge--cyan">Tight</span></li>
+                            <li><span>Speed under 140&nbsp;u/s</span><span class="badge badge--pink">Loose</span></li>
+                            <li><span>Anything faster</span><span class="badge badge--accent">Spray &mdash; miss</span>
+                            </li>
+                        </ul>
+                        <p class="card__foot">Your shot spreads with speed &mdash; standing still it is a laser, at
+                            a sprint it can land seven degrees wide. Stopping with a counter-strafe rather than just
+                            releasing the key earns a <strong>1.5&times;</strong> bonus on that note, and a head hit
+                            pays <strong>1.25&times;</strong> on top.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section__head">
+                    <h2>Timing the tap</h2>
+                    <p>At top speed a counter-strafe takes roughly a tenth of a second. Hold the opposite key for too
+                        long and you start moving the other way; let go too early and you are still sliding.</p>
+                </div>
+                <div class="grid grid--3">
+                    <div class="card">
+                        <span class="badge badge--pink">Too short</span>
+                        <h3 class="card__title">Still sliding</h3>
+                        <p>You released before your speed reached zero. The shot sprays wide and you keep drifting out
+                            from in front of the window.</p>
+                    </div>
+                    <div class="card">
+                        <span class="badge badge--mint">Just right</span>
+                        <h3 class="card__title">Dead stop</h3>
+                        <p>Speed hits zero and stays there. The velocity bar turns green and the crosshair is
+                            a laser. Fire now.</p>
+                    </div>
+                    <div class="card">
+                        <span class="badge badge--pink">Too long</span>
+                        <h3 class="card__title">Over-corrected</h3>
+                        <p>You held the key past zero and started accelerating the other way &mdash; often straight
+                            behind the wall.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="grid grid--2">
+                    <div class="card">
+                        <h2>Controls</h2>
+                        <ul class="rail__list">
+                            <li><span>Strafe left</span><span class="rail__keys"><kbd>A</kbd><kbd>&larr;</kbd></span>
+                            </li>
+                            <li><span>Strafe right</span><span class="rail__keys"><kbd>D</kbd><kbd>&rarr;</kbd></span>
+                            </li>
+                            <li><span>Aim</span><span class="rail__keys"><kbd>Mouse</kbd></span></li>
+                            <li><span>Fire</span><span class="rail__keys"><kbd>Click</kbd><kbd>Space</kbd></span></li>
+                            <li><span>Pause (releases the mouse)</span><span class="rail__keys"><kbd>Esc</kbd><kbd>P</kbd></span></li>
+                            <li><span>Restart level</span><span class="rail__keys"><kbd>R</kbd></span></li>
+                            <li><span>Fullscreen</span><span class="rail__keys"><kbd>F</kbd></span></li>
+                        </ul>
+                        <p class="card__foot">Sensitivity is entered the Counter-Strike way and shown with its
+                            Valorant equivalent and cm/360, and the crosshair is yours to shape &mdash; both live
+                            under <em>Settings</em> on the level-select screen.</p>
+                    </div>
+                    <div class="card">
+                        <h2>Scoring</h2>
+                        <ul>
+                            <li><strong>Perfect</strong> &mdash; 100 points. Pin-point speed and inside the timing
+                                window.</li>
+                            <li><strong>Good</strong> &mdash; 60 points.</li>
+                            <li><strong>Loose</strong> &mdash; 30 points.</li>
+                            <li><strong>Counter-strafe bonus</strong> &mdash; 1.5&times; on any note you stopped for
+                                with a counter-strafe.</li>
+                            <li><strong>Headshot</strong> &mdash; 1.25&times; when the shot lands on the bot's
+                                head.</li>
+                            <li><strong>Combo</strong> &mdash; builds to a 2&times; multiplier at 50 notes, and resets
+                                on a miss.</li>
+                        </ul>
+                        <p class="card__foot">Missing drains your focus bar. Empty it and the run ends early.</p>
+                        <a class="btn btn--primary btn--block" href="game.html">Start training</a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="page site-footer__inner">
+            <p class="text-dim">CounterBeat &mdash; CST2120 Coursework 1. All artwork and audio generated for this
+                project.</p>
+            <div class="site-footer__links">
+                <a href="index.html">Home</a>
+                <a href="rankings.html">Rankings</a>
+                <a href="game.html">Play</a>
+            </div>
+        </div>
+    </footer>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <script type="module" src="js/pages/static-page.js"></script>
+</body>
+
+</html>
