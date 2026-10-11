@@ -48,7 +48,7 @@ export function validateRun(level, log, claimedScore) {
     const fail = (reason) => ({ ok: false, reason });
 
     // ---- structure --------------------------------------------------------
-    if (!log || log.version !== 2) {
+    if (!log || log.version !== 3) {
         return fail('unsupported log version');
     }
     if (log.chartId !== level.chartId) {

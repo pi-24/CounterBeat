@@ -14,7 +14,8 @@
  * a few hundred events.
  */
 
-export const LOG_VERSION = 2;
+/** Bumped whenever the movement model changes, so old logs are not misjudged. */
+export const LOG_VERSION = 3;
 
 /** Hit zones packed as small integers. */
 export const ZONE_CODE = Object.freeze({ none: 0, body: 1, head: 2 });

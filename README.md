@@ -104,6 +104,25 @@ score exactly; the camera auto-aims at the next bot.
 page sums them and reports early/late bias, perfect, counter-strafe and
 headshot rates.
 
+## Movement
+
+`rules/CounterStrafeBody.js` is the Source-engine ground model in one axis,
+the one CS and Valorant hands already know: friction every tick,
+proportional to speed with a floor (`stopSpeed`) so the last stretch brakes
+at a fixed rate; holding a key adds `accel × maxSpeed` per second towards
+full speed (a 16 ms tap is a 2–3 px nudge that friction eats in ~80 ms, a
+hold reaches full speed in ~0.15 s); the opposite key is the same
+acceleration pointed backwards on top of friction, which is the
+counter-strafe — about 0.08 s to a dead stop from full speed against ~0.4 s
+for a release. Each difficulty sets `maxSpeed`, `accel`, `friction` and
+`stopSpeed`. Lane spacing is derived per chart from the tempo and the
+movement (`trackScaleFor`), so a lane change always fits in the pattern's
+longest gap and faster tracks pull the windows closer together.
+
+Changing anything in this file changes what every chart demands and how
+every stored replay plays back, so bump `LOG_VERSION` in `RunRecorder.js`
+when you do (the validator refuses older logs rather than misjudging them).
+
 ## How the anti-cheat works
 
 The client never decides a ranked score. While you play, `RunRecorder`

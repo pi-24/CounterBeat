@@ -8,6 +8,7 @@
  */
 import { initNavigation } from '../ui/Navigation.js';
 import { GameApp } from '../game/GameApp.js';
+import { LOG_VERSION } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
 import { GRADE_LABEL } from '../game/rules/config.js';
 import { settings } from '../game/Settings.js';
@@ -47,8 +48,8 @@ async function pendingReplay() {
     }
     try {
         const found = await backend.replay(runId);
-        if (!found || !resolveChart(found.run.chartId)) {
-            toast.error('That replay is not available any more.');
+        if (!found || !resolveChart(found.run.chartId) || found.log.version !== LOG_VERSION) {
+            toast.error('That replay is not available any more (it was recorded on an older version).');
             return null;
         }
         toast.info(`Replay: ${found.run.displayName ?? 'a player'} on ${found.run.levelName} — ${formatScore(found.run.score)}.`);

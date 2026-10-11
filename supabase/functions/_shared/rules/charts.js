@@ -20,6 +20,9 @@
  * `npm run sync-rules`, so a change here changes what the server accepts.
  */
 
+import { LAYOUT } from './config.js';
+import { CounterStrafeBody } from './CounterStrafeBody.js';
+
 // ------------------------------------------------------------------ arenas
 export const ARENAS = Object.freeze({
     range: {
@@ -98,28 +101,28 @@ export const DIFFICULTIES = Object.freeze([
         id: 'easy', name: 'Easy', tier: 1, targetNps: 0.9, patterns: [0],
         lanes: 3, trackScale: 1, laneInset: 0.62,
         timing: { perfect: 0.065, good: 0.125, ok: 0.190 },
-        movement: { maxSpeed: 340, accel: 3000, counterDecel: 4600, friction: 820 },
+        movement: { maxSpeed: 390, accel: 8.5, friction: 5.2, stopSpeed: 120 },
         passAccuracy: 0.50,
     },
     {
         id: 'normal', name: 'Normal', tier: 2, targetNps: 2.0, patterns: [1],
-        lanes: 4, trackScale: 0.88, laneInset: 0.55,
+        lanes: 4, trackScale: 0.80, laneInset: 0.55,
         timing: { perfect: 0.050, good: 0.100, ok: 0.160 },
-        movement: { maxSpeed: 500, accel: 4800, counterDecel: 7000, friction: 1190 },
+        movement: { maxSpeed: 700, accel: 11, friction: 5.2, stopSpeed: 220 },
         passAccuracy: 0.58,
     },
     {
         id: 'hard', name: 'Hard', tier: 3, targetNps: 2.6, patterns: [1, 2],
         lanes: 5, trackScale: 0.76, laneInset: 0.50,
         timing: { perfect: 0.040, good: 0.080, ok: 0.130 },
-        movement: { maxSpeed: 680, accel: 7000, counterDecel: 9500, friction: 1620 },
+        movement: { maxSpeed: 800, accel: 11, friction: 5.5, stopSpeed: 255 },
         passAccuracy: 0.64,
     },
     {
         id: 'expert', name: 'Expert', tier: 4, targetNps: 3.2, patterns: [2, 3],
         lanes: 5, trackScale: 0.66, laneInset: 0.46,
         timing: { perfect: 0.034, good: 0.068, ok: 0.110 },
-        movement: { maxSpeed: 780, accel: 8200, counterDecel: 11000, friction: 1850 },
+        movement: { maxSpeed: 900, accel: 12, friction: 5.8, stopSpeed: 285 },
         passAccuracy: 0.70,
     },
 ]);
@@ -149,6 +152,38 @@ export function patternsFor(bpm, targetNps, allowed = [0, 1, 2, 3]) {
     return [best.beats, best.alt];
 }
 
+/** Lanes never get narrower than this, whatever the tempo asks for. */
+const MIN_LANE_WIDTH = 96;
+
+/**
+ * How much of the track the lanes occupy, so that a lane change fits in the
+ * pattern's longest gap at this tempo.  The difficulty sets a ceiling (its
+ * `trackScale`); a fast track pulls the windows closer together so the
+ * chart still asks for dashes rather than turning into doubles only.  The
+ * stop zone shrinks with the lane, so faster tracks also demand a tighter
+ * stop - which is the point.
+ *
+ * @param {number} bpm
+ * @param {number[][]} patterns
+ * @param {object} difficulty
+ * @returns {number}
+ */
+export function trackScaleFor(bpm, patterns, difficulty) {
+    const beats = patterns[0];
+    let longest = 0;
+    for (let i = 0; i < beats.length; i += 1) {
+        const next = i + 1 < beats.length ? beats[i + 1] : beats[0] + 4;
+        longest = Math.max(longest, next - beats[i]);
+    }
+    const gap = longest * (60 / bpm);
+    const reach = CounterStrafeBody.maxDistance(difficulty.movement, gap * 0.8 - 0.04);
+    const full = LAYOUT.trackRight - LAYOUT.trackLeft;
+    const wanted = Math.max(MIN_LANE_WIDTH, reach * 0.95);
+    const cap = (full * difficulty.trackScale) / difficulty.lanes;
+    const width = Math.min(cap, wanted);
+    return Math.round(((width * difficulty.lanes) / full) * 1000) / 1000;
+}
+
 /** The tier numbers the storage layer sees as levelId. */
 export const TIER = Object.freeze({ tutorial: 0, daily: 5, custom: 6 });
 
@@ -172,7 +207,7 @@ const TUTORIAL = Object.freeze({
     laneInset: 0.70,
     patterns: [[0]],
     timing: { perfect: 0.080, good: 0.140, ok: 0.220 },
-    movement: { maxSpeed: 340, accel: 3000, counterDecel: 4600, friction: 820 },
+    movement: { maxSpeed: 390, accel: 8.5, friction: 5.2, stopSpeed: 120 },
     passAccuracy: 0,
     seed: 707,
     arena: { ...ARENAS.range, accent: [0.49, 1.0, 0.73] },
@@ -185,6 +220,7 @@ const TUTORIAL = Object.freeze({
  * @param {object} [extra] overrides (daily uses a different id, name and seed)
  */
 function buildTrackChart(track, difficulty, extra = {}) {
+    const patterns = patternsFor(track.bpm, difficulty.targetNps, difficulty.patterns);
     return {
         chartId: `t:${track.id}:${difficulty.id}`,
         kind: 'track',
@@ -199,9 +235,9 @@ function buildTrackChart(track, difficulty, extra = {}) {
         firstNoteBar: track.firstNoteBar,
         gridOffset: 0,
         lanes: difficulty.lanes,
-        trackScale: difficulty.trackScale,
+        trackScale: trackScaleFor(track.bpm, patterns, difficulty),
         laneInset: difficulty.laneInset,
-        patterns: patternsFor(track.bpm, difficulty.targetNps, difficulty.patterns),
+        patterns,
         timing: difficulty.timing,
         movement: difficulty.movement,
         passAccuracy: difficulty.passAccuracy,
@@ -281,6 +317,7 @@ export function buildCustomChart(song, difficultyId) {
     const bars = Math.max(4, Math.floor((song.duration - song.gridOffset - 2) / (4 * spb)));
     const arenaKeys = Object.keys(ARENAS);
     const hash = hashString(song.id);
+    const patterns = patternsFor(song.bpm, difficulty.targetNps, difficulty.patterns);
     const chart = {
         chartId: `custom:${song.id}:${difficulty.id}`,
         kind: 'custom',
@@ -295,9 +332,9 @@ export function buildCustomChart(song, difficultyId) {
         firstNoteBar: 2,
         gridOffset: song.gridOffset,
         lanes: difficulty.lanes,
-        trackScale: difficulty.trackScale,
+        trackScale: trackScaleFor(song.bpm, patterns, difficulty),
         laneInset: difficulty.laneInset,
-        patterns: patternsFor(song.bpm, difficulty.targetNps, difficulty.patterns),
+        patterns,
         timing: difficulty.timing,
         movement: difficulty.movement,
         passAccuracy: difficulty.passAccuracy,

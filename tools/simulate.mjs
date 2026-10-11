@@ -35,7 +35,8 @@ const STEP = 1 / FPS;
 function counterStrafePilot(body, targetX) {
     const gap = targetX - body.x;
     const v = body.velocity;
-    const braking = (v * v) / (2 * body.movement.counterDecel);
+    const ahead = CounterStrafeBody.step(body.movement, v, Math.sign(gap), STEP);
+    const braking = CounterStrafeBody.brakingDistance(body.movement, ahead);
 
     if (Math.abs(gap) < 6 && Math.abs(v) < SPEED_GRADE.pinPoint) {
         return 0;
@@ -54,7 +55,7 @@ function counterStrafePilot(body, targetX) {
 function releaseOnlyPilot(body, targetX) {
     const gap = targetX - body.x;
     const v = body.velocity;
-    const coasting = (v * v) / (2 * body.movement.friction);
+    const coasting = CounterStrafeBody.coastDistance(body.movement, v);
 
     if (Math.abs(gap) < 6 && Math.abs(v) < SPEED_GRADE.pinPoint) {
         return 0;

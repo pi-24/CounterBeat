@@ -21,8 +21,8 @@ function pilot(body, targetX) {
     const gap = targetX - body.x;
     const v = body.velocity;
     // Look one frame ahead: if accelerating once more would overshoot, brake now.
-    const ahead = v + Math.sign(gap) * body.movement.accel * STEP;
-    const braking = (ahead * ahead) / (2 * body.movement.counterDecel);
+    const ahead = CounterStrafeBody.step(body.movement, v, Math.sign(gap), STEP);
+    const braking = CounterStrafeBody.brakingDistance(body.movement, ahead);
     if (Math.abs(gap) < 6 && Math.abs(v) < SPEED_GRADE.pinPoint) return 0;
     if (v !== 0 && Math.sign(v) === Math.sign(gap) && braking >= Math.abs(gap)) return -Math.sign(v);
     return Math.sign(gap);

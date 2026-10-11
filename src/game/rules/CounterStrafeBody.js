@@ -2,30 +2,47 @@
  * CounterStrafeBody.js
  *
  * The movement model that the whole game is built on.  It is deliberately a
- * plain class with no Phaser in it, because the chart generator needs to ask
- * it "could a player physically cross this distance in this much time?" long
- * before any sprite exists.
+ * plain class with nothing engine-specific in it, because the chart
+ * generator needs to ask it "could a player physically cross this distance
+ * in this much time?" long before any sprite exists, and the server replays
+ * it to verify runs.
  *
- * The three behaviours it models:
+ * It is the Source-engine ground model that CS and Valorant players have in
+ * their hands, in one dimension:
  *
- *   - Holding a direction accelerates towards `maxSpeed`.
- *   - Releasing everything applies `friction`, which is slow: you slide.
- *   - Pressing the *opposite* direction while still moving applies
- *     `counterDecel`, which is far stronger, and the body is pinned to
- *     exactly zero on the frame it would cross through zero.  That is the
- *     counter-strafe.
+ *   - Ground friction runs every tick and is proportional to speed, with a
+ *     floor (`stopSpeed`) so a slow body is braked at a fixed rate instead
+ *     of creeping forever.  Release at full speed and you decelerate hard at
+ *     first, then settle - the slide, not an ice rink.
+ *   - Holding a key adds speed towards `maxSpeed` by a fixed amount per
+ *     second (`accel` × maxSpeed), so a tap is a small nudge that friction
+ *     eats in a few frames, while a hold reaches full speed in roughly
+ *     1/accel seconds.
+ *   - Pressing the *opposite* key while moving is the same acceleration
+ *     pointed backwards, on top of friction: that is the counter-strafe, and
+ *     it stops the body several times faster than releasing does.  On the
+ *     tick it would cross through zero it is pinned to exactly zero.
  *
- * Holding the opposing key past the stop does not keep decelerating - the
- * body starts accelerating the other way at the normal rate, which is what
+ * Holding the opposing key past the stop does not keep braking - the body
+ * starts accelerating the other way at the normal rate, which is what
  * punishes a tap that was held too long.
+ *
+ * @typedef {object} Movement
+ * @property {number} maxSpeed  pixels per second
+ * @property {number} accel     per second: speed gained per second is accel × maxSpeed
+ * @property {number} friction  per second: proportional braking rate
+ * @property {number} stopSpeed pixels per second: below this, braking is linear
  */
 import { COUNTER_STRAFE_MEMORY_MS } from './config.js';
 
-const STOP_SPEED = 18;
+/** Step used for the analytic helpers (reach, braking distance). */
+const PLAN_STEP = 1 / 120;
+/** Longest tick the model will integrate at once: a stall is split, not jumped. */
+const MAX_DT = 0.05;
 
 export class CounterStrafeBody {
     /**
-     * @param {{maxSpeed:number, accel:number, counterDecel:number, friction:number}} movement
+     * @param {Movement} movement
      * @param {{min:number, max:number}} bounds horizontal limits in pixels.
      * @param {number} startX
      */
@@ -70,40 +87,22 @@ export class CounterStrafeBody {
      * @param {number} nowMs a monotonic clock, used only for the bonus window.
      */
     update(deltaSeconds, nowMs) {
-        const { maxSpeed, accel, counterDecel, friction } = this.movement;
-        const dt = Math.min(deltaSeconds, 0.05); // guard against tab stalls
+        const dt = Math.min(deltaSeconds, MAX_DT);
         const dir = this.inputDirection;
-        const v = this.velocity;
+        const before = this.velocity;
 
-        let acceleration = 0;
-        let counteringNow = false;
+        const countering = dir !== 0 && before !== 0 && Math.sign(before) === -dir;
+        let next = CounterStrafeBody.step(this.movement, before, dir, dt);
 
-        if (dir !== 0) {
-            if (v !== 0 && Math.sign(v) === -dir) {
-                acceleration = dir * counterDecel;
-                counteringNow = true;
-            } else {
-                acceleration = dir * accel;
-            }
-        } else if (v !== 0) {
-            acceleration = -Math.sign(v) * friction;
-        }
-
-        let next = v + acceleration * dt;
-
-        if (counteringNow && Math.sign(next) !== Math.sign(v)) {
+        if (countering && (next === 0 || Math.sign(next) !== Math.sign(before))) {
             // The counter-strafe cancelled the momentum exactly.
             next = 0;
             this.lastPlantedAt = nowMs;
-        } else if (dir === 0) {
-            if (Math.sign(next) !== Math.sign(v) || Math.abs(next) < STOP_SPEED) {
-                next = 0;
-            }
         }
 
-        this.velocity = Math.max(-maxSpeed, Math.min(maxSpeed, next));
-        this.counterStrafing = counteringNow;
-        if (counteringNow) {
+        this.velocity = next;
+        this.counterStrafing = countering;
+        if (countering) {
             this.lastCounterStrafeAt = nowMs;
         }
 
@@ -128,30 +127,114 @@ export class CounterStrafeBody {
     }
 
     /**
+     * One tick of the ground model: friction, then acceleration towards the
+     * wished direction.  Pure, so the planners below can run it ahead.
+     * @param {Movement} movement
+     * @param {number} velocity
+     * @param {number} dir -1, 0 or 1
+     * @param {number} dt
+     * @returns {number} the new velocity
+     */
+    static step(movement, velocity, dir, dt) {
+        const { maxSpeed, accel, friction, stopSpeed } = movement;
+        let v = velocity;
+
+        // Friction: proportional to speed, with a floor so the last stretch is
+        // braked at a fixed rate and the body actually reaches zero.
+        const speed = Math.abs(v);
+        if (speed > 0) {
+            const control = Math.max(speed, stopSpeed);
+            const drop = control * friction * dt;
+            const remaining = Math.max(0, speed - drop);
+            v = speed > 0 ? v * (remaining / speed) : 0;
+        }
+
+        // Accelerate: add up to accel × maxSpeed per second towards the wish,
+        // never past it.
+        if (dir !== 0) {
+            const current = v * dir;
+            const wanted = maxSpeed - current;
+            if (wanted > 0) {
+                v += dir * Math.min(wanted, accel * maxSpeed * dt);
+            }
+        }
+        if (Math.abs(v) < 1e-6) {
+            v = 0;
+        }
+        return v;
+    }
+
+    /**
+     * Distance covered while counter-strafing from `velocity` to a stop.
+     * @param {Movement} movement
+     * @param {number} velocity
+     * @returns {number} pixels (positive)
+     */
+    static brakingDistance(movement, velocity) {
+        return CounterStrafeBody.stopProfile(movement, velocity, -Math.sign(velocity)).distance;
+    }
+
+    /**
+     * Distance covered while sliding to a stop with nothing pressed.
+     * @param {Movement} movement
+     * @param {number} velocity
+     * @returns {number} pixels (positive)
+     */
+    static coastDistance(movement, velocity) {
+        return CounterStrafeBody.stopProfile(movement, velocity, 0).distance;
+    }
+
+    /**
+     * Runs the model from `velocity` with a fixed input until the body stops
+     * (or would reverse).
+     * @param {Movement} movement
+     * @param {number} velocity
+     * @param {number} dir
+     * @returns {{distance:number, seconds:number}}
+     */
+    static stopProfile(movement, velocity, dir) {
+        let v = velocity;
+        let distance = 0;
+        let seconds = 0;
+        const sign = Math.sign(velocity);
+        while (v !== 0 && Math.sign(v) === sign && seconds < 5) {
+            v = CounterStrafeBody.step(movement, v, dir, PLAN_STEP);
+            if (Math.sign(v) !== sign) {
+                v = 0;
+            }
+            distance += Math.abs(v) * PLAN_STEP;
+            seconds += PLAN_STEP;
+        }
+        return { distance, seconds };
+    }
+
+    /**
      * The furthest a player could travel in `seconds` while starting and
-     * finishing at a dead stop.  The chart generator uses this so it never
-     * writes a lane change that is physically impossible to hit.
+     * finishing at a dead stop: hold the key as long as the counter-strafe
+     * can still stop in time, then counter-strafe.  The chart generator uses
+     * this so it never writes a lane change that is physically impossible.
      *
-     * @param {{maxSpeed:number, accel:number, counterDecel:number}} movement
+     * @param {Movement} movement
      * @param {number} seconds
      * @returns {number} distance in pixels.
      */
     static maxDistance(movement, seconds) {
-        const { maxSpeed, accel, counterDecel } = movement;
         if (seconds <= 0) {
             return 0;
         }
-        const timeToTop = maxSpeed / accel;
-        const timeToStop = maxSpeed / counterDecel;
-
-        if (seconds >= timeToTop + timeToStop) {
-            const rampDistance = (maxSpeed * maxSpeed) / (2 * accel)
-                + (maxSpeed * maxSpeed) / (2 * counterDecel);
-            return rampDistance + maxSpeed * (seconds - timeToTop - timeToStop);
+        let v = 0;
+        let distance = 0;
+        let elapsed = 0;
+        while (elapsed + PLAN_STEP <= seconds) {
+            const ahead = CounterStrafeBody.step(movement, v, 1, PLAN_STEP);
+            const stop = CounterStrafeBody.stopProfile(movement, ahead, -1);
+            if (elapsed + PLAN_STEP + stop.seconds > seconds) {
+                break;
+            }
+            v = ahead;
+            distance += v * PLAN_STEP;
+            elapsed += PLAN_STEP;
         }
-
-        // Triangular profile: never reaches top speed.
-        const peak = seconds / (1 / accel + 1 / counterDecel);
-        return (peak * peak) / (2 * accel) + (peak * peak) / (2 * counterDecel);
+        return distance + CounterStrafeBody.stopProfile(movement, v, -1).distance;
     }
 }
