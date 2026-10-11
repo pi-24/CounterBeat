@@ -1,0 +1,6 @@
+# Only the pieces that matter for this project; `supabase init` would
+# generate the rest with defaults.
+project_id = "counterbeat"
+
+[functions.submit-run]
+verify_jwt = true
