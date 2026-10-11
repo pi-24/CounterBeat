@@ -3,15 +3,15 @@
  *
  * Accounts and runs kept as JSON in this browser's local storage.  This is
  * the no-setup path: it is what a fresh clone runs on, and what the headless
- * tests run against.  Nothing is verified - there is no server to do it -
- * so runs are stored with the client's own score.
+ * tests run against.  There is no server, so the replay validator runs in
+ * the page instead, and runs are stored with the score it recomputes.
  */
 import { AuthService } from '../AuthService.js';
 import { UserRepository } from '../UserRepository.js';
 import { ScoreRepository } from '../ScoreRepository.js';
 import { store } from '../Storage.js';
 import { validateRun } from '../../game/rules/validateRun.js';
-import { getLevel } from '../../game/rules/levels.js';
+import { resolveChart } from '../../game/rules/charts.js';
 
 const SETTINGS_KEY = 'settings';
 
@@ -80,38 +80,55 @@ export class LocalBackend {
         if (!user) {
             return { saved: false, accepted: false, score: record.score, personalBest: false };
         }
-        const level = getLevel(record.levelId);
+        const previous = this.scores.personalBest(user.id, record.chartId);
+        const owner = { userId: user.id, displayName: user.displayName, mainGame: user.mainGame };
+
+        if (record.kind === 'custom') {
+            // The player's own song: nobody can check the chart, so it is a
+            // personal best and nothing more.  Stored with its replay.
+            const stored = this.scores.add({ ...record, ...owner, verified: false }, log);
+            return { saved: true, accepted: true, ranked: false, score: stored.score,
+                personalBest: !previous || stored.score > previous.score };
+        }
+
+        const level = resolveChart(record.chartId);
+        if (!level) {
+            return { saved: false, accepted: false, rejected: true, reason: 'unknown chart',
+                score: record.score, personalBest: false };
+        }
         const verdict = log ? validateRun(level, log, record.score) : { ok: true, record };
         if (!verdict.ok) {
             return { saved: false, accepted: false, rejected: true, reason: verdict.reason,
                 score: record.score, personalBest: false };
         }
-        const previous = this.scores.personalBest(user.id, record.levelId);
-        const stored = this.scores.add({
-            ...verdict.record,
-            userId: user.id,
-            displayName: user.displayName,
-            mainGame: user.mainGame,
-            verified: Boolean(log),
-        });
+        const stored = this.scores.add({ ...verdict.record, ...owner, verified: Boolean(log) }, log);
         return {
             saved: true,
             accepted: true,
+            ranked: true,
             score: stored.score,
             personalBest: !previous || stored.score > previous.score,
         };
     }
 
     async runsForUser(userId) {
-        return this.scores.forUser(userId);
+        return this.scores.forUser(userId).map((run) => ({
+            ...run, hasReplay: Boolean(this.scores.logFor(run.id)),
+        }));
     }
 
-    async personalBest(userId, levelId) {
-        return this.scores.personalBest(userId, levelId);
+    async personalBest(userId, chartId) {
+        return this.scores.personalBest(userId, chartId);
     }
 
-    async leaderboard(levelId = 'best') {
-        return this.scores.leaderboard(this.users.all(), levelId);
+    async leaderboard(chartFilter = 'best') {
+        return this.scores.leaderboard(this.users.all(), chartFilter);
+    }
+
+    async replay(runId) {
+        const run = this.scores.byId(runId);
+        const log = this.scores.logFor(runId);
+        return run && log ? { run, log } : null;
     }
 
     async summary() {

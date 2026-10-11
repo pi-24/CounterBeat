@@ -15,6 +15,10 @@ import {
     GRADE,
 } from './config.js';
 
+/** Histogram shape shared by the client and the stats page. */
+export const TIMING_BUCKETS = 20;
+export const TIMING_RANGE = 0.1;
+
 export class Scorer {
     /** @param {number} totalNotes how many notes the chart contains. */
     constructor(totalNotes) {
@@ -27,6 +31,8 @@ export class Scorer {
         this.headshots = 0;
         this.wildShots = 0;
         this.judged = 0;
+        /** Signed timing error of every hit, seconds (negative = early). */
+        this.timingErrors = [];
         this.tally = {
             [GRADE.PERFECT]: 0,
             [GRADE.GOOD]: 0,
@@ -80,6 +86,9 @@ export class Scorer {
 
         this.combo += 1;
         this.bestCombo = Math.max(this.bestCombo, this.combo);
+        if (Number.isFinite(judgement.timingError)) {
+            this.timingErrors.push(judgement.timingError);
+        }
         this.focus = Math.min(FOCUS_MAX, this.focus + FOCUS_DELTA[grade]);
 
         const bonus = judgement.counterStrafed;
@@ -114,8 +123,14 @@ export class Scorer {
      */
     toRecord(level, completed) {
         return {
+            chartId: level.chartId,
+            kind: level.kind,
+            trackId: level.trackId,
+            trackName: level.trackName,
+            difficulty: level.difficulty ? level.difficulty.id : undefined,
             levelId: level.id,
             levelName: level.name,
+            stats: this.timingStats(),
             score: this.score,
             accuracy: Number(this.accuracy.toFixed(4)),
             bestCombo: this.bestCombo,
@@ -127,6 +142,29 @@ export class Scorer {
             missed: this.tally[GRADE.MISS] + Math.max(0, this.totalNotes - this.judged),
             notes: this.totalNotes,
             completed,
+        };
+    }
+
+    /**
+     * A compact timing profile for the stats page: a histogram of hit errors
+     * in 10 ms buckets from -100 to +100 ms, plus the mean and the median.
+     * @returns {{buckets:number[], mean:number, median:number, hits:number}}
+     */
+    timingStats() {
+        const buckets = new Array(TIMING_BUCKETS).fill(0);
+        const errors = [...this.timingErrors].sort((a, b) => a - b);
+        for (const error of errors) {
+            const index = Math.floor((error + TIMING_RANGE) / (2 * TIMING_RANGE) * TIMING_BUCKETS);
+            buckets[Math.max(0, Math.min(TIMING_BUCKETS - 1, index))] += 1;
+        }
+        const hits = errors.length;
+        const mean = hits ? errors.reduce((sum, e) => sum + e, 0) / hits : 0;
+        const median = hits ? errors[Math.floor(hits / 2)] : 0;
+        return {
+            buckets,
+            mean: Math.round(mean * 10000) / 10000,
+            median: Math.round(median * 10000) / 10000,
+            hits,
         };
     }
 

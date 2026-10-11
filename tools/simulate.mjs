@@ -17,7 +17,7 @@
  *
  * This is a development tool, not part of the site build.
  */
-import { LEVELS } from '../src/game/rules/levels.js';
+import { resolveChart, allTrackCharts, dailyChartId } from '../src/game/rules/charts.js';
 import { BeatMap } from '../src/game/rules/BeatMap.js';
 import { CounterStrafeBody } from '../src/game/rules/CounterStrafeBody.js';
 import { Judge } from '../src/game/rules/Judge.js';
@@ -124,9 +124,15 @@ function playLevel(level, pilot) {
     };
 }
 
+// `npm run simulate` plays every official chart; `npm run simulate -- t:neon:hard`
+// plays the charts named on the command line.
+const wanted = process.argv.slice(2);
+const charts = wanted.length
+    ? wanted.map((id) => resolveChart(id)).filter(Boolean)
+    : [resolveChart('tutorial'), ...allTrackCharts(), resolveChart(dailyChartId())];
 const report = {};
-for (const level of LEVELS) {
-    report[`L${level.id} ${level.name} — counter-strafe`] = playLevel(level, counterStrafePilot);
-    report[`L${level.id} ${level.name} — release only`] = playLevel(level, releaseOnlyPilot);
+for (const level of charts) {
+    report[`${level.chartId} — counter-strafe`] = playLevel(level, counterStrafePilot);
+    report[`${level.chartId} — release only`] = playLevel(level, releaseOnlyPilot);
 }
 console.table(report);

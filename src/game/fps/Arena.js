@@ -6,7 +6,7 @@
  * level's set dressing.  Everything is plain boxes and planes with flat
  * materials - the clean, low-poly look of a browser aim trainer - and it is
  * all generated in code, so a level is dressed by changing a few numbers in
- * levels.js rather than by modelling anything.
+ * charts.js rather than by modelling anything.
  *
  * The one piece of geometry that matters to the rules is the window wall.
  * Each window lines up with a lane, so a shot taken from the wrong lane hits

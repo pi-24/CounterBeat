@@ -1,11 +1,12 @@
 /**
  * profile-page.js
  *
- * The player's own page: account details, best run per level and recent
- * history, plus the option to clear that history.
+ * The player's own page: account details, best run per track, a timing
+ * profile built from every verified run, and recent history with replays.
  */
 import { initNavigation } from '../ui/Navigation.js';
-import { LEVELS } from '../game/rules/levels.js';
+import { TRACKS, DIFFICULTIES } from '../game/rules/charts.js';
+import { TIMING_BUCKETS, TIMING_RANGE } from '../game/rules/Scorer.js';
 import {
     formatScore, formatAccuracy, formatDate, formatRelative, statTile, el,
 } from '../ui/format.js';
@@ -43,12 +44,19 @@ async function refresh() {
     const runs = await backend.runsForUser(user.id);
     renderStats(runs);
     renderBests(runs);
+    renderTiming(runs);
     renderHistory(runs);
+}
+
+/** @param {object} run @returns {boolean} counted towards rankings */
+function isRanked(run) {
+    return (run.kind === 'track' || run.kind === 'daily' || run.kind === undefined)
+        && run.levelId > 0 && run.verified !== false;
 }
 
 /** @param {object[]} runs */
 function renderStats(runs) {
-    const ranked = runs.filter((run) => run.levelId > 0);
+    const ranked = runs.filter(isRanked);
     const best = ranked.reduce((top, run) => (top === null || run.score > top.score ? run : top), null);
     const totalCounterStrafes = ranked.reduce((sum, run) => sum + run.counterStrafes, 0);
     const bestAccuracy = ranked.reduce((top, run) => Math.max(top, run.accuracy), 0);
@@ -84,20 +92,122 @@ function renderBests(runs) {
     const host = document.getElementById('profileBests');
     host.replaceChildren();
     const list = el('ul', 'rail__list');
-    for (const level of LEVELS.filter((entry) => !entry.tutorial)) {
+    for (const track of TRACKS) {
         const best = runs
-            .filter((run) => run.levelId === level.id)
+            .filter((run) => run.trackId === track.id && isRanked(run))
             .reduce((top, run) => (top === null || run.score > top.score ? run : top), null);
+        const cleared = DIFFICULTIES.filter((d) => runs.some((run) => run.chartId === `t:${track.id}:${d.id}` && run.passed && run.verified !== false));
         const item = document.createElement('li');
         item.append(
-            el('span', '', `${level.id}. ${level.name}`),
+            el('span', '', `${track.name}${cleared.length ? `  ·  cleared ${cleared.map((d) => d.name).join(', ')}` : ''}`),
             el('span', 'mono', best
                 ? `${formatScore(best.score)}  ·  ${formatAccuracy(best.accuracy)}`
                 : 'Not played'),
         );
         list.append(item);
     }
+    const custom = runs.filter((run) => run.kind === 'custom');
+    if (custom.length) {
+        const bySong = new Map();
+        for (const run of custom) {
+            const key = run.trackName ?? run.levelName;
+            if (!bySong.has(key) || run.score > bySong.get(key).score) {
+                bySong.set(key, run);
+            }
+        }
+        for (const [name, run] of bySong) {
+            const item = document.createElement('li');
+            item.append(
+                el('span', '', `${name}  ·  your song`),
+                el('span', 'mono', `${formatScore(run.score)}  ·  ${formatAccuracy(run.accuracy)}`),
+            );
+            list.append(item);
+        }
+    }
     host.append(list);
+}
+
+/**
+ * The timing histogram: every verified run's buckets summed, drawn as bars
+ * from -100 ms (early) to +100 ms (late), with the bias and spread beside it.
+ * @param {object[]} runs
+ */
+function renderTiming(runs) {
+    const svg = document.getElementById('timingChart');
+    const summary = document.getElementById('timingSummary');
+    const tiles = document.getElementById('timingStats');
+    svg.replaceChildren();
+    tiles.replaceChildren();
+
+    const withStats = runs.filter((run) => run.stats && Array.isArray(run.stats.buckets) && run.stats.hits > 0);
+    if (withStats.length === 0) {
+        summary.textContent = 'Play a few charts and your hit timing shows up here.';
+        return;
+    }
+    const buckets = new Array(TIMING_BUCKETS).fill(0);
+    let hits = 0;
+    let weightedMean = 0;
+    for (const run of withStats) {
+        run.stats.buckets.forEach((count, index) => { buckets[index] += count; });
+        hits += run.stats.hits;
+        weightedMean += run.stats.mean * run.stats.hits;
+    }
+    const mean = weightedMean / hits;
+    const peak = Math.max(...buckets);
+    const width = 600;
+    const height = 170;
+    const left = 10;
+    const bottom = 140;
+    const barWidth = (width - left * 2) / TIMING_BUCKETS;
+    const ns = 'http://www.w3.org/2000/svg';
+
+    buckets.forEach((count, index) => {
+        const bar = document.createElementNS(ns, 'rect');
+        const h = peak ? (count / peak) * 110 : 0;
+        const centre = Math.abs(index - (TIMING_BUCKETS - 1) / 2) <= 1;
+        bar.setAttribute('x', String(left + index * barWidth + 2));
+        bar.setAttribute('y', String(bottom - h));
+        bar.setAttribute('width', String(barWidth - 4));
+        bar.setAttribute('height', String(h));
+        bar.setAttribute('rx', '2');
+        bar.setAttribute('class', `timing__bar${centre ? ' timing__bar--centre' : ''}`);
+        svg.append(bar);
+    });
+    const axis = document.createElementNS(ns, 'line');
+    axis.setAttribute('x1', String(left));
+    axis.setAttribute('x2', String(width - left));
+    axis.setAttribute('y1', String(bottom + 0.5));
+    axis.setAttribute('y2', String(bottom + 0.5));
+    axis.setAttribute('class', 'timing__axis');
+    svg.append(axis);
+    for (const [fraction, label] of [[0, `−${TIMING_RANGE * 1000} ms early`], [0.5, 'on the beat'], [1, `+${TIMING_RANGE * 1000} ms late`]]) {
+        const text = document.createElementNS(ns, 'text');
+        text.setAttribute('x', String(left + fraction * (width - left * 2)));
+        text.setAttribute('y', String(height - 8));
+        text.setAttribute('text-anchor', fraction === 0 ? 'start' : (fraction === 1 ? 'end' : 'middle'));
+        text.setAttribute('class', 'timing__label');
+        text.textContent = label;
+        svg.append(text);
+    }
+
+    const bias = Math.round(mean * 1000);
+    const ranked = runs.filter(isRanked);
+    const hitsRanked = ranked.reduce((sum, run) => sum + (run.perfect + run.good + run.loose), 0);
+    const counterStrafes = ranked.reduce((sum, run) => sum + run.counterStrafes, 0);
+    const headshots = ranked.reduce((sum, run) => sum + (run.headshots ?? 0), 0);
+    const perfects = ranked.reduce((sum, run) => sum + run.perfect, 0);
+
+    summary.textContent = `${hits.toLocaleString('en-GB')} hits across ${withStats.length} runs. `
+        + (Math.abs(bias) < 5
+            ? 'You sit right on the beat.'
+            : `You tend to fire ${Math.abs(bias)} ms ${bias < 0 ? 'early' : 'late'} — `
+              + (bias < 0 ? 'wait a hair longer on the ring.' : 'try shooting as the ring closes, not after. Calibrating in Settings → Timing may also help.'));
+    tiles.append(
+        statTile('Average offset', `${bias >= 0 ? '+' : ''}${bias} ms`),
+        statTile('Perfect rate', hitsRanked ? `${Math.round((perfects / hitsRanked) * 100)}%` : '—'),
+        statTile('Counter-strafe rate', hitsRanked ? `${Math.round((counterStrafes / hitsRanked) * 100)}%` : '—'),
+        statTile('Headshot rate', hitsRanked ? `${Math.round((headshots / hitsRanked) * 100)}%` : '—'),
+    );
 }
 
 /** @param {object[]} runs */
@@ -109,7 +219,7 @@ function renderHistory(runs) {
     if (recent.length === 0) {
         const tr = document.createElement('tr');
         const td = el('td', 'table__empty', 'No runs yet.');
-        td.colSpan = 7;
+        td.colSpan = 8;
         tr.append(td);
         body.append(tr);
         return;
@@ -117,14 +227,24 @@ function renderHistory(runs) {
 
     for (const run of recent) {
         const tr = document.createElement('tr');
+        const status = run.kind === 'custom' ? 'own song' : (run.verified ? 'verified' : 'unverified');
+        const replay = el('td', '');
+        if (run.hasReplay) {
+            const link = el('a', 'table__link', 'Watch');
+            link.href = `game.html?replay=${encodeURIComponent(run.id)}`;
+            replay.append(link);
+        } else {
+            replay.textContent = '—';
+        }
         tr.append(
-            el('td', '', `${run.levelId}. ${run.levelName}`),
+            el('td', '', run.levelName),
             el('td', 'table__num', formatScore(run.score)),
             el('td', 'table__num', formatAccuracy(run.accuracy)),
             el('td', 'table__num', String(run.bestCombo)),
             el('td', 'table__num', String(run.counterStrafes)),
-            el('td', '', run.verified ? '✓' : '—'),
+            el('td', '', status),
             el('td', '', formatRelative(run.playedAt)),
+            replay,
         );
         body.append(tr);
     }

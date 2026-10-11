@@ -142,15 +142,37 @@
                                 <div class="menu__tabs" role="tablist">
                                     <button class="menu__tab is-active" type="button" data-tab="play" role="tab"
                                         aria-selected="true">Play</button>
+                                    <button class="menu__tab" type="button" data-tab="library" role="tab"
+                                        aria-selected="false">Your songs</button>
                                     <button class="menu__tab" type="button" data-tab="settings" role="tab"
                                         aria-selected="false">Settings</button>
                                 </div>
 
                                 <div class="menu__panel is-active" data-panel="play">
-                                    <div class="level-picks" id="levelCards"></div>
-                                    <p class="menu__hint">Click a level, or press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>
-                                        &nbsp;&bull;&nbsp; <kbd>A</kbd> <kbd>D</kbd> strafe &nbsp;&bull;&nbsp; mouse aims
-                                        &nbsp;&bull;&nbsp; left click fires</p>
+                                    <div class="daily" id="dailyCard"></div>
+                                    <div class="track-list" id="trackList"></div>
+                                    <p class="menu__hint"><kbd>T</kbd> tutorial &nbsp;&bull;&nbsp; <kbd>A</kbd> <kbd>D</kbd> strafe
+                                        &nbsp;&bull;&nbsp; mouse aims &nbsp;&bull;&nbsp; left click fires
+                                        &nbsp;&bull;&nbsp; Hard unlocks when you clear Normal on that track, Expert when you clear Hard</p>
+                                </div>
+
+                                <div class="menu__panel" data-panel="library">
+                                    <div class="library">
+                                        <div class="library__head">
+                                            <div>
+                                                <h3 class="library__title">Your songs</h3>
+                                                <p class="library__blurb">Drop in a track and CounterBeat finds the beat and
+                                                    writes a chart for it. Songs stay in this browser. Scores on your own songs
+                                                    count as personal bests only &mdash; they are not ranked.</p>
+                                            </div>
+                                            <label class="btn btn--primary library__upload">
+                                                Add a song
+                                                <input type="file" id="songFile" accept="audio/*,.mp3,.ogg,.wav,.flac,.m4a" hidden>
+                                            </label>
+                                        </div>
+                                        <p class="library__status" id="libraryStatus" hidden></p>
+                                        <div class="song-list" id="songList"></div>
+                                    </div>
                                 </div>
 
                                 <div class="menu__panel" data-panel="settings">
@@ -258,7 +280,7 @@
                                 <button class="btn btn--primary" type="button" data-action="resume">Resume</button>
                                 <button class="btn btn--ghost" type="button" data-action="restart">Restart
                                     <kbd>R</kbd></button>
-                                <button class="btn btn--ghost" type="button" data-action="quit">Level select
+                                <button class="btn btn--ghost" type="button" data-action="quit">Song select
                                     <kbd>Q</kbd></button>
                             </div>
                         </div>
@@ -266,7 +288,7 @@
                         <!-- Results --------------------------------------------------->
                         <div class="overlay overlay--result" id="resultOverlay" hidden>
                             <div class="result">
-                                <h2 class="result__headline" id="resultHeadline">LEVEL CLEARED</h2>
+                                <h2 class="result__headline" id="resultHeadline">CHART CLEARED</h2>
                                 <p class="result__subtitle" id="resultSubtitle"></p>
                                 <div class="result__body">
                                     <div class="result__rank">
@@ -280,9 +302,9 @@
                                 <p class="result__guest" id="resultGuest" hidden>Guest run &mdash; log in before playing to
                                     save this to the rankings.</p>
                                 <div class="overlay__actions">
-                                    <button class="btn btn--ghost" type="button" data-action="retry">Retry level</button>
-                                    <button class="btn btn--primary" type="button" data-action="next">Next level</button>
-                                    <button class="btn btn--ghost" type="button" data-action="menu">Level select</button>
+                                    <button class="btn btn--ghost" type="button" data-action="retry">Retry</button>
+                                    <button class="btn btn--primary" type="button" data-action="next">Next difficulty</button>
+                                    <button class="btn btn--ghost" type="button" data-action="menu">Song select</button>
                                 </div>
                             </div>
                         </div>

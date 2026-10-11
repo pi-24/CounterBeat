@@ -65,11 +65,21 @@
                             </table>
                         </div>
                         <div class="card">
-                            <h2>Best run per level</h2>
+                            <h2>Best run per track</h2>
                             <div id="profileBests"></div>
                             <p class="card__foot"><a class="btn btn--primary btn--block" href="game.html">Play
                                     again</a></p>
                         </div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="card">
+                        <h2>Timing profile</h2>
+                        <p class="text-dim" id="timingSummary">Play a few charts and your hit timing shows up here.</p>
+                        <svg class="timing" id="timingChart" viewBox="0 0 600 170" role="img"
+                            aria-label="Histogram of hit timing errors"></svg>
+                        <div class="stats stats--compact" id="timingStats"></div>
                     </div>
                 </section>
 
@@ -80,13 +90,14 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">Level</th>
+                                        <th scope="col">Chart</th>
                                         <th scope="col" class="table__num">Score</th>
                                         <th scope="col" class="table__num">Accuracy</th>
                                         <th scope="col" class="table__num">Best combo</th>
                                         <th scope="col" class="table__num">Counter-strafes</th>
-                                        <th scope="col">Verified</th>
+                                        <th scope="col">Status</th>
                                         <th scope="col">Played</th>
+                                        <th scope="col">Replay</th>
                                     </tr>
                                 </thead>
                                 <tbody id="profileHistory"></tbody>

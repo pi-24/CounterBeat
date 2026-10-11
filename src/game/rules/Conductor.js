@@ -14,11 +14,14 @@ export class Conductor {
      * @param {() => number} readPosition returns seconds into the track.
      * @param {number} bpm
      * @param {number} [offsetSeconds] positive values judge shots later.
+     * @param {number} [gridOffset] seconds from the track start to its first
+     *   beat, so the beat pulse lines up on songs that do not start on one.
      */
-    constructor(readPosition, bpm, offsetSeconds = 0) {
+    constructor(readPosition, bpm, offsetSeconds = 0, gridOffset = 0) {
         this.readPosition = readPosition;
         this.bpm = bpm;
         this.offset = offsetSeconds;
+        this.gridOffset = gridOffset;
         this.secondsPerBeat = 60 / bpm;
         this.lastBeatIndex = -1;
         this.running = false;
@@ -43,7 +46,7 @@ export class Conductor {
 
     /** @returns {number} the song position measured in beats (fractional). */
     get beatPosition() {
-        return this.songPosition / this.secondsPerBeat;
+        return (this.songPosition - this.gridOffset) / this.secondsPerBeat;
     }
 
     /** @returns {number} 0..1, how far through the current beat we are. */

@@ -250,3 +250,7 @@
         padding-top: var(--s-3);
     }
 }
+
+.grid--spaced {
+    margin-top: var(--s-4);
+}

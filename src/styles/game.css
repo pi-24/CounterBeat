@@ -1150,3 +1150,324 @@
 .settings__readout-inline strong {
     color: var(--c-mint);
 }
+
+/* ------------------------------------------------------------ daily card */
+.daily {
+    margin-bottom: var(--s-4);
+}
+
+.daily__card {
+    display: grid;
+    grid-template-columns: 120px 1fr auto;
+    align-items: center;
+    gap: var(--s-4);
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid var(--c-cyan);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg, rgba(108, 226, 255, 0.14), rgba(22, 28, 40, 0.94) 55%);
+    color: var(--c-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.daily__card:hover,
+.daily__card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(108, 226, 255, 0.18);
+}
+
+.daily__thumb {
+    display: block;
+    width: 120px;
+    height: 100%;
+    min-height: 92px;
+    object-fit: cover;
+}
+
+.daily__body {
+    display: grid;
+    gap: 2px;
+    padding: var(--s-3) 0;
+}
+
+.daily__key {
+    color: var(--c-cyan);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.daily__name {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.daily__meta {
+    color: var(--c-text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+}
+
+.daily__foot {
+    color: var(--c-mint);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+}
+
+.daily__clock {
+    padding: 0 var(--s-4);
+    color: var(--c-text-dim);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .daily__card {
+        grid-template-columns: 1fr;
+    }
+
+    .daily__thumb {
+        height: 70px;
+        width: 100%;
+    }
+
+    .daily__body,
+    .daily__clock {
+        padding: var(--s-2) var(--s-3);
+    }
+}
+
+/* ------------------------------------------------------------ track list */
+.track-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3);
+}
+
+@media (max-width: 760px) {
+    .track-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+.track {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    grid-template-rows: auto auto;
+    overflow: hidden;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-lg);
+    background: rgba(22, 28, 40, 0.94);
+    text-align: left;
+}
+
+.track__thumb {
+    grid-row: 1 / span 2;
+    width: 96px;
+    height: 100%;
+    min-height: 96px;
+    object-fit: cover;
+    border-right: 1px solid var(--c-line);
+}
+
+.track__head {
+    display: grid;
+    gap: 1px;
+    padding: var(--s-3) var(--s-3) var(--s-2);
+}
+
+.track__key {
+    color: var(--c-accent);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.track__name {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.track__mood {
+    color: var(--c-text-dim);
+    font-size: 0.8rem;
+}
+
+.track__difficulties {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 var(--s-3) var(--s-3);
+}
+
+.diff {
+    display: grid;
+    gap: 1px;
+    min-width: 72px;
+    padding: 6px 10px;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background: var(--c-surface-2);
+    color: var(--c-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--transition), transform var(--transition);
+}
+
+.diff:hover:not(:disabled),
+.diff:focus-visible {
+    transform: translateY(-2px);
+}
+
+.diff--easy:hover:not(:disabled),
+.diff--easy.is-passed { border-color: var(--c-mint); }
+.diff--normal:hover:not(:disabled),
+.diff--normal.is-passed { border-color: var(--c-cyan); }
+.diff--hard:hover:not(:disabled),
+.diff--hard.is-passed { border-color: var(--c-accent); }
+.diff--expert:hover:not(:disabled),
+.diff--expert.is-passed { border-color: var(--c-pink); }
+.diff--tutorial:hover:not(:disabled) { border-color: var(--c-mint); }
+
+.diff.is-locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.diff__label {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.diff--easy .diff__label { color: var(--c-mint); }
+.diff--normal .diff__label { color: var(--c-cyan); }
+.diff--hard .diff__label { color: var(--c-accent); }
+.diff--expert .diff__label { color: var(--c-pink); }
+
+.diff__best {
+    color: var(--c-text-dim);
+    font-size: 0.72rem;
+}
+
+.diff.is-passed .diff__best::after {
+    content: '  ✓';
+    color: var(--c-mint);
+}
+
+/* --------------------------------------------------------------- library */
+.library {
+    text-align: left;
+}
+
+.library__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin-bottom: var(--s-3);
+}
+
+.library__title {
+    margin: 0 0 var(--s-1);
+    font-size: 1.2rem;
+}
+
+.library__blurb {
+    margin: 0;
+    max-width: 60ch;
+    color: var(--c-text-dim);
+    font-size: 0.88rem;
+}
+
+.library__upload {
+    flex: none;
+    cursor: pointer;
+}
+
+.library__status {
+    margin: 0 0 var(--s-3);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--radius);
+    background: var(--c-surface-2);
+    color: var(--c-text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+}
+
+.library__status--info {
+    color: var(--c-mint);
+}
+
+.library__status--error {
+    color: var(--c-danger);
+}
+
+.song-list {
+    display: grid;
+    gap: var(--s-3);
+}
+
+.song-list__empty {
+    margin: 0;
+    padding: var(--s-5);
+    border: 1px dashed var(--c-line);
+    border-radius: var(--radius-lg);
+    color: var(--c-text-faint);
+    text-align: center;
+}
+
+.song {
+    display: grid;
+    gap: var(--s-2);
+    padding: var(--s-3);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-lg);
+    background: rgba(22, 28, 40, 0.94);
+}
+
+.song__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-2);
+}
+
+.song__name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.song__meta {
+    color: var(--c-text-faint);
+    font-size: 0.72rem;
+}
+
+.song__tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.song__remove {
+    margin-left: auto;
+    color: var(--c-danger);
+}
+
+.song .track__difficulties {
+    padding: 0;
+}
+
+.btn--small {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.78rem;
+}

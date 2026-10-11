@@ -128,4 +128,5 @@ export const DEFAULT_SETTINGS = Object.freeze({
     crosshairThickness: 2,
     crosshairDot: false,
     viewBob: true,
+    audioOffset: 0,         // seconds; measured by the calibration screen
 });

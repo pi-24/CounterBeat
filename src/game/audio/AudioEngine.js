@@ -91,6 +91,58 @@ export class AudioEngine {
         return null;
     }
 
+    /**
+     * Loads one sound on demand, once.  Music is fetched this way the first
+     * time a track is picked rather than all up front.
+     * @param {string} key
+     * @param {string[]} urls candidate URLs, best first
+     * @returns {Promise<boolean>} whether the buffer is now available
+     */
+    async ensure(key, urls) {
+        this.init();
+        if (this.buffers.has(key)) {
+            return true;
+        }
+        if (!this.pending) {
+            /** @type {Map<string, Promise<AudioBuffer|null>>} */
+            this.pending = new Map();
+        }
+        if (!this.pending.has(key)) {
+            this.pending.set(key, this.fetchFirst(urls).finally(() => this.pending.delete(key)));
+        }
+        const buffer = await this.pending.get(key);
+        if (buffer) {
+            this.buffers.set(key, buffer);
+        }
+        return Boolean(buffer);
+    }
+
+    /**
+     * Decodes raw file bytes (an upload) into a buffer, without storing it.
+     * @param {ArrayBuffer} bytes
+     * @returns {Promise<AudioBuffer>}
+     */
+    async decode(bytes) {
+        this.init();
+        return this.context.decodeAudioData(bytes.slice(0));
+    }
+
+    /** @param {string} key @param {AudioBuffer} buffer */
+    setBuffer(key, buffer) {
+        this.buffers.set(key, buffer);
+    }
+
+    /** @param {string} key */
+    has(key) {
+        return this.buffers.has(key);
+    }
+
+    /** @param {string} key @returns {number} seconds, or 0 when not loaded */
+    durationOf(key) {
+        const buffer = this.buffers.get(key);
+        return buffer ? buffer.duration : 0;
+    }
+
     /** Resumes a context the browser has suspended (autoplay policy). */
     async unlock() {
         this.init();

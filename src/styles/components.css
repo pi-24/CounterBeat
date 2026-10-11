@@ -534,3 +534,46 @@
     border-color: #5865f2;
     color: #ffffff;
 }
+
+/* --------------------------------------------------------- timing chart */
+.timing {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: var(--s-3) 0;
+}
+
+.timing__bar {
+    fill: var(--c-cyan);
+    opacity: 0.75;
+}
+
+.timing__bar--centre {
+    fill: var(--c-mint);
+    opacity: 1;
+}
+
+.timing__axis {
+    stroke: var(--c-line);
+    stroke-width: 1;
+}
+
+.timing__label {
+    fill: var(--c-text-faint);
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.stats--compact {
+    margin-top: var(--s-3);
+}
+
+.table__link {
+    color: var(--c-cyan);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.table__link:hover {
+    text-decoration: underline;
+}

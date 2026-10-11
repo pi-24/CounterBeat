@@ -29,7 +29,8 @@
  *
  * @typedef {object} SubmitResult
  * @property {boolean} saved        the run is stored somewhere
- * @property {boolean} accepted     the run counts for rankings
+ * @property {boolean} accepted     the run was taken (verified, or a custom-song personal best)
+ * @property {boolean} [ranked]     the run appears on the rankings (false for custom songs)
  * @property {boolean} [rejected]   the server refused the replay
  * @property {string} [reason]
  * @property {number} score         the score that was stored (server-side when verified)
@@ -46,9 +47,10 @@
  * @property {(provider:string) => Promise<AuthResult>} loginWithProvider
  * @property {() => Promise<void>} logout
  * @property {(record:object, log:object) => Promise<SubmitResult>} submitRun
- * @property {(userId:string) => Promise<object[]>} runsForUser
- * @property {(userId:string, levelId?:number) => Promise<object|null>} personalBest
- * @property {(levelId:number|'best') => Promise<object[]>} leaderboard
+ * @property {(userId:string) => Promise<object[]>} runsForUser   newest first; each run has `hasReplay`
+ * @property {(userId:string, chartId?:string) => Promise<object|null>} personalBest
+ * @property {(chartFilter:string|'best') => Promise<object[]>} leaderboard  one row per player, a chart id or 'best'
+ * @property {(runId:string) => Promise<{run:object, log:object}|null>} replay  a stored run with its input log
  * @property {() => Promise<{players:number,runs:number,topScore:number,topPlayer:string,averageScore:number}>} summary
  * @property {(userId:string) => Promise<void>} clearRuns
  * @property {() => Promise<object|null>} loadSettings

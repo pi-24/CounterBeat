@@ -5,6 +5,7 @@
  * current level filter, with client-side sorting and a name search.
  */
 import { initNavigation } from '../ui/Navigation.js';
+import { TRACKS, DIFFICULTIES, dailyChartId } from '../game/rules/charts.js';
 import {
     formatScore, formatAccuracy, formatRelative, statTile, el,
 } from '../ui/format.js';
@@ -20,12 +21,38 @@ const emptyNote = document.getElementById('rankingEmpty');
 const caption = document.getElementById('rankingCaption');
 const statsHost = document.getElementById('rankingStats');
 
-const LEVEL_LABEL = {
-    best: 'any level',
-    1: 'Level 1 — The Range',
-    2: 'Level 2 — Neon Alley',
-    3: 'Level 3 — Server Vault',
-};
+// One option per track × difficulty, grouped by track.
+for (const track of TRACKS) {
+    const group = document.createElement('optgroup');
+    group.label = `${track.name} · ${track.bpm} BPM`;
+    for (const difficulty of DIFFICULTIES) {
+        const option = document.createElement('option');
+        option.value = `t:${track.id}:${difficulty.id}`;
+        option.textContent = `${track.name} — ${difficulty.name}`;
+        group.append(option);
+    }
+    levelFilter.append(group);
+}
+const preset = new URLSearchParams(window.location.search).get('chart');
+if (preset && [...levelFilter.options].some((option) => option.value === preset)) {
+    levelFilter.value = preset;
+}
+
+/** @returns {string} the backend filter for the current selection */
+function chartFilter() {
+    return levelFilter.value === 'daily' ? dailyChartId() : levelFilter.value;
+}
+
+/** @returns {string} */
+function filterLabel() {
+    if (levelFilter.value === 'best') {
+        return 'any ranked chart';
+    }
+    if (levelFilter.value === 'daily') {
+        return `today's daily challenge (${dailyChartId().slice(6)})`;
+    }
+    return levelFilter.selectedOptions[0].textContent;
+}
 
 /** @type {object[]} the rows for the current level filter */
 let rows = [];
@@ -57,7 +84,6 @@ async function renderStats() {
 
 function renderTable() {
     const currentUser = backend.currentUser();
-    const level = levelFilter.value;
     const needle = searchPlayer.value.trim().toLowerCase();
 
     let visible = rows;
@@ -66,7 +92,7 @@ function renderTable() {
     }
     visible = sortRows(visible, sortBy.value);
 
-    caption.textContent = `Best verified run per player on ${LEVEL_LABEL[level]}`
+    caption.textContent = `Best verified run per player on ${filterLabel()}`
         + (needle ? `, filtered by "${searchPlayer.value.trim()}"` : '');
 
     tableBody.replaceChildren();
@@ -82,21 +108,36 @@ function renderTable() {
             el('td', `table__rank table__rank--${index + 1}`, String(index + 1)),
             el('td', '', row.displayName + (isYou ? '  (you)' : '')),
             el('td', '', row.mainGame ?? '—'),
-            el('td', '', `${row.levelId}. ${row.levelName}`),
+            el('td', '', row.levelName),
             el('td', 'table__num', formatScore(row.score)),
             el('td', 'table__num', formatAccuracy(row.accuracy)),
             el('td', 'table__num', String(row.bestCombo)),
             el('td', 'table__num', String(row.counterStrafes)),
             el('td', '', formatRelative(row.playedAt)),
+            replayCell(row),
         );
         tableBody.append(tr);
     });
 }
 
+/** @param {object} row */
+function replayCell(row) {
+    const cell = el('td', '');
+    if (row.hasReplay && row.runId) {
+        const link = el('a', 'table__link', 'Watch');
+        link.href = `game.html?replay=${encodeURIComponent(row.runId)}`;
+        link.title = `Watch ${row.displayName}'s run`;
+        cell.append(link);
+    } else {
+        cell.textContent = '—';
+    }
+    return cell;
+}
+
 async function load() {
     caption.textContent = 'Loading…';
     try {
-        rows = await backend.leaderboard(levelFilter.value);
+        rows = await backend.leaderboard(chartFilter());
     } catch (error) {
         console.warn(error);
         rows = [];

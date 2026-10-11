@@ -50,12 +50,10 @@
 
             <div class="toolbar">
                 <div class="field">
-                    <label class="field__label" for="levelFilter">Level</label>
+                    <label class="field__label" for="levelFilter">Chart</label>
                     <select class="field__control" id="levelFilter">
-                        <option value="best">Best of any level</option>
-                        <option value="1">Level 1 &mdash; Warehouse</option>
-                        <option value="2">Level 2 &mdash; Neon Alley</option>
-                        <option value="3">Level 3 &mdash; Server Vault</option>
+                        <option value="best">Best of any chart</option>
+                        <option value="daily">Daily challenge &mdash; today</option>
                     </select>
                 </div>
                 <div class="field">
@@ -83,12 +81,13 @@
                             <th scope="col" class="table__rank">#</th>
                             <th scope="col">Player</th>
                             <th scope="col">Game</th>
-                            <th scope="col">Level</th>
+                            <th scope="col">Chart</th>
                             <th scope="col" class="table__num">Score</th>
                             <th scope="col" class="table__num">Accuracy</th>
                             <th scope="col" class="table__num">Best combo</th>
                             <th scope="col" class="table__num">Counter-strafes</th>
                             <th scope="col">Set</th>
+                            <th scope="col">Replay</th>
                         </tr>
                     </thead>
                     <tbody id="rankingBody"></tbody>

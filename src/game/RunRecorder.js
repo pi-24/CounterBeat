@@ -14,15 +14,15 @@
  * a few hundred events.
  */
 
-export const LOG_VERSION = 1;
+export const LOG_VERSION = 2;
 
 /** Hit zones packed as small integers. */
 export const ZONE_CODE = Object.freeze({ none: 0, body: 1, head: 2 });
 
 export class RunRecorder {
-    /** @param {number} levelId */
-    constructor(levelId) {
-        this.levelId = levelId;
+    /** @param {string} chartId */
+    constructor(chartId) {
+        this.chartId = chartId;
         /** @type {number[]} tick lengths in milliseconds, rounded. */
         this.ticks = [];
         /** @type {Array<[number, number]>} [tickIndex, direction] */
@@ -83,7 +83,7 @@ export class RunRecorder {
     toJSON() {
         return {
             version: LOG_VERSION,
-            levelId: this.levelId,
+            chartId: this.chartId,
             startSongTime: this.startSongTime ?? 0,
             ticks: this.ticks,
             inputs: this.inputs,

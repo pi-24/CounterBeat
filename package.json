@@ -1,6 +1,6 @@
 {
   "name": "counterbeat",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CounterBeat - a first-person counter-strafe rhythm game",
   "scripts": {
     "dev": "vite",
@@ -8,7 +8,7 @@
     "preview": "vite preview --port 4173",
     "simulate": "node tools/simulate.mjs",
     "sync-rules": "node tools/sync-rules.mjs",
-    "test": "node tools/test-validate.mjs"
+    "test": "node tools/test-validate.mjs && node tools/test-analyse.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

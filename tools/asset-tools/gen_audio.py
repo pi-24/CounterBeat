@@ -54,12 +54,16 @@ def osc(freq, n, kind="sine", detune=0.0):
 def lowpass(x, cutoff):
     """One-pole lowpass."""
     a = np.exp(-2 * np.pi * cutoff / SR)
-    y = np.empty_like(x)
-    acc = 0.0
-    for i in range(len(x)):
-        acc = (1 - a) * x[i] + a * acc
-        y[i] = acc
-    return y
+    try:
+        from scipy.signal import lfilter
+        return lfilter([1 - a], [1, -a], x)
+    except ImportError:  # pragma: no cover - slow fallback
+        y = np.empty_like(x)
+        acc = 0.0
+        for i in range(len(x)):
+            acc = (1 - a) * x[i] + a * acc
+            y[i] = acc
+        return y
 
 
 def highpass(x, cutoff):
@@ -277,6 +281,130 @@ def build_level_three(bpm=150.0, bars=40):
     return normalise(buf)
 
 
+def chord_degrees(root_deg, kind="minor"):
+    """Triad built on a scale degree (diatonic, so it stays in key)."""
+    return [root_deg, root_deg + 2, root_deg + 4]
+
+
+def build_drift(bpm=105.0, bars=28):
+    """Lo-fi swing: lazy kick, swung hats, soft electric-piano chords."""
+    spb = 60.0 / bpm
+    total = bars * 4 * spb + 2.0
+    buf = np.zeros(int(total * SR))
+    swing = spb * 0.17
+    prog = [0, 3, 5, 4]            # Am  Dm  F  Em  (degrees of A minor)
+    melody = [[7, 6, 4, None, 5, 4, None, 2], [4, 5, 6, None, 7, None, 9, 8]]
+
+    for bar in range(bars):
+        t0 = bar * 4 * spb
+        root_deg = prog[bar % 4]
+        chord = [scale_note(d, -1) for d in chord_degrees(root_deg)]
+        if bar >= 1:
+            # Two stabs per bar, slightly late, like a sampled keys loop.
+            place(buf, pad(chord, spb * 1.6, 1500), t0 + 0.015, 0.34)
+            place(buf, pad(chord, spb * 1.2, 1300), t0 + spb * 2.5 + 0.02, 0.26)
+        for beat in range(4):
+            tb = t0 + beat * spb
+            if beat == 0 or (beat == 2 and bar % 2 == 0):
+                place(buf, kick(length=0.4, f_start=120, f_end=42, click=0.3), tb, 0.85)
+            if beat == 2 and bar % 2 == 1:
+                place(buf, kick(length=0.4, f_start=120, f_end=42, click=0.3), tb + spb * 0.5 + swing, 0.7)
+            if beat in (1, 3):
+                place(buf, snare(length=0.26, tone=170), tb, 0.42)
+            place(buf, hat(length=0.05), tb, 0.22)
+            place(buf, hat(length=0.05, open_hat=(beat == 1)), tb + spb * 0.5 + swing, 0.18)
+            if bar >= 1 and beat in (0, 2):
+                place(buf, bass(scale_note(root_deg, -3), spb * 1.3, "sine", 300, 1.2), tb, 0.62)
+            if bar >= 1 and beat == 3:
+                place(buf, bass(scale_note(root_deg + 4, -3), spb * 0.6, "sine", 300, 1.2), tb + swing, 0.45)
+        if bar >= 4:
+            line = melody[(bar // 2) % 2]
+            for i, deg in enumerate(line):
+                if deg is None:
+                    continue
+                tm = t0 + i * spb * 0.5 + (swing if i % 2 else 0)
+                place(buf, pluck(scale_note(deg, 0), spb * 0.6, 1900), tm, 0.2)
+    vinyl = highpass(rng.normal(0, 1, len(buf)), 3000) * 0.012
+    return normalise(buf + vinyl)
+
+
+def build_breakneck(bpm=135.0, bars=36):
+    """Breakbeat: syncopated kicks, snare on the off-beats, stabbing saw chords."""
+    spb = 60.0 / bpm
+    total = bars * 4 * spb + 2.0
+    buf = np.zeros(int(total * SR))
+    s16 = spb * 0.25
+    prog = [0, 0, 5, 6]
+    kick_steps = [0, 6, 10, 11]          # in 16ths: 1 . . . . . x . . . x x . . . .
+    snare_steps = [4, 12, 15]
+    stab = [[0, 2, 4], [2, 4, 6]]
+
+    for bar in range(bars):
+        t0 = bar * 4 * spb
+        root_deg = prog[bar % 4]
+        for step in range(16):
+            ts = t0 + step * s16
+            if step in kick_steps or (bar % 4 == 3 and step == 14):
+                place(buf, kick(length=0.3, f_start=175, f_end=50, click=0.7), ts, 1.0)
+            if step in snare_steps:
+                place(buf, snare(length=0.2, tone=205), ts, 0.7)
+                place(buf, clap(), ts, 0.3)
+            if step % 2 == 0:
+                place(buf, hat(open_hat=(step == 14)), ts, 0.3)
+            elif bar >= 2:
+                place(buf, hat(length=0.04), ts, 0.14)
+        if bar >= 1:
+            for beat_pos, length in ((0.0, 0.9), (1.75, 0.5), (2.5, 0.6), (3.5, 0.4)):
+                place(buf, bass(scale_note(root_deg, -3), spb * length, cutoff=600, drive=2.2), t0 + beat_pos * spb, 0.62)
+        if bar >= 4:
+            chord = [scale_note(d + root_deg, 0) for d in stab[(bar // 4) % 2]]
+            for beat_pos in (1.0, 1.5, 3.25):
+                place(buf, pad(chord, spb * 0.45, 2600), t0 + beat_pos * spb, 0.3)
+        if bar >= 8 and bar % 2 == 1:
+            for i, deg in enumerate([9, 7, 6, 4]):
+                place(buf, pluck(scale_note(deg + root_deg, 1), spb * 0.3, 3600), t0 + (2 + i * 0.5) * spb, 0.18)
+    return normalise(buf)
+
+
+def build_overclock(bpm=170.0, bars=44):
+    """Drum & bass two-step: kick on 1, snare on 2 and 4, rolling reese bass, 16th arp."""
+    spb = 60.0 / bpm
+    total = bars * 4 * spb + 2.0
+    buf = np.zeros(int(total * SR))
+    s16 = spb * 0.25
+    prog = [0, 0, 3, 4]
+    arp = [0, 4, 7, 4, 2, 4, 7, 9, 0, 4, 7, 4, 2, 6, 7, 9]
+
+    for bar in range(bars):
+        t0 = bar * 4 * spb
+        root_deg = prog[bar % 4]
+        root = scale_note(root_deg, -3)
+        for step in range(16):
+            ts = t0 + step * s16
+            if step == 0 or step == 10 or (step == 7 and bar % 2):
+                place(buf, kick(length=0.26, f_start=200, f_end=52, click=0.8), ts, 1.0)
+            if step in (4, 12):
+                place(buf, snare(length=0.19, tone=230), ts, 0.78)
+            if step == 14 and bar % 4 == 3:
+                place(buf, snare(length=0.14, tone=260), ts, 0.4)
+            place(buf, hat(length=0.045, open_hat=(step == 6)), ts, 0.3 if step % 4 == 0 else 0.17)
+        if bar >= 2:
+            # Reese: two detuned saws, long sustain across the bar.
+            n = int(spb * 3.8 * SR)
+            reese = (osc(root, n, "saw", 0.006) + osc(root, n, "saw", -0.006)) * 0.5
+            reese = lowpass(reese, 380) * env(n, 0.01, 0.2, 0.7, 0.2)
+            place(buf, soft_clip(reese, 2.4) * 0.8, t0, 0.55)
+            place(buf, bass(root * 2, spb * 0.4, cutoff=900, drive=2.8), t0 + spb * 2.5, 0.4)
+        if bar >= 6:
+            for i, deg in enumerate(arp):
+                tm = t0 + i * s16
+                place(buf, pluck(scale_note(deg + root_deg, 1), s16 * 1.1, 5000), tm, 0.16 if i % 2 else 0.21)
+        if bar >= 14 and bar % 4 in (2, 3):
+            chord = [scale_note(d + root_deg, 0) for d in (0, 2, 4)]
+            place(buf, pad(chord, spb * 3.5, 1800), t0, 0.22)
+    return normalise(buf)
+
+
 def build_menu_theme(bpm=100.0, bars=16):
     spb = 60.0 / bpm
     buf = np.zeros(int((bars * 4 * spb + 2.0) * SR))
@@ -360,9 +488,12 @@ def sfx_gameover():
 
 # ---------------------------------------------------------------- run
 TRACKS = {
-    "music-level1": build_level_one,
-    "music-level2": build_level_two,
-    "music-level3": build_level_three,
+    "music-range": build_level_one,
+    "music-drift": build_drift,
+    "music-neon": build_level_two,
+    "music-breakneck": build_breakneck,
+    "music-vault": build_level_three,
+    "music-overclock": build_overclock,
     "music-menu": build_menu_theme,
 }
 SFX = {
@@ -377,11 +508,17 @@ SFX = {
 }
 
 if __name__ == "__main__":
+    import sys
+    wanted = set(sys.argv[1:])
     for name, fn in TRACKS.items():
+        if wanted and name not in wanted:
+            continue
         data = fn()
         write_wav(os.path.join(OUT, name + ".wav"), data)
         print(f"{name}: {len(data)/SR:.1f}s")
     for name, fn in SFX.items():
+        if wanted and name not in wanted:
+            continue
         data = fn()
         write_wav(os.path.join(OUT, name + ".wav"), data)
         print(f"{name}: {len(data)/SR:.2f}s")

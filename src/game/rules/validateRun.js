@@ -39,7 +39,7 @@ const LIMITS = Object.freeze({
 const ZONES = ['none', 'body', 'head'];
 
 /**
- * @param {object} level a level definition from levels.js
+ * @param {object} level a chart definition from charts.js
  * @param {object} log a RunRecorder log
  * @param {number} [claimedScore] what the client reported, for the mismatch flag
  * @returns {{ok: true, record: object, mismatch: boolean} | {ok: false, reason: string}}
@@ -48,11 +48,11 @@ export function validateRun(level, log, claimedScore) {
     const fail = (reason) => ({ ok: false, reason });
 
     // ---- structure --------------------------------------------------------
-    if (!log || log.version !== 1) {
+    if (!log || log.version !== 2) {
         return fail('unsupported log version');
     }
-    if (log.levelId !== level.id) {
-        return fail('level mismatch');
+    if (log.chartId !== level.chartId) {
+        return fail('chart mismatch');
     }
     const { ticks, inputs, shots } = log;
     if (!Array.isArray(ticks) || !Array.isArray(inputs) || !Array.isArray(shots)) {
@@ -98,7 +98,7 @@ export function validateRun(level, log, claimedScore) {
     const notes = beatMap.notes;
     for (const note of notes) {
         if (noteIndexInvalid(note, notes)) {
-            return fail('chart mismatch');
+            return fail('chart index mismatch');
         }
     }
 

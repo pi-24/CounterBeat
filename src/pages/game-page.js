@@ -8,7 +8,7 @@
  */
 import { initNavigation } from '../ui/Navigation.js';
 import { GameApp } from '../game/GameApp.js';
-import { LEVELS } from '../game/rules/levels.js';
+import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
 import { GRADE_LABEL } from '../game/rules/config.js';
 import { settings } from '../game/Settings.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
@@ -30,13 +30,33 @@ if (!user) {
 let runs = user ? await backend.runsForUser(user.id) : [];
 
 /** Guest progress and scores only last as long as the page is open. */
-const guestState = { unlockedLevel: 1, bestByLevel: new Map() };
+const guestState = { passed: new Set(), bestByChart: new Map() };
 
-/** @param {number} levelId */
-function bestOf(levelId) {
+/** @param {string} chartId */
+function bestOf(chartId) {
     return runs
-        .filter((run) => run.levelId === levelId && run.verified !== false)
+        .filter((run) => run.chartId === chartId && (run.verified !== false || run.kind === 'custom'))
         .reduce((top, run) => Math.max(top, run.score), 0);
+}
+
+/** A replay requested in the URL (?replay=<run id>), loaded before boot. */
+async function pendingReplay() {
+    const runId = new URLSearchParams(window.location.search).get('replay');
+    if (!runId) {
+        return null;
+    }
+    try {
+        const found = await backend.replay(runId);
+        if (!found || !resolveChart(found.run.chartId)) {
+            toast.error('That replay is not available any more.');
+            return null;
+        }
+        toast.info(`Replay: ${found.run.displayName ?? 'a player'} on ${found.run.levelName} — ${formatScore(found.run.score)}.`);
+        return { chartId: found.run.chartId, log: found.log };
+    } catch (error) {
+        console.warn(error);
+        return null;
+    }
 }
 
 /** @type {import('../game/GameApp.js').GameServices} */
@@ -49,35 +69,25 @@ const services = {
         return user !== null;
     },
 
-    getUnlockedLevel() {
+    hasPassed(chartId) {
         if (!user) {
-            return guestState.unlockedLevel;
+            return guestState.passed.has(chartId);
         }
-        let unlocked = 1;
-        for (const level of LEVELS) {
-            if (level.tutorial) {
-                continue;
-            }
-            const cleared = runs.some((run) => run.levelId === level.id && run.completed && run.passed);
-            if (cleared) {
-                unlocked = Math.max(unlocked, level.id + 1);
-            }
-        }
-        return Math.min(unlocked, LEVELS[LEVELS.length - 1].id);
+        return runs.some((run) => run.chartId === chartId && run.passed && run.verified !== false);
     },
 
-    getPersonalBest(levelId) {
-        return user ? bestOf(levelId) : (guestState.bestByLevel.get(levelId) ?? 0);
+    getPersonalBest(chartId) {
+        return user ? bestOf(chartId) : (guestState.bestByChart.get(chartId) ?? 0);
     },
 
     async onRunComplete(record, log) {
         if (!user) {
-            const previous = guestState.bestByLevel.get(record.levelId) ?? 0;
+            const previous = guestState.bestByChart.get(record.chartId) ?? 0;
             if (record.score > previous) {
-                guestState.bestByLevel.set(record.levelId, record.score);
+                guestState.bestByChart.set(record.chartId, record.score);
             }
             if (record.passed) {
-                guestState.unlockedLevel = Math.max(guestState.unlockedLevel, record.levelId + 1);
+                guestState.passed.add(record.chartId);
             }
             renderPersonalBests();
             toast.info('Guest run finished. Log in before playing to save scores to the rankings.');
@@ -96,9 +106,15 @@ const services = {
 
         runs = await backend.runsForUser(user.id);
         renderPersonalBests();
-        toast.success(result.personalBest
-            ? `New personal best on ${record.levelName}: ${formatScore(result.score)}.`
-            : `Run verified: ${formatScore(result.score)} on ${record.levelName}.`);
+        if (record.kind === 'custom') {
+            toast.success(result.personalBest
+                ? `New personal best on ${record.levelName}: ${formatScore(result.score)} (your own song, not ranked).`
+                : `Saved: ${formatScore(result.score)} on ${record.levelName} (your own song, not ranked).`);
+        } else {
+            toast.success(result.personalBest
+                ? `New personal best on ${record.levelName}: ${formatScore(result.score)}.`
+                : `Run verified: ${formatScore(result.score)} on ${record.levelName}.`);
+        }
         return { saved: true, personalBest: result.personalBest, score: result.score };
     },
 
@@ -130,21 +146,26 @@ function appendToSessionLog(judgement) {
 function renderPersonalBests() {
     personalBests.replaceChildren();
     const list = el('ul', 'rail__list');
-    for (const level of LEVELS) {
-        if (level.tutorial) {
-            continue;
+    for (const track of TRACKS) {
+        let best = 0;
+        let bestDifficulty = null;
+        for (const difficulty of DIFFICULTIES) {
+            const score = services.getPersonalBest(`t:${track.id}:${difficulty.id}`);
+            if (score > best) {
+                best = score;
+                bestDifficulty = difficulty;
+            }
         }
-        const score = services.getPersonalBest(level.id);
         const item = document.createElement('li');
         item.append(
-            el('span', '', `${level.id}. ${level.name}`),
-            el('span', 'mono', score ? formatScore(score) : '—'),
+            el('span', '', track.name),
+            el('span', 'mono', best ? `${formatScore(best)} · ${bestDifficulty.name}` : '—'),
         );
         list.append(item);
     }
     personalBests.append(list);
 
-    const best = runs.filter((run) => run.levelId > 0)
+    const best = runs.filter((run) => run.kind === 'track' || run.kind === 'daily')
         .reduce((top, run) => (top === null || run.accuracy > top.accuracy ? run : top), null);
     if (best && best.accuracy > 0) {
         personalBests.append(el('p', 'card__foot',
@@ -161,7 +182,9 @@ async function boot() {
     const loadingText = document.getElementById('loadingText');
 
     try {
+        const replay = await pendingReplay();
         const app = new GameApp({
+            replay,
             canvas,
             stage,
             hudRoot: document.getElementById('hud'),

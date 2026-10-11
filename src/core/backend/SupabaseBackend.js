@@ -13,6 +13,11 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+/** Everything on a run row except the replay log, which is fetched on demand. */
+const RUN_COLUMNS = 'id,user_id,chart_id,kind,track_id,track_name,difficulty,level_id,level_name,score,accuracy,'
+    + 'best_combo,counter_strafes,headshots,perfect,good,loose,missed,notes,completed,passed,rank,stats,verified,'
+    + 'played_at,has_log';
+
 export class SupabaseBackend {
     /**
      * @param {string} url the project URL
@@ -133,7 +138,7 @@ export class SupabaseBackend {
         if (!this.user) {
             return { saved: false, accepted: false, score: record.score, personalBest: false };
         }
-        const previous = await this.personalBest(this.user.id, record.levelId);
+        const previous = await this.personalBest(this.user.id, record.chartId);
 
         const { data, error } = await this.client.functions.invoke('submit-run', {
             body: { record, log },
@@ -151,6 +156,7 @@ export class SupabaseBackend {
         return {
             saved: true,
             accepted: true,
+            ranked: Boolean(data.run.verified),
             score,
             personalBest: !previous || score > previous.score,
         };
@@ -159,42 +165,42 @@ export class SupabaseBackend {
     async runsForUser(userId) {
         const { data } = await this.client
             .from('runs')
-            .select('*')
+            .select(RUN_COLUMNS)
             .eq('user_id', userId)
             .order('played_at', { ascending: false })
-            .limit(100);
+            .limit(200);
         return (data ?? []).map(SupabaseBackend.runFromRow);
     }
 
-    async personalBest(userId, levelId) {
+    async personalBest(userId, chartId) {
         let query = this.client
             .from('runs')
-            .select('*')
+            .select(RUN_COLUMNS)
             .eq('user_id', userId)
-            .eq('verified', true)
             .order('score', { ascending: false })
             .limit(1);
-        if (levelId !== undefined) {
-            query = query.eq('level_id', levelId);
+        if (chartId !== undefined) {
+            query = query.eq('chart_id', chartId);
         } else {
-            query = query.gt('level_id', 0);
+            query = query.eq('verified', true).in('kind', ['track', 'daily']);
         }
         const { data } = await query;
         return data && data[0] ? SupabaseBackend.runFromRow(data[0]) : null;
     }
 
-    async leaderboard(levelId = 'best') {
+    async leaderboard(chartFilter = 'best') {
         const { data, error } = await this.client.rpc('leaderboard', {
-            level_filter: levelId === 'best' ? null : Number(levelId),
+            chart_filter: chartFilter === 'best' ? null : String(chartFilter),
         });
         if (error) {
             throw new Error(error.message);
         }
         return (data ?? []).map((row) => ({
+            runId: row.run_id,
             userId: row.user_id,
             displayName: row.display_name,
             mainGame: row.main_game || '—',
-            country: '—',
+            chartId: row.chart_id,
             levelId: row.level_id,
             levelName: row.level_name,
             score: row.score,
@@ -204,15 +210,31 @@ export class SupabaseBackend {
             headshots: row.headshots,
             playedAt: row.played_at,
             runs: Number(row.runs),
+            hasReplay: Boolean(row.has_replay),
         }));
+    }
+
+    async replay(runId) {
+        const { data, error } = await this.client.rpc('run_replay', { run: runId });
+        if (error || !data || !data[0] || !data[0].log) {
+            return null;
+        }
+        const row = data[0];
+        return {
+            run: {
+                id: row.id, userId: row.user_id, displayName: row.display_name, chartId: row.chart_id,
+                levelName: row.level_name, score: row.score, accuracy: row.accuracy, playedAt: row.played_at,
+            },
+            log: row.log,
+        };
     }
 
     async summary() {
         const [{ count: players }, { count: runs }, { data: best }] = await Promise.all([
             this.client.from('profiles').select('id', { count: 'exact', head: true }),
-            this.client.from('runs').select('id', { count: 'exact', head: true }).eq('verified', true).gt('level_id', 0),
+            this.client.from('runs').select('id', { count: 'exact', head: true }).eq('verified', true).in('kind', ['track', 'daily']),
             this.client.from('runs').select('score, profiles(display_name)')
-                .eq('verified', true).gt('level_id', 0).order('score', { ascending: false }).limit(1),
+                .eq('verified', true).in('kind', ['track', 'daily']).order('score', { ascending: false }).limit(1),
         ]);
         const top = best && best[0];
         return {
@@ -249,6 +271,11 @@ export class SupabaseBackend {
         return {
             id: row.id,
             userId: row.user_id,
+            chartId: row.chart_id,
+            kind: row.kind,
+            trackId: row.track_id,
+            trackName: row.track_name,
+            difficulty: row.difficulty,
             levelId: row.level_id,
             levelName: row.level_name,
             score: row.score,
@@ -264,7 +291,9 @@ export class SupabaseBackend {
             completed: row.completed,
             passed: row.passed,
             rank: row.rank,
+            stats: row.stats ?? null,
             verified: row.verified,
+            hasReplay: Boolean(row.has_log),
             playedAt: row.played_at,
         };
     }

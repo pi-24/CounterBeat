@@ -18,22 +18,21 @@ import { PlayScreen } from './screens/PlayScreen.js';
 import { ResultScreen } from './screens/ResultScreen.js';
 import { SettingsPanel } from './screens/SettingsPanel.js';
 import { Calibration } from './screens/Calibration.js';
+import { SongLibrary } from './library/SongLibrary.js';
+import { toast } from '../ui/Toast.js';
 
 /**
  * @typedef {object} GameServices
  * @property {() => string} getPlayerName
  * @property {() => boolean} isLoggedIn
- * @property {() => number} getUnlockedLevel
- * @property {(levelId:number) => number} getPersonalBest
+ * @property {(chartId:string) => boolean} hasPassed
+ * @property {(chartId:string) => number} getPersonalBest
  * @property {(record:object, log:object) => Promise<{personalBest:boolean, saved:boolean, rejected?:boolean, score?:number}>} onRunComplete
  * @property {(judgement:object) => void} onJudgement
  */
 
 const AUDIO_MANIFEST = {
     'music-menu': ['audio/music-menu.ogg', 'audio/music-menu.mp3'],
-    'music-level1': ['audio/music-level1.ogg', 'audio/music-level1.mp3'],
-    'music-level2': ['audio/music-level2.ogg', 'audio/music-level2.mp3'],
-    'music-level3': ['audio/music-level3.ogg', 'audio/music-level3.mp3'],
     'sfx-shot': ['audio/sfx-shot.ogg', 'audio/sfx-shot.mp3'],
     'sfx-skid': ['audio/sfx-skid.ogg', 'audio/sfx-skid.mp3'],
     'sfx-perfect': ['audio/sfx-perfect.ogg', 'audio/sfx-perfect.mp3'],
@@ -54,6 +53,7 @@ export class GameApp {
      *          result:HTMLElement, calibration:HTMLElement}} options.overlays
      * @param {HTMLElement} options.settingsForm
      * @param {GameServices} options.services
+     * @param {{chartId:string, log:object}} [options.replay] open this replay first
      * @param {(done:number,total:number) => void} [options.onProgress]
      */
     constructor(options) {
@@ -77,6 +77,9 @@ export class GameApp {
             settings: this.settings,
         });
         this.settingsPanel.onCalibrate = () => this.calibration.open();
+        this.library = SongLibrary.available ? new SongLibrary(this.audio) : null;
+        /** A replay to open as soon as the menu would otherwise show. */
+        this.pendingReplay = options.replay ?? null;
 
         /** @type {{enter:Function, exit:Function, update:Function}|null} */
         this.current = null;
@@ -109,6 +112,12 @@ export class GameApp {
         window.addEventListener('resize', () => this.engine.resize());
 
         this.loadingOverlay.hidden = true;
+        if (this.pendingReplay) {
+            const { chartId, log } = this.pendingReplay;
+            this.pendingReplay = null;
+            await this.showReplay(chartId, log);
+            return;
+        }
         await this.showMenu();
     }
 
@@ -129,14 +138,32 @@ export class GameApp {
         return this.switchTo(new MenuScreen(this));
     }
 
-    /** @param {number} levelId */
-    showPlay(levelId) {
-        return this.switchTo(new PlayScreen(this, levelId));
+    /** @param {string} chartId */
+    showPlay(chartId) {
+        return this.switchTo(new PlayScreen(this, chartId));
     }
 
-    /** @param {object} record @param {number} levelId @param {object} log */
-    showResults(record, levelId, log) {
-        return this.switchTo(new ResultScreen(this, record, levelId, log));
+    /** @param {string} chartId @param {object} log a RunRecorder log */
+    showReplay(chartId, log) {
+        return this.switchTo(new PlayScreen(this, chartId, { replay: log }));
+    }
+
+    /**
+     * @param {object} record @param {string} chartId @param {object} log
+     * @param {{replay?: boolean}} [options]
+     */
+    showResults(record, chartId, log, options) {
+        return this.switchTo(new ResultScreen(this, record, chartId, log, options));
+    }
+
+    /**
+     * Called by a screen that could not start (a track that would not load):
+     * says why and returns to the menu.
+     * @param {string} message
+     */
+    failStart(message) {
+        toast.error(message);
+        window.setTimeout(() => this.showMenu(), 0);
     }
 
     /** @returns {PlayScreen|null} the play screen, when one is active. */
@@ -159,7 +186,9 @@ export class GameApp {
             }
             const onStage = this.stage.contains(event.target);
             if (play.paused) {
-                if (onStage) {
+                // A click on the arena resumes; the pause menu's own buttons
+                // must not, or "quit" would un-pause instead of quitting.
+                if (onStage && !this.pauseOverlay.contains(event.target)) {
                     play.resume();
                 }
                 return;
@@ -189,7 +218,9 @@ export class GameApp {
             } else if (code === 'KeyF') {
                 this.toggleFullscreen();
             } else if (code === 'KeyT' && this.current instanceof MenuScreen) {
-                this.current.tryStart(0);
+                this.current.tryStart('tutorial');
+            } else if (code === 'KeyQ' && play && play.replay) {
+                play.quit();
             } else if (code === 'KeyP' && play && !play.paused) {
                 this.camera.unlock();
                 play.pause();

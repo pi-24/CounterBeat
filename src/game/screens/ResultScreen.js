@@ -6,7 +6,7 @@
  * the game talks to storage - the screens themselves never import a
  * repository.
  */
-import { getLevel, nextLevel } from '../rules/levels.js';
+import { resolveChart, DIFFICULTIES } from '../rules/charts.js';
 import { Showcase } from '../fps/Showcase.js';
 import { el } from '../../ui/format.js';
 
@@ -14,16 +14,35 @@ export class ResultScreen {
     /**
      * @param {import('../GameApp.js').GameApp} app
      * @param {object} record
-     * @param {number} levelId
+     * @param {string} chartId
      * @param {object} log the RunRecorder log, for verification
+     * @param {{replay?: boolean}} [options] true when this was a replay, not a run
      */
-    constructor(app, record, levelId, log) {
+    constructor(app, record, chartId, log, options = {}) {
         this.app = app;
         this.record = record;
         this.log = log;
-        this.level = getLevel(levelId);
-        this.follower = nextLevel(levelId);
+        this.level = resolveChart(chartId);
+        this.isReplay = Boolean(options.replay);
+        this.follower = ResultScreen.nextChart(this.level);
         this.overlay = app.resultOverlay;
+    }
+
+    /**
+     * The next rung on this track's ladder, if there is one.
+     * @param {object} level
+     * @returns {object|null}
+     */
+    static nextChart(level) {
+        if (level.kind === 'tutorial') {
+            return resolveChart('t:range:easy');
+        }
+        if (level.kind !== 'track') {
+            return null;
+        }
+        const index = DIFFICULTIES.findIndex((d) => d.id === level.difficulty.id);
+        const next = DIFFICULTIES[index + 1];
+        return next ? resolveChart(`t:${level.trackId}:${next.id}`) : null;
     }
 
     async enter() {
@@ -32,7 +51,7 @@ export class ResultScreen {
         this.render();
         this.overlay.hidden = false;
 
-        if (!this.level.tutorial) {
+        if (!this.level.tutorial && !this.isReplay) {
             // Saving can take a round trip to the server; the screen is up
             // already and updates when the verdict lands.
             this.outcome = (await this.app.services.onRunComplete(this.record, this.log)) ?? {};
@@ -72,21 +91,32 @@ export class ResultScreen {
         const passed = r.passed;
 
         const headline = o.querySelector('#resultHeadline');
-        headline.textContent = this.level.tutorial ? 'TUTORIAL COMPLETE' : r.completed
-            ? (passed ? 'LEVEL CLEARED' : 'FINISHED — NOT CLEAN ENOUGH')
+        headline.textContent = this.isReplay ? 'REPLAY OVER' : this.level.tutorial ? 'TUTORIAL COMPLETE' : r.completed
+            ? (passed ? 'CHART CLEARED' : 'FINISHED — NOT CLEAN ENOUGH')
             : 'RUN FAILED';
         headline.className = `result__headline ${passed ? 'result__headline--pass' : (r.completed ? 'result__headline--warn' : 'result__headline--fail')}`;
 
-        o.querySelector('#resultSubtitle').textContent = this.level.tutorial
-            ? 'Not ranked. Level 1 is waiting.'
-            : r.completed
-            ? `${this.level.name} — ${Math.round(this.level.passAccuracy * 100)}% accuracy needed to unlock the next level`
-            : 'Your focus ran out. Missed bots drain it fastest.';
+        const subtitle = o.querySelector('#resultSubtitle');
+        if (this.isReplay) {
+            subtitle.textContent = `${this.level.name} — as it was played`;
+        } else if (this.level.tutorial) {
+            subtitle.textContent = 'Not ranked. The Range on Easy is waiting.';
+        } else if (this.level.kind === 'custom') {
+            subtitle.textContent = `${this.level.name} — your own song, so this counts as a personal best only`;
+        } else if (this.level.kind === 'daily') {
+            subtitle.textContent = `${this.level.name} — one shot at the daily leaderboard per run, best counts`;
+        } else if (r.completed) {
+            subtitle.textContent = this.follower
+                ? `${this.level.name} — ${Math.round(this.level.passAccuracy * 100)}% accuracy clears it and opens ${this.follower.difficulty.name}`
+                : `${this.level.name} — the top of this track's ladder`;
+        } else {
+            subtitle.textContent = 'Your focus ran out. Missed bots drain it fastest.';
+        }
 
         o.querySelector('#resultRank').textContent = r.rank;
         o.querySelector('#resultScore').textContent = r.score.toLocaleString('en-GB');
         const scoreLabel = o.querySelector('#resultScoreLabel');
-        scoreLabel.textContent = this.level.tutorial ? 'SCORE' : 'SAVING\u2026';
+        scoreLabel.textContent = this.level.tutorial || this.isReplay ? 'SCORE' : 'SAVING\u2026';
         scoreLabel.className = 'result__score-label';
 
         const rows = [
@@ -108,22 +138,27 @@ export class ResultScreen {
         }
 
         const guest = o.querySelector('#resultGuest');
-        guest.hidden = this.app.services.isLoggedIn() || this.level.tutorial;
+        guest.hidden = this.app.services.isLoggedIn() || this.level.tutorial || this.isReplay;
 
         const next = o.querySelector('[data-action="next"]');
-        next.hidden = !(this.follower && (passed || this.level.tutorial));
+        next.hidden = this.isReplay || !(this.follower && (passed || this.level.tutorial));
         if (this.follower) {
             next.textContent = `Next: ${this.follower.name}`;
         }
+        o.querySelector('[data-action="retry"]').textContent = this.isReplay ? 'Watch again' : 'Retry';
     }
 
     retry() {
-        this.app.showPlay(this.level.id);
+        if (this.isReplay) {
+            this.app.showReplay(this.level.chartId, this.log);
+            return;
+        }
+        this.app.showPlay(this.level.chartId);
     }
 
     next() {
         if (this.follower && (this.record.passed || this.level.tutorial)) {
-            this.app.showPlay(this.follower.id);
+            this.app.showPlay(this.follower.chartId);
         }
     }
 

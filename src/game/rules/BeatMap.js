@@ -1,7 +1,7 @@
 /**
  * BeatMap.js
  *
- * Turns a level definition into a playable chart.
+ * Turns a chart definition (see charts.js) into playable notes.
  *
  * The notes are generated rather than hand-authored, but they are generated
  * from a fixed seed so a level is identical every time it is played, and the
@@ -10,6 +10,9 @@
  */
 import { LAYOUT } from './config.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
+
+/** Seconds trimmed from every dash budget, see chooseLane. */
+const REACTION_ALLOWANCE = 0.04;
 
 /** A tiny deterministic generator so charts are reproducible. */
 class SeededRandom {
@@ -99,7 +102,7 @@ export class Lanes {
 }
 
 export class BeatMap {
-    /** @param {object} level a level definition from levels.js. */
+    /** @param {object} level a chart definition from charts.js. */
     constructor(level) {
         this.level = level;
         this.lanes = new Lanes(level.lanes, level.trackScale ?? 1, level.laneInset);
@@ -125,15 +128,21 @@ export class BeatMap {
         let previousLane = Math.floor(level.lanes / 2);
         let previousTime = Number.NEGATIVE_INFINITY;
         let index = 0;
+        const patterns = level.patterns ?? [level.pattern];
+        const gridOffset = level.gridOffset ?? 0;
 
         for (let bar = level.firstNoteBar; bar < level.bars; bar += 1) {
-            for (const offset of level.pattern) {
-                const time = (bar * 4 + offset) * spb;
+            // Mostly the main pattern, now and then its variation, so a chart
+            // has phrases rather than one loop - still fixed by the seed.
+            const pattern = patterns.length > 1 && random.next() < 0.3 ? patterns[1] : patterns[0];
+            for (const offset of pattern) {
+                const time = gridOffset + (bar * 4 + offset) * spb;
 
-                // 80% of the gap: the player needs a moment to react to the
-                // lane lighting up, so the chart never demands a perfect
-                // reaction at the physical limit.
-                const available = (time - previousTime) * 0.8;
+                // 80% of the gap less a reaction allowance: the player needs
+                // a moment to react to the lane lighting up and a frame to
+                // time the stop, so the chart never demands a perfect dash at
+                // the physical limit.
+                const available = (time - previousTime) * 0.8 - REACTION_ALLOWANCE;
                 const lane = this.chooseLane(previousLane, available, random);
 
                 notes.push(new Note(index, time, lane));

@@ -2,7 +2,7 @@
  * capture-levels.mjs
  *
  * Produces the level thumbnails in public/images/levels/ by loading the real
- * game in a headless browser, starting each level, and screenshotting the
+ * game in a headless browser, starting a chart in each arena, and screenshotting the
  * arena once the first bots are standing.  Run with the site served locally:
  *
  *   npm run preview   (port 4173)
@@ -24,36 +24,23 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 
-// A throwaway account with every level unlocked, so each one can be opened.
-await page.goto(`${BASE}/index.html`);
-await page.evaluate(() => {
-    const now = new Date().toISOString();
-    localStorage.setItem('counterbeat:users', JSON.stringify([{
-        id: 'u_capture', displayName: 'Capture', email: 'capture@example.com',
-        passwordSalt: 'x', passwordHash: 'y', country: '', phone: '', address: '', postcode: '',
-        favouriteSensitivity: '', createdAt: now,
-    }]));
-    localStorage.setItem('counterbeat:scores', JSON.stringify([1, 2].map((levelId) => ({
-        id: `s${levelId}`, userId: 'u_capture', displayName: 'Capture', country: '', levelId,
-        levelName: '', score: 1, accuracy: 1, bestCombo: 0, counterStrafes: 0, headshots: 0,
-        perfect: 0, good: 0, loose: 0, missed: 0, notes: 0, completed: true, passed: true, playedAt: now,
-    }))));
-    localStorage.setItem('counterbeat:session', JSON.stringify({ userId: 'u_capture', startedAt: now }));
-});
-
-for (const levelId of [1, 2, 3]) {
+// The thumbnails are one per arena, taken from a guest run on Normal of the
+// first track that uses it.
+const ARENA_TRACKS = { 1: 'range', 2: 'neon', 3: 'vault' };
+for (const [index, trackId] of Object.entries(ARENA_TRACKS)) {
     await page.goto(`${BASE}/game.html`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(5000);
-    await page.keyboard.press(`Digit${levelId}`);
+    await page.waitForSelector('#menuOverlay:not([hidden])', { timeout: 20000 });
+    await page.waitForTimeout(500);
+    await page.click(`.track .diff--normal >> nth=${Number(index) * 2 - 2}`);
     // Just after the first bots have stepped out, before the first note lands.
-    await page.waitForTimeout({ 1: 4300, 2: 5500, 3: 6000 }[levelId]);
+    await page.waitForTimeout({ 1: 4300, 2: 5500, 3: 6000 }[index]);
     // The thumbnail is the arena itself, not the interface over it.
     await page.evaluate(() => { document.getElementById('hud').hidden = true; });
     await page.waitForTimeout(80);
     const stage = await (await page.$('#stage')).boundingBox();
-    const file = path.join(OUT, `level-${levelId}.png`);
+    const file = path.join(OUT, `level-${index}.png`);
     await page.screenshot({ path: file, clip: stage });
-    console.log('wrote', file);
+    console.log('wrote', file, `(${trackId})`);
 }
 
 await browser.close();

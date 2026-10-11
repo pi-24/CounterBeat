@@ -13,7 +13,7 @@
  */
 import { Vector3, Ray } from '../engine.js';
 import { GRADE, SPEED_GRADE, SPREAD, WORLD } from '../rules/config.js';
-import { getLevel } from '../rules/levels.js';
+import { resolveChart, musicUrls } from '../rules/charts.js';
 import { BeatMap } from '../rules/BeatMap.js';
 import { Conductor } from '../rules/Conductor.js';
 import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
@@ -33,12 +33,18 @@ const MAX_STEPS_PER_FRAME = 50;
 export class PlayScreen {
     /**
      * @param {import('../GameApp.js').GameApp} app
-     * @param {number} levelId
+     * @param {string} chartId
+     * @param {{replay?: object}} [options] a RunRecorder log to play back
+     *   instead of taking input - the ghost of a saved run.
      */
-    constructor(app, levelId) {
+    constructor(app, chartId, options = {}) {
         this.app = app;
-        this.level = getLevel(levelId);
-        this.levelId = levelId;
+        this.level = resolveChart(chartId);
+        this.chartId = chartId;
+        this.replay = options.replay ?? null;
+        this.replayCursor = 0;
+        this.replayInput = 0;
+        this.replayShots = 0;
 
         this.finished = false;
         this.paused = false;
@@ -59,7 +65,7 @@ export class PlayScreen {
         this.lanes = this.beatMap.lanes;
         this.judge = new Judge(this.level, this.lanes);
         this.scorer = new Scorer(this.beatMap.total);
-        this.recorder = new RunRecorder(this.levelId);
+        this.recorder = new RunRecorder(this.chartId);
         this.body = new CounterStrafeBody(
             this.level.movement,
             { min: this.lanes.left + 16, max: this.lanes.right - 16 },
@@ -76,7 +82,7 @@ export class PlayScreen {
         camera.update(Arena.toWorldX(this.body.x), 0, 0);
 
         hud.show();
-        hud.setLevel(this.level.tutorial ? this.level.name : `${this.level.id}. ${this.level.name}`, this.level.bpm);
+        hud.setLevel(this.replay ? `REPLAY · ${this.level.name}` : this.level.name, this.level.bpm);
         hud.buildLanes(this.lanes.count);
         hud.applyCrosshair(settings);
         hud.setFocus(1);
@@ -88,18 +94,35 @@ export class PlayScreen {
 
         this.unsubscribe.push(settings.onChange(() => hud.applyCrosshair(settings)));
         this.unsubscribe.push(camera.onLockChange((locked) => {
-            if (!locked && !this.finished && !this.paused) {
+            if (!locked && !this.finished && !this.paused && !this.replay) {
                 this.pause();
             }
         }));
 
         await audio.unlock();
+        if (!audio.has(this.level.musicKey)) {
+            hud.setCountdown('LOADING TRACK', true);
+            const ok = this.level.trackId && !this.level.custom
+                ? await audio.ensure(this.level.musicKey, musicUrls(this.level.trackId))
+                : false;
+            if (!ok) {
+                hud.setCountdown('', false);
+                this.app.failStart('The track could not be loaded. Check your connection and try again.');
+                return;
+            }
+        }
         audio.resetMusicVolume();
         audio.playMusic(this.level.musicKey);
-        this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm, settings.get('audioOffset'));
+        this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm,
+            this.replay ? 0 : settings.get('audioOffset'), this.level.gridOffset);
         this.conductor.start();
 
-        await camera.lock();
+        if (this.replay) {
+            camera.lookEnabled = false;
+            hud.setHint('Watching a replay — press Q to leave');
+        } else {
+            await camera.lock();
+        }
     }
 
     exit() {
@@ -122,14 +145,18 @@ export class PlayScreen {
 
     /** @param {number} dt seconds since the last frame */
     update(dt) {
-        if (this.finished || this.paused) {
+        if (this.finished || this.paused || !this.conductor) {
             return;
         }
         const { camera, hud, audio } = this.app;
         const songTime = this.conductor.songPosition;
         this.conductor.update();
 
-        this.stepSimulation(dt, this.readDirection(), songTime);
+        if (this.replay) {
+            this.advanceReplay(songTime);
+        } else {
+            this.stepSimulation(dt, this.readDirection(), songTime);
+        }
 
         if (this.body.counterStrafing && !this.wasCounterStrafing) {
             audio.play('sfx-skid', { volume: 0.5 });
@@ -214,6 +241,74 @@ export class PlayScreen {
     }
 
     /**
+     * Replay: consume the recorded ticks up to the current song time, applying
+     * the recorded inputs and shots at exactly the ticks they were logged on.
+     * The same code path the validator uses, so the ghost does what the
+     * player did, to the pixel.
+     * @param {number} songTime
+     */
+    advanceReplay(songTime) {
+        const log = this.replay;
+        const ticks = log.ticks;
+        let steps = 0;
+        while (this.replayCursor < ticks.length && steps < MAX_STEPS_PER_FRAME) {
+            const index = this.replayCursor;
+            const ms = ticks[index];
+            if (log.startSongTime + (this.clockMs + ms) / 1000 > songTime) {
+                break;
+            }
+            while (this.replayInput < log.inputs.length && log.inputs[this.replayInput][0] === index) {
+                this.body.setInput(log.inputs[this.replayInput][1]);
+                this.replayInput += 1;
+            }
+            this.clockMs = this.recorder.tick(ms / 1000, this.body.inputDirection, log.startSongTime + this.clockMs / 1000);
+            this.body.update(ms / 1000, this.clockMs);
+            while (this.replayShots < log.shots.length && log.shots[this.replayShots][0] === index) {
+                const [, songMs, noteIndex, zoneCode, blocked] = log.shots[this.replayShots];
+                this.replayShots += 1;
+                const note = noteIndex >= 0 ? this.beatMap.notes[noteIndex] : null;
+                const entry = note ? this.targets.entryFor(note) ?? null : null;
+                const zone = ['none', 'body', 'head'][zoneCode] ?? 'none';
+                this.fire({
+                    songTime: songMs / 1000,
+                    pick: {
+                        entry: entry && zone !== 'none' ? entry : null,
+                        zone: entry ? zone : 'none',
+                        blocked: blocked === 1,
+                        point: entry ? entry.sprite.position.clone() : null,
+                    },
+                });
+            }
+            this.replayCursor += 1;
+            steps += 1;
+        }
+        this.aimReplayCamera();
+        if (this.replayCursor >= ticks.length && !this.finished) {
+            // The log ran out: the recorded run ended here.
+            this.finish(this.beatMap.notes.every((note) => note.resolved));
+        }
+    }
+
+    /** Points the ghost's camera at the bot it is about to deal with. */
+    aimReplayCamera() {
+        const camera = this.app.camera;
+        const next = this.targets.entries
+            .filter((entry) => !entry.resolved)
+            .sort((a, b) => a.note.time - b.note.time)[0];
+        let targetYaw = 0;
+        let targetPitch = 0;
+        if (next) {
+            const eye = camera.position;
+            const to = next.sprite.position.subtract(eye);
+            targetYaw = Math.atan2(to.x, to.z);
+            targetPitch = -Math.atan2(to.y - next.sprite.height * 0.3, Math.hypot(to.x, to.z));
+        }
+        const ease = 0.18;
+        camera.yaw += (targetYaw - camera.yaw) * ease;
+        camera.pitch += (targetPitch - camera.pitch) * ease;
+    }
+
+    /**
      * Coaching for the tutorial level: one instruction at a time, each one
      * cleared by the player actually doing it.
      * @param {number} songTime
@@ -294,23 +389,36 @@ export class PlayScreen {
 
     // ----------------------------------------------------------- firing ----
 
-    fire() {
+    /**
+     * @param {{songTime:number, pick:object}} [replayed] during a replay, the
+     *   recorded shot time and what the recorded shot found.
+     */
+    fire(replayed) {
         if (this.finished || this.paused || !this.conductor) {
             return;
         }
-        const songTime = this.conductor.songPosition;
+        if (this.replay && !replayed) {
+            return; // the player is only watching
+        }
+        const songTime = replayed ? replayed.songTime : this.conductor.songPosition;
         if (songTime < 0) {
             return;
         }
         const { camera, audio, hud } = this.app;
-        // Bring the simulation up to the instant of the shot, so the shot is
-        // judged against where the body really is and the replay sees the
-        // same clock the shot was stamped with.
-        this.stepSimulation(0, this.readDirection(), songTime);
-
-        const ray = this.buildShotRay();
-        const pick = this.targets.pick(ray);
-        this.recorder.shot(songTime, pick.entry ? pick.entry.note.index : -1, pick.zone, pick.blocked);
+        let pick;
+        let ray;
+        if (replayed) {
+            pick = replayed.pick;
+            ray = this.buildShotRay();
+        } else {
+            // Bring the simulation up to the instant of the shot, so the shot
+            // is judged against where the body really is and the replay sees
+            // the same clock the shot was stamped with.
+            this.stepSimulation(0, this.readDirection(), songTime);
+            ray = this.buildShotRay();
+            pick = this.targets.pick(ray);
+            this.recorder.shot(songTime, pick.entry ? pick.entry.note.index : -1, pick.zone, pick.blocked);
+        }
         const hitPoint = pick.point ?? ray.origin.add(ray.direction.scale(60));
 
         camera.kick(RECOIL_DEGREES);
@@ -457,7 +565,11 @@ export class PlayScreen {
     }
 
     restart() {
-        this.app.showPlay(this.levelId);
+        if (this.replay) {
+            this.app.showReplay(this.chartId, this.replay);
+            return;
+        }
+        this.app.showPlay(this.chartId);
     }
 
     quit() {
@@ -482,7 +594,7 @@ export class PlayScreen {
         const log = this.recorder.toJSON();
         window.setTimeout(() => {
             this.app.camera.unlock();
-            this.app.showResults(record, this.levelId, log);
+            this.app.showResults(record, this.chartId, log, { replay: Boolean(this.replay) });
         }, 900);
     }
 }

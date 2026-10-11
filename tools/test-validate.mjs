@@ -6,7 +6,7 @@
  * the log and must land on the same score.  A few tampered logs must be
  * rejected.  Run with `node tools/test-validate.mjs`.
  */
-import { LEVELS } from '../src/game/rules/levels.js';
+import { resolveChart, allTrackCharts, dailyChartId, TRACKS } from '../src/game/rules/charts.js';
 import { BeatMap } from '../src/game/rules/BeatMap.js';
 import { CounterStrafeBody } from '../src/game/rules/CounterStrafeBody.js';
 import { Judge } from '../src/game/rules/Judge.js';
@@ -20,7 +20,9 @@ const STEP = 1 / 60;
 function pilot(body, targetX) {
     const gap = targetX - body.x;
     const v = body.velocity;
-    const braking = (v * v) / (2 * body.movement.counterDecel);
+    // Look one frame ahead: if accelerating once more would overshoot, brake now.
+    const ahead = v + Math.sign(gap) * body.movement.accel * STEP;
+    const braking = (ahead * ahead) / (2 * body.movement.counterDecel);
     if (Math.abs(gap) < 6 && Math.abs(v) < SPEED_GRADE.pinPoint) return 0;
     if (v !== 0 && Math.sign(v) === Math.sign(gap) && braking >= Math.abs(gap)) return -Math.sign(v);
     return Math.sign(gap);
@@ -32,7 +34,7 @@ function playAndRecord(level, aimZone = 'head', jitter = true) {
     const lanes = beatMap.lanes;
     const judge = new Judge(level, lanes);
     const scorer = new Scorer(beatMap.total);
-    const recorder = new RunRecorder(level.id);
+    const recorder = new RunRecorder(level.chartId);
     const body = new CounterStrafeBody(level.movement,
         { min: lanes.left + 16, max: lanes.right - 16 }, lanes.centre(Math.floor(level.lanes / 2)));
     const lead = APPROACH_BEATS * (60 / level.bpm);
@@ -47,9 +49,10 @@ function playAndRecord(level, aimZone = 'head', jitter = true) {
         const next = beatMap.notes.find((n) => !n.resolved);
         const dir = next ? pilot(body, lanes.centre(next.lane)) : 0;
         clockMs = recorder.tick(dt, dir, songTime);
+        const stored = recorder.ticks[recorder.ticks.length - 1] / 1000;
         body.setInput(dir);
-        body.update(dt, clockMs);
-        songTime += dt;
+        body.update(stored, clockMs);
+        songTime = (recorder.startSongTime ?? songTime) + clockMs / 1000;
         for (const note of beatMap.notes) {
             if (!note.spawned && !note.resolved && note.time - songTime <= lead) note.spawned = true;
         }
@@ -81,16 +84,34 @@ const check = (name, condition, detail = '') => {
     if (!condition) failures += 1;
 };
 
-for (const level of LEVELS) {
+const CHARTS = [
+    resolveChart('tutorial'),
+    ...allTrackCharts(),
+    resolveChart(dailyChartId('2026-10-11')),
+    resolveChart(dailyChartId()),
+];
+for (const level of CHARTS) {
     const { record, log } = playAndRecord(level);
     const result = validateRun(level, log, record.score);
-    check(`L${level.id} replay matches client score`, result.ok && result.record.score === record.score,
-        result.ok ? `${record.score} vs ${result.record.score}, ${log.ticks.length} ticks` : result.reason);
-    check(`L${level.id} no mismatch flag`, result.ok && !result.mismatch);
+    check(`${level.chartId} replay matches client score`, result.ok && result.record.score === record.score,
+        result.ok ? `${record.score} vs ${result.record.score}, ${log.ticks.length} ticks, ${record.notes} notes` : result.reason);
+    check(`${level.chartId} no mismatch flag`, result.ok && !result.mismatch);
 }
 
+// Every official chart must be clearable by the scripted pilot --------------
+for (const level of allTrackCharts()) {
+    const { record } = playAndRecord(level);
+    // The scripted pilot is a feasibility bound, not a perfect player: it may
+    // drop the odd note on a frame boundary, never a run of them.
+    check(`${level.chartId} is playable (${record.notes} notes)`, record.accuracy >= 0.95 && record.missed <= record.notes * 0.01,
+        `accuracy ${(record.accuracy * 100).toFixed(1)}%, missed ${record.missed}`);
+}
+check('unknown chart ids resolve to nothing', resolveChart('t:nope:hard') === undefined
+    && resolveChart('daily:2026-13-40') === undefined && resolveChart('custom:abc') === undefined);
+check('every track has a chart at every difficulty', TRACKS.every((t) => resolveChart(`t:${t.id}:expert`)));
+
 // Tampering ---------------------------------------------------------------
-const level = LEVELS[2];
+const level = resolveChart('t:neon:hard');
 const honest = playAndRecord(level);
 
 const inflated = structuredClone(honest.log);
@@ -98,8 +119,8 @@ const r1 = validateRun(level, inflated, honest.record.score * 3);
 check('inflated claimed score is overridden', r1.ok && r1.mismatch && r1.record.score === honest.record.score);
 
 const wrongLevel = structuredClone(honest.log);
-wrongLevel.levelId = 1;
-check('level mismatch rejected', !validateRun(level, wrongLevel).ok);
+wrongLevel.chartId = 't:neon:easy';
+check('chart mismatch rejected', !validateRun(level, wrongLevel).ok);
 
 const teleport = structuredClone(honest.log);
 teleport.inputs = [];                             // never moved, but claims hits in every lane
