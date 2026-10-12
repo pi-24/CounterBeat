@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Play &mdash; CounterBeat</title>
+    <title>Play</title>
     <meta name="description" content="Play CounterBeat: strafe, counter-strafe and fire on the beat.">
     <link rel="icon" href="images/emblem.png" type="image/png">
     <link rel="stylesheet" href="/src/styles/base.css">
@@ -125,7 +125,7 @@
                                         <rect data-part="marker" class="hud__velocity-marker hud__velocity-marker--pin"
                                             x="207" y="-2" width="6" height="24" rx="1"></rect>
                                     </svg>
-                                    <span class="hud__velocity-text is-planted" id="velocityText">PLANTED &mdash; FIRE</span>
+                                    <span class="hud__velocity-text is-planted" id="velocityText">PLANTED &middot; FIRE</span>
                                 </div>
                             </div>
                         </div>
@@ -163,7 +163,7 @@
                                                 <h3 class="library__title">Your songs</h3>
                                                 <p class="library__blurb">Drop in a track and CounterBeat finds the beat and
                                                     writes a chart for it. Songs stay in this browser. Scores on your own songs
-                                                    count as personal bests only &mdash; they are not ranked.</p>
+                                                    count as personal bests only. They are not ranked.</p>
                                             </div>
                                             <label class="btn btn--primary library__upload">
                                                 Add a song
@@ -226,7 +226,7 @@
                                                     min="0.75" max="1.25" step="0.05">
                                                 <output class="settings__value mono" id="moveAccelVal">100%</output>
                                             </div>
-                                            <p class="settings__note">Scales each chart's movement for feel &mdash; faster feet reach the
+                                            <p class="settings__note">Scales each chart's movement for feel: faster feet reach the
                                                 next window sooner but overshoot more easily. Saved with the run, so ranked scores
                                                 stay comparable within this range.</p>
                                         </fieldset>
@@ -236,7 +236,7 @@
                                             <div class="settings__row settings__row--timing">
                                                 <span class="settings__label">Audio / input offset</span>
                                                 <span class="settings__readout-inline">Current
-                                                    <strong class="mono" id="offsetVal">+0 ms</strong> &mdash; headphones,
+                                                    <strong class="mono" id="offsetVal">+0 ms</strong>. Headphones,
                                                     monitors and mice all add delay. Tap along to a metronome and the game
                                                     corrects for it.</span>
                                                 <button class="btn btn--ghost" type="button" data-action="calibrate">Calibrate</button>
@@ -324,7 +324,7 @@
                                     </div>
                                     <ul class="result__breakdown" id="resultBreakdown"></ul>
                                 </div>
-                                <p class="result__guest" id="resultGuest" hidden>Guest run &mdash; log in before playing to
+                                <p class="result__guest" id="resultGuest" hidden>Guest run. Log in before playing to
                                     save this to the rankings.</p>
                                 <div class="overlay__actions">
                                     <button class="btn btn--ghost" type="button" data-action="retry">Retry</button>
@@ -388,7 +388,7 @@
                             </p>
                             <p class="cs-demo__row"><span class="cs-demo__num">2</span> Tap <kbd>A</kbd> for about
                                 0.1&nbsp;s</p>
-                            <p class="cs-demo__row"><span class="cs-demo__num">3</span> Release &mdash; speed hits zero
+                            <p class="cs-demo__row"><span class="cs-demo__num">3</span> Release: speed hits zero
                             </p>
                             <p class="cs-demo__row"><span class="cs-demo__num">4</span> Click the bot on the beat</p>
                         </div>
@@ -416,7 +416,7 @@
 
     <footer class="site-footer">
         <div class="page site-footer__inner">
-            <p class="text-dim">CounterBeat &mdash; a counter-strafe rhythm game. All artwork and audio made for this project.</p>
+            <p class="text-dim">CounterBeat: a counter-strafe rhythm game. All artwork and audio made for this project.</p>
             <div class="site-footer__links">
                 <a href="index.html">Home</a>
                 <a href="how-to-play.html">How to play</a>

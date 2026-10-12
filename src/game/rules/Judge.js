@@ -91,7 +91,7 @@ export class Judge {
 
         if (!result.hit) {
             grade = GRADE.MISS;
-            reason = result.blocked ? 'Blocked — wrong window' : 'Missed the bot';
+            reason = result.blocked ? 'Blocked: wrong window' : 'Missed the bot';
         } else if (grade === GRADE.MISS) {
             reason = speedGrade === GRADE.MISS ? 'Firing on the move' : 'Off the beat';
         } else if (speedGrade !== GRADE.PERFECT && timingGrade === GRADE.PERFECT) {

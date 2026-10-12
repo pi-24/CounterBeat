@@ -46,8 +46,10 @@
  * @property {(email:string,password:string) => Promise<AuthResult>} login
  * @property {(provider:string) => Promise<AuthResult>} loginWithProvider
  * @property {() => Promise<void>} logout
- * @property {(record:object, log:object) => Promise<SubmitResult>} submitRun
- * @property {(userId:string) => Promise<object[]>} runsForUser   newest first; each run has `hasReplay`
+ * @property {(chartId:string) => Promise<string|null>} startRun  a one-use token for a ranked run about to start (null when none is needed or it failed)
+ * @property {(record:object, log:object, token?:string|null) => Promise<SubmitResult>} submitRun
+ * @property {(userId:string) => Promise<object[]>} runsForUser   newest first, the most recent 200; each run has `hasReplay`
+ * @property {(userId:string) => Promise<Map<string, object>>} progress  per chart over all runs: bestScore, bestAccuracy, maxAccuracy, passed, runs, counterStrafes
  * @property {(userId:string, chartId?:string) => Promise<object|null>} personalBest
  * @property {(chartFilter:string|'best') => Promise<object[]>} leaderboard  one row per player, a chart id or 'best'
  * @property {(runId:string) => Promise<{run:object, log:object}|null>} replay  a stored run with its input log

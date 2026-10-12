@@ -147,10 +147,15 @@ export class FormController {
         }
 
         this.setBusy(true);
+        let outcome;
         try {
-            await this.onSubmit(values);
+            outcome = await this.onSubmit(values);
         } finally {
             this.setBusy(false);
+            // The handler can ask to keep the form locked, e.g. while it redirects.
+            if (outcome && outcome.keepDisabled && button instanceof HTMLButtonElement) {
+                button.disabled = true;
+            }
         }
     }
 }

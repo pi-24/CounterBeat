@@ -103,6 +103,18 @@ export const MOVEMENT_SCALE = Object.freeze({ min: 0.75, max: 1.25 });
 /** How long the approach ring is visible before its note lands, in beats. */
 export const APPROACH_BEATS = 2;
 
+/**
+ * Version of the RunRecorder log format and of the replay rules that read it.
+ * Bump it whenever the movement model or the order the replay applies things
+ * in changes; the server refuses any other version rather than misjudging it.
+ *
+ *   3  shots judged at the time the client claimed (within 0.2 s of the tick
+ *      clock), notes expired after a tick's shots.
+ *   4  shots judged on the tick clock itself, notes spawned and expired at
+ *      every tick before its shots, chart processing stops at a failure.
+ */
+export const LOG_VERSION = 4;
+
 /** Grade names used throughout the game and the score records. */
 export const GRADE = Object.freeze({
     PERFECT: 'perfect',

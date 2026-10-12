@@ -78,8 +78,8 @@ export class MenuScreen {
         const logged = this.app.services.isLoggedIn();
         const status = this.overlay.querySelector('#menuStatus');
         status.textContent = logged
-            ? `Signed in as ${name} — scores are saved`
-            : 'Playing as a guest — log in to save your scores';
+            ? `Signed in as ${name}. Scores are saved.`
+            : 'Playing as a guest. Log in to save your scores.';
         status.className = `menu__status ${logged ? 'menu__status--ok' : 'menu__status--warn'}`;
     }
 
@@ -141,7 +141,7 @@ export class MenuScreen {
 
         const tutorial = resolveChart('tutorial');
         host.append(this.trackCard({
-            key: 'T', name: 'Tutorial', mood: 'Learn the counter-strafe — cannot be failed, not ranked',
+            key: 'T', name: 'Tutorial', mood: 'Learn the counter-strafe (cannot be failed, not ranked)',
             bpm: tutorial.bpm, thumb: ARENAS.range.thumb,
         }, [{ label: 'Start', chart: tutorial, unlocked: true, best: 0, passed: false }]));
 
@@ -188,12 +188,12 @@ export class MenuScreen {
             button.type = 'button';
             button.disabled = !option.unlocked;
             button.title = option.unlocked
-                ? `${option.chart.name} — ${option.chart.lanes} windows, ±${Math.round(option.chart.timing.perfect * 1000)} ms perfect window`
+                ? `${option.chart.name}: ${option.chart.lanes} windows, ±${Math.round(option.chart.timing.perfect * 1000)} ms perfect window`
                 : `Clear ${option.requirement} on this track first`;
             button.append(
                 el('span', 'diff__label', option.label),
                 el('span', 'diff__best mono', option.unlocked
-                    ? (option.best ? option.best.toLocaleString('en-GB') : '—')
+                    ? (option.best ? option.best.toLocaleString('en-GB') : '-')
                     : 'locked'),
             );
             button.addEventListener('click', () => this.start(option.chart.chartId));
@@ -245,7 +245,7 @@ export class MenuScreen {
         try {
             await this.app.audio.unlock();
             const song = await library.add(file, (stage) => this.setLibraryStatus(`${file.name}: ${stage}`, 'info'));
-            const confidence = song.confidence >= 0.5 ? 'confident' : 'unsure — check the tempo, use ½× / 2× if it feels off';
+            const confidence = song.confidence >= 0.5 ? 'confident' : 'unsure: check the tempo, use ½× / 2× if it feels off';
             this.setLibraryStatus(`Added "${song.name}": ${song.bpm} BPM, first beat at ${song.gridOffset.toFixed(2)} s (${confidence}).`, 'info');
             await this.renderLibrary();
         } catch (error) {
@@ -316,7 +316,7 @@ export class MenuScreen {
             button.type = 'button';
             button.append(
                 el('span', 'diff__label', difficulty.name),
-                el('span', 'diff__best mono', best ? best.toLocaleString('en-GB') : '—'),
+                el('span', 'diff__best mono', best ? best.toLocaleString('en-GB') : '-'),
             );
             button.addEventListener('click', () => this.startCustom(song, difficulty.id));
             row.append(button);

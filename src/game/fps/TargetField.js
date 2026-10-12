@@ -28,6 +28,12 @@ const HITBOX = {
     headCentre: 0.84,    // fraction of height
     headRadius: 0.22,
 };
+/** Enough spark systems for the fastest charts' overlapping bursts. */
+const SPARK_POOL_SIZE = 6;
+/** Particles per system: a headshot burst, the largest. */
+const SPARK_CAPACITY = 26;
+const SPARK_NORMAL = new Color4(1, 0.7, 0.35, 1);
+const SPARK_BRIGHT = new Color4(1, 0.95, 0.7, 1);
 
 export class TargetField {
     /**
@@ -60,8 +66,42 @@ export class TargetField {
 
         this.sparkTexture = new Texture('images/spark.png', scene);
 
+        // One torus for every approach ring: each bot gets a clone that shares
+        // its geometry, so spawning a bot never builds or uploads a mesh.
+        this.ringTemplate = MeshBuilder.CreateTorus('ring-template', {
+            diameter: 1, thickness: 0.07, tessellation: 48,
+        }, scene);
+        // A torus lies flat by default; tipping it up makes it face the
+        // player, who is always looking down the corridor at it.
+        this.ringTemplate.rotation.x = Math.PI / 2;
+        this.ringTemplate.material = this.ringIdle;
+        this.ringTemplate.isPickable = false;
+        this.ringTemplate.setEnabled(false);
+
+        /** Hit sparks, reused round-robin instead of built and thrown away per hit. */
+        this.sparkPool = [];
+        this.sparkNext = 0;
+
         /** @type {{note: object, sprite: Sprite, ring: Mesh, resolved: boolean}[]} */
         this.entries = [];
+    }
+
+    /**
+     * Compiles the ring and spark shaders before the run starts, so the
+     * first bot and the first hit do not stall a frame doing it.
+     */
+    async prepare() {
+        try {
+            await Promise.all([
+                this.ringIdle.forceCompilationAsync(this.ringTemplate),
+                this.ringClose.forceCompilationAsync(this.ringTemplate),
+            ]);
+        } catch (error) {
+            console.warn('TargetField: could not precompile ring materials', error);
+        }
+        // A spark burst far below the floor: invisible, but it builds the
+        // particle shader and buffers now rather than on the first hit.
+        this.burst(new Vector3(0, -50, 0), 1, false);
     }
 
     /**
@@ -87,15 +127,11 @@ export class TargetField {
         // Each bot breathes out of phase with its neighbours.
         sprite.cellIndex = note.index % 4;
 
-        const ring = MeshBuilder.CreateTorus('ring', {
-            diameter: 1, thickness: 0.07, tessellation: 48,
-        }, this.scene);
+        const ring = this.ringTemplate.clone('ring');
         ring.position.set(x, height * 0.52, z - 0.3);
-        // A torus lies flat by default; tipping it up makes it face the
-        // player, who is always looking down the corridor at it.
-        ring.rotation.x = Math.PI / 2;
         ring.material = this.ringIdle;
         ring.isPickable = false;
+        ring.setEnabled(true);
 
         const entry = { note, sprite, ring, resolved: false };
         this.entries.push(entry);
@@ -118,7 +154,10 @@ export class TargetField {
             const progress = Math.max(0, Math.min(1, 1 - remaining / lead));
             const diameter = 1.25 - 0.83 * progress;
             entry.ring.scaling.set(diameter, diameter, diameter);
-            entry.ring.material = Math.abs(remaining) <= goodWindow ? this.ringClose : this.ringIdle;
+            const material = Math.abs(remaining) <= goodWindow ? this.ringClose : this.ringIdle;
+            if (entry.ring.material !== material) {
+                entry.ring.material = material;
+            }
         }
     }
 
@@ -240,29 +279,46 @@ export class TargetField {
      * @param {boolean} bright
      */
     burst(point, count, bright) {
-        const particles = new ParticleSystem('spark', count, this.scene);
-        particles.particleTexture = this.sparkTexture;
-        particles.emitter = point.clone();
-        particles.minEmitBox = new Vector3(-0.05, -0.05, -0.05);
-        particles.maxEmitBox = new Vector3(0.05, 0.05, 0.05);
-        particles.color1 = bright ? new Color4(1, 0.95, 0.7, 1) : new Color4(1, 0.7, 0.35, 1);
-        particles.color2 = new Color4(1, 0.5, 0.2, 1);
-        particles.colorDead = new Color4(0.3, 0.1, 0, 0);
-        particles.minSize = 0.06;
+        const particles = this.nextSparks();
+        particles.stop();
+        particles.reset();
+        particles.emitter.copyFrom(point);
+        particles.color1.copyFrom(bright ? SPARK_BRIGHT : SPARK_NORMAL);
         particles.maxSize = bright ? 0.22 : 0.15;
-        particles.minLifeTime = 0.15;
-        particles.maxLifeTime = 0.4;
-        particles.emitRate = 0;
-        particles.manualEmitCount = count;
-        particles.blendMode = ParticleSystem.BLENDMODE_ADD;
-        particles.direction1 = new Vector3(-1, -0.5, -1);
-        particles.direction2 = new Vector3(1, 1.4, 1);
-        particles.minEmitPower = 1.5;
-        particles.maxEmitPower = 4.5;
-        particles.gravity = new Vector3(0, -9, 0);
-        particles.targetStopDuration = 0.45;
-        particles.disposeOnStop = true;
+        particles.manualEmitCount = Math.min(count, SPARK_CAPACITY);
         particles.start();
+    }
+
+    /** @returns {ParticleSystem} the next system in the pool, built on first use. */
+    nextSparks() {
+        if (this.sparkPool.length < SPARK_POOL_SIZE) {
+            const particles = new ParticleSystem('spark', SPARK_CAPACITY, this.scene);
+            particles.particleTexture = this.sparkTexture;
+            particles.emitter = new Vector3(0, 0, 0);
+            particles.minEmitBox = new Vector3(-0.05, -0.05, -0.05);
+            particles.maxEmitBox = new Vector3(0.05, 0.05, 0.05);
+            particles.color1 = SPARK_NORMAL.clone();
+            particles.color2 = new Color4(1, 0.5, 0.2, 1);
+            particles.colorDead = new Color4(0.3, 0.1, 0, 0);
+            particles.minSize = 0.06;
+            particles.maxSize = 0.15;
+            particles.minLifeTime = 0.15;
+            particles.maxLifeTime = 0.4;
+            particles.emitRate = 0;
+            particles.blendMode = ParticleSystem.BLENDMODE_ADD;
+            particles.direction1 = new Vector3(-1, -0.5, -1);
+            particles.direction2 = new Vector3(1, 1.4, 1);
+            particles.minEmitPower = 1.5;
+            particles.maxEmitPower = 4.5;
+            particles.gravity = new Vector3(0, -9, 0);
+            particles.targetStopDuration = 0.45;
+            particles.disposeOnStop = false;
+            this.sparkPool.push(particles);
+            return particles;
+        }
+        const particles = this.sparkPool[this.sparkNext];
+        this.sparkNext = (this.sparkNext + 1) % this.sparkPool.length;
+        return particles;
     }
 
     /** @param {object} entry */
@@ -283,6 +339,11 @@ export class TargetField {
         for (const entry of [...this.entries]) {
             this.remove(entry);
         }
+        for (const particles of this.sparkPool) {
+            particles.dispose(false);
+        }
+        this.sparkPool = [];
+        this.ringTemplate.dispose();
         this.manager.dispose();
         this.ringIdle.dispose();
         this.ringClose.dispose();

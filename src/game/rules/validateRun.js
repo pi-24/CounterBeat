@@ -10,24 +10,34 @@
  * positions and speeds come out identical, and the score is whatever those
  * rules produce.
  *
+ * Every tick is applied in the same order PlayScreen applies it:
+ *   inputs -> movement -> spawn notes -> expire missed notes -> shots
+ * and a shot is judged at the tick's own time, never at a time the client
+ * claims, so a log cannot move a shot onto the beat without re-timing the
+ * whole run around it.
+ *
  * It runs in the Supabase edge function and in Node tests.  It must stay
  * free of browser and engine dependencies - the only thing it cannot verify
  * is where the crosshair was, so a hit's zone (head/body) is taken from the
  * client but only honoured when the replayed position had line of sight.
  */
-import { APPROACH_BEATS, GRADE } from './config.js';
+import { APPROACH_BEATS, GRADE, LOG_VERSION, MOVEMENT_SCALE } from './config.js';
 import { BeatMap } from './BeatMap.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
 import { Judge } from './Judge.js';
 import { Scorer } from './Scorer.js';
-import { MOVEMENT_SCALE } from './config.js';
 
 const LIMITS = Object.freeze({
-    maxTicks: 30000,
+    /** Room for ~66 s runs on monitors up to roughly 900 Hz. */
+    maxTicks: 60000,
     maxShots: 3000,
     minTickMs: 0.5,
     maxTickMs: 120,
-    clockToleranceSeconds: 0.2,
+    /** The client stamps a shot with its tick's time, rounded to the millisecond. */
+    clockToleranceSeconds: 0.002,
+    /** The song position the first tick may start at. */
+    minStartSongTime: -5,
+    maxStartSongTime: 3600,
     maxShotsPerSecond: 15,
     /** With this many hits, a timing spread this tight is not a human. */
     inhumanSampleSize: 25,
@@ -49,7 +59,7 @@ export function validateRun(level, log, claimedScore) {
     const fail = (reason) => ({ ok: false, reason });
 
     // ---- structure --------------------------------------------------------
-    if (!log || log.version !== 3) {
+    if (!log || log.version !== LOG_VERSION) {
         return fail('unsupported log version');
     }
     if (log.chartId !== level.chartId) {
@@ -57,6 +67,10 @@ export function validateRun(level, log, claimedScore) {
     }
     const { ticks, inputs, shots } = log;
     if (!Array.isArray(ticks) || !Array.isArray(inputs) || !Array.isArray(shots)) {
+        return fail('malformed log');
+    }
+    if (!Number.isFinite(log.startSongTime)
+        || log.startSongTime < LIMITS.minStartSongTime || log.startSongTime > LIMITS.maxStartSongTime) {
         return fail('malformed log');
     }
     const scale = { speed: 1, accel: 1, ...(log.movement ?? {}) };
@@ -69,12 +83,16 @@ export function validateRun(level, log, claimedScore) {
         return fail('log size out of range');
     }
     for (const ms of ticks) {
-        if (typeof ms !== 'number' || ms < LIMITS.minTickMs || ms > LIMITS.maxTickMs) {
+        if (typeof ms !== 'number' || !(ms >= LIMITS.minTickMs && ms <= LIMITS.maxTickMs)) {
             return fail('tick length out of range');
         }
     }
     let lastTick = -1;
-    for (const [tick, dir] of inputs) {
+    for (const event of inputs) {
+        if (!Array.isArray(event)) {
+            return fail('malformed input event');
+        }
+        const [tick, dir] = event;
         if (!Number.isInteger(tick) || tick < lastTick || tick >= ticks.length || ![-1, 0, 1].includes(dir)) {
             return fail('malformed input event');
         }
@@ -82,6 +100,9 @@ export function validateRun(level, log, claimedScore) {
     }
     lastTick = -1;
     for (const shot of shots) {
+        if (!Array.isArray(shot)) {
+            return fail('malformed shot event');
+        }
         const [tick, songMs, noteIndex, zone, blocked] = shot;
         if (!Number.isInteger(tick) || tick < lastTick || tick >= ticks.length
             || !Number.isFinite(songMs) || !Number.isInteger(noteIndex) || noteIndex < -1
@@ -103,52 +124,50 @@ export function validateRun(level, log, claimedScore) {
     );
     const lead = APPROACH_BEATS * (60 / level.bpm);
     const notes = beatMap.notes;
-    for (const note of notes) {
-        if (noteIndexInvalid(note, notes)) {
-            return fail('chart index mismatch');
-        }
-    }
+    const canFail = !level.tutorial;
 
     let clockMs = 0;
     let inputCursor = 0;
     let shotCursor = 0;
-    let failedAtTick = -1;
+    let failed = false;
     const timingErrors = [];
     const shotTimes = [];
 
-    const spawnedAt = (songTime) => {
-        for (const note of notes) {
-            if (!note.spawned && !note.resolved && note.time - songTime <= lead) {
-                note.spawned = true;
-            }
-        }
+    const expire = (songTime) => (note) => {
+        note.resolved = true;
+        scorer.apply({
+            grade: GRADE.MISS, timingError: songTime - note.time, speed: body.speed,
+            inLane: false, counterStrafed: false, headshot: false, reason: 'No shot',
+        });
     };
 
+    replay:
     for (let i = 0; i < ticks.length; i += 1) {
         while (inputCursor < inputs.length && inputs[inputCursor][0] === i) {
             body.setInput(inputs[inputCursor][1]);
             inputCursor += 1;
         }
-        const dt = ticks[i] / 1000;
         clockMs += ticks[i];
-        body.update(dt, clockMs);
+        body.update(ticks[i] / 1000, clockMs);
         const songTime = log.startSongTime + clockMs / 1000;
-        spawnedAt(songTime);
+
+        beatMap.spawnDue(songTime, lead);
+        beatMap.expireDue(songTime, level.timing.ok, expire(songTime));
+        if (canFail && scorer.failed) {
+            failed = true;
+            break; // the client ends the run on this tick; nothing after it counts
+        }
 
         while (shotCursor < shots.length && shots[shotCursor][0] === i) {
             const [, songMs, noteIndex, zoneCode, blockedFlag] = shots[shotCursor];
             shotCursor += 1;
-            if (failedAtTick >= 0) {
-                continue; // the run was already over on the client
-            }
-            const shotTime = songMs / 1000;
-            if (Math.abs(shotTime - songTime) > LIMITS.clockToleranceSeconds) {
+            if (Math.abs(songMs / 1000 - songTime) > LIMITS.clockToleranceSeconds) {
                 return fail('shot time disagrees with the tick clock');
             }
-            shotTimes.push(shotTime);
+            shotTimes.push(songTime);
             const outcome = replayShot({
                 level, beatMap, lanes, judge, scorer, body, notes,
-                shotTime, noteIndex, zone: ZONES[zoneCode], blocked: blockedFlag === 1, clockMs,
+                shotTime: songTime, noteIndex, zone: ZONES[zoneCode], blocked: blockedFlag === 1, clockMs,
             });
             if (!outcome.ok) {
                 return fail(outcome.reason);
@@ -156,21 +175,10 @@ export function validateRun(level, log, claimedScore) {
             if (outcome.timingError !== undefined) {
                 timingErrors.push(outcome.timingError);
             }
-        }
-
-        // Notes that ran past their window without a shot.
-        for (const note of notes) {
-            if (note.spawned && !note.resolved && songTime > note.time + level.timing.ok) {
-                note.resolved = true;
-                scorer.apply({
-                    grade: GRADE.MISS, timingError: songTime - note.time, speed: body.speed,
-                    inLane: false, counterStrafed: false, headshot: false, reason: 'No shot',
-                });
+            if (canFail && scorer.failed) {
+                failed = true;
+                break replay;
             }
-        }
-
-        if (scorer.failed && !level.tutorial && failedAtTick < 0) {
-            failedAtTick = i;
         }
     }
 
@@ -189,7 +197,7 @@ export function validateRun(level, log, claimedScore) {
 
     const endSongTime = log.startSongTime + clockMs / 1000;
     const allResolved = notes.every((note) => note.resolved);
-    const completed = failedAtTick < 0 && (allResolved || endSongTime >= beatMap.duration);
+    const completed = !failed && (allResolved || endSongTime >= beatMap.duration);
 
     const record = scorer.toRecord(level, completed);
     record.rank = scorer.rank;
@@ -200,6 +208,15 @@ export function validateRun(level, log, claimedScore) {
         && Math.abs(claimedScore - record.score) > Math.max(50, record.score * 0.05);
 
     return { ok: true, record, mismatch };
+}
+
+/** @returns {number} the run's simulated length in seconds (the sum of its ticks). */
+export function logDuration(log) {
+    let ms = 0;
+    for (const tick of log?.ticks ?? []) {
+        ms += Number.isFinite(tick) ? tick : 0;
+    }
+    return ms / 1000;
 }
 
 /**
@@ -221,8 +238,7 @@ function replayShot({ level, beatMap, lanes, judge, scorer, body, notes, shotTim
     if (!note) {
         note = beatMap.findNoteNear(shotTime, level.timing.ok);
         if (!note) {
-            const live = notes.some((candidate) => candidate.spawned && !candidate.resolved);
-            if (live) {
+            if (beatMap.hasLiveNote) {
                 scorer.registerWildShot();
             }
             return { ok: true };
@@ -242,9 +258,4 @@ function replayShot({ level, beatMap, lanes, judge, scorer, body, notes, shotTim
     note.resolved = true;
     scorer.apply(judgement);
     return { ok: true, timingError: judgement.grade === GRADE.MISS ? undefined : judgement.timingError };
-}
-
-/** Charts are generated from a seed; the index must match its position. */
-function noteIndexInvalid(note, notes) {
-    return notes[note.index] !== note;
 }

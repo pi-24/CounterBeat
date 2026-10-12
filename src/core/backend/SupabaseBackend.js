@@ -37,15 +37,20 @@ export class SupabaseBackend {
         const { data: { session } } = await this.client.auth.getSession();
         this.user = session ? await this.loadProfile(session.user) : null;
 
-        this.client.auth.onAuthStateChange(async (event, newSession) => {
-            if (event === 'SIGNED_OUT' || !newSession) {
-                this.user = null;
-            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                this.user = await this.loadProfile(newSession.user);
-            }
-            for (const listener of this.listeners) {
-                listener(this.user);
-            }
+        this.client.auth.onAuthStateChange((event, newSession) => {
+            // supabase-js holds its auth lock while this callback runs, so
+            // awaiting another Supabase call inside it can deadlock every
+            // later request.  Do the work once the callback has returned.
+            window.setTimeout(async () => {
+                if (event === 'SIGNED_OUT' || !newSession) {
+                    this.user = null;
+                } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                    this.user = await this.loadProfile(newSession.user);
+                }
+                for (const listener of this.listeners) {
+                    listener(this.user);
+                }
+            }, 0);
         });
     }
 
@@ -86,12 +91,21 @@ export class SupabaseBackend {
     // ------------------------------------------------------------ auth ----
 
     async register(form) {
+        const displayName = String(form.displayName).trim();
+        // The sign-up trigger would quietly rename a taken name to "Name_2", so
+        // check first.  ilike is case-insensitive; escape _ and % so they match literally.
+        const pattern = displayName.replace(/[\\%_]/g, (c) => `\\${c}`);
+        const { data: taken } = await this.client.from('profiles').select('id').ilike('display_name', pattern).limit(1);
+        if (taken && taken.length > 0) {
+            return { ok: false, error: 'That display name is already taken.', field: 'displayName' };
+        }
+
         const { data, error } = await this.client.auth.signUp({
             email: String(form.email).trim().toLowerCase(),
             password: form.password,
             options: {
                 data: {
-                    display_name: String(form.displayName).trim(),
+                    display_name: displayName,
                     main_game: String(form.mainGame ?? '').trim(),
                 },
                 emailRedirectTo: `${window.location.origin}/login.html`,
@@ -103,7 +117,12 @@ export class SupabaseBackend {
         if (!data.session) {
             return { ok: true, needsConfirmation: true };
         }
+
         this.user = await this.loadProfile(data.user);
+        if (!this.user) {
+            await this.client.auth.signOut();
+            return { ok: false, error: 'Your account was created but the profile could not be loaded. Try logging in.', field: 'email' };
+        }
         return { ok: true, user: this.user };
     }
 
@@ -115,7 +134,13 @@ export class SupabaseBackend {
         if (error) {
             return { ok: false, error: SupabaseBackend.friendly(error), field: SupabaseBackend.fieldFor(error) };
         }
+
         this.user = await this.loadProfile(data.user);
+        if (!this.user) {
+            // Signed in to Supabase but there is no profiles row
+            await this.client.auth.signOut();
+            return { ok: false, error: 'Your player profile could not be loaded. Try again, or register a new account.', field: 'email' };
+        }
         return { ok: true, user: this.user };
     }
 
@@ -134,19 +159,44 @@ export class SupabaseBackend {
 
     // ------------------------------------------------------------ runs ----
 
-    async submitRun(record, log) {
+    /**
+     * Asks the server for a one-use token for a run that is about to start.
+     * submit-run only ranks a run that brings its token back, after at least
+     * the run's own length has passed, so a log copied from someone else's
+     * replay cannot simply be resubmitted.
+     * @param {string} chartId
+     * @returns {Promise<string|null>} null for unranked charts or on failure
+     */
+    async startRun(chartId) {
+        if (!this.user || !/^(t|daily):/.test(String(chartId))) {
+            return null;
+        }
+        try {
+            const { data, error } = await this.client.functions.invoke('submit-run', {
+                body: { action: 'start', chartId },
+            });
+            if (error || !data || typeof data.token !== 'string') {
+                console.warn('Could not start a ranked run', error ?? data);
+                return null;
+            }
+            return data.token;
+        } catch (error) {
+            console.warn('Could not start a ranked run', error);
+            return null;
+        }
+    }
+
+    async submitRun(record, log, token = null) {
         if (!this.user) {
             return { saved: false, accepted: false, score: record.score, personalBest: false };
         }
         const previous = await this.personalBest(this.user.id, record.chartId);
 
         const { data, error } = await this.client.functions.invoke('submit-run', {
-            body: { record, log },
+            body: { record, log, token },
         });
         if (error) {
-            console.warn('submit-run failed', error);
-            return { saved: false, accepted: false, rejected: false, reason: 'network',
-                score: record.score, personalBest: false };
+            return SupabaseBackend.submitFailure(error, record);
         }
         if (!data.accepted) {
             return { saved: false, accepted: false, rejected: true, reason: data.reason,
@@ -160,6 +210,67 @@ export class SupabaseBackend {
             score,
             personalBest: !previous || score > previous.score,
         };
+    }
+
+    /**
+     * functions.invoke reports any non-2xx answer as an error.  Tell an
+     * expired session (401) and a refusal (other 4xx, with the function's own
+     * reason) apart from the network or the server actually failing.
+     * @param {Error & {context?: Response}} error
+     * @param {object} record
+     */
+    static async submitFailure(error, record) {
+        const response = error.context;
+        const status = response && typeof response.status === 'number' ? response.status : 0;
+        let message = '';
+        if (response && typeof response.json === 'function') {
+            try {
+                const body = await response.json();
+                message = body?.error ?? body?.reason ?? '';
+            } catch (parseError) {
+                // Not JSON: keep the status code alone.
+            }
+        }
+        const base = { saved: false, accepted: false, score: record.score, personalBest: false };
+        if (status === 401) {
+            return { ...base, rejected: false, reason: 'signed-out' };
+        }
+        if (status >= 400 && status < 500) {
+            return { ...base, rejected: true, reason: message || `refused by the server (${status})` };
+        }
+        console.warn('submit-run failed', error);
+        return { ...base, rejected: false, reason: 'network' };
+    }
+
+    /**
+     * Best score, accuracy and pass state per chart over all of a player's
+     * runs, computed in the database (see player_progress in
+     * supabase/migrations/0003_hardening.sql) so it is not limited to the
+     * most recent runs.
+     * @param {string} userId
+     * @returns {Promise<Map<string, object>>}
+     */
+    async progress(userId) {
+        const { data, error } = await this.client.rpc('player_progress', { player: userId });
+        if (error) {
+            throw new Error(error.message);
+        }
+        const byChart = new Map();
+        for (const row of data ?? []) {
+            byChart.set(row.chart_id, {
+                chartId: row.chart_id,
+                kind: row.kind,
+                trackId: row.track_id,
+                trackName: row.track_name,
+                bestScore: row.best_score,
+                bestAccuracy: row.best_accuracy,
+                maxAccuracy: row.max_accuracy,
+                passed: Boolean(row.passed),
+                runs: Number(row.runs),
+                counterStrafes: Number(row.counter_strafes),
+            });
+        }
+        return byChart;
     }
 
     async runsForUser(userId) {
@@ -199,7 +310,7 @@ export class SupabaseBackend {
             runId: row.run_id,
             userId: row.user_id,
             displayName: row.display_name,
-            mainGame: row.main_game || '—',
+            mainGame: row.main_game || '-',
             chartId: row.chart_id,
             levelId: row.level_id,
             levelName: row.level_name,
@@ -241,7 +352,7 @@ export class SupabaseBackend {
             players: players ?? 0,
             runs: runs ?? 0,
             topScore: top ? top.score : 0,
-            topPlayer: top && top.profiles ? top.profiles.display_name : '—',
+            topPlayer: top && top.profiles ? top.profiles.display_name : '-',
             averageScore: 0,
         };
     }
@@ -308,7 +419,7 @@ export class SupabaseBackend {
             return 'An account already uses that email address.';
         }
         if (/email not confirmed/i.test(message)) {
-            return 'Confirm your email address first — check your inbox.';
+            return 'Confirm your email address first. Check your inbox for the link.';
         }
         if (/password/i.test(message) && /short|weak|at least/i.test(message)) {
             return 'Password must be at least 8 characters.';

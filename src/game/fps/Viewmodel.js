@@ -14,6 +14,8 @@ const KICK = { back: 0.1, up: 0.04, pitch: 0.14 };
 const RECOVER = 14;   // per second
 const FLASH_SECONDS = 0.045;
 const TRACER_SECONDS = 0.06;
+const TRACER_HIT = new Color3(0.49, 1, 0.73);
+const TRACER_MISS = new Color3(1, 0.4, 0.4);
 
 export class Viewmodel {
     /**
@@ -44,12 +46,12 @@ export class Viewmodel {
      * @param {Material} material
      */
     part(name, w, h, d, x, y, z, material) {
+        // Built unparented, in the rifle's own space; buildRifle merges the
+        // parts per material and parents the result to the rifle root.
         const mesh = MeshBuilder.CreateBox(name, { width: w, height: h, depth: d }, this.scene);
-        mesh.parent = this.root;
         mesh.position.set(x, y, z);
         mesh.material = material;
         mesh.isPickable = false;
-        mesh.renderingGroupId = 1;
         return mesh;
     }
 
@@ -73,16 +75,30 @@ export class Viewmodel {
         this.materials = [dark, mid, accent];
 
         // receiver, barrel, handguard, magazine, stock, grip, sight
-        this.part('receiver', 0.09, 0.09, 0.34, 0, 0, 0, mid);
-        this.part('barrel', 0.035, 0.035, 0.42, 0, 0.012, 0.36, dark);
-        this.part('handguard', 0.07, 0.07, 0.26, 0, 0, 0.26, dark);
-        this.part('magazine', 0.05, 0.16, 0.08, 0, -0.11, 0.02, dark);
-        this.part('stock', 0.06, 0.07, 0.22, 0, -0.01, -0.26, dark);
-        this.part('grip', 0.045, 0.11, 0.05, 0, -0.08, -0.12, dark);
-        this.part('sight', 0.03, 0.03, 0.08, 0, 0.06, 0.02, dark);
-        this.part('sight-dot', 0.012, 0.012, 0.012, 0, 0.075, 0.02, accent);
-        this.part('rail', 0.03, 0.012, 0.3, 0, 0.051, 0.1, mid);
-        this.part('stripe', 0.092, 0.012, 0.1, 0, 0.02, -0.05, accent);
+        const parts = [
+            this.part('receiver', 0.09, 0.09, 0.34, 0, 0, 0, mid),
+            this.part('barrel', 0.035, 0.035, 0.42, 0, 0.012, 0.36, dark),
+            this.part('handguard', 0.07, 0.07, 0.26, 0, 0, 0.26, dark),
+            this.part('magazine', 0.05, 0.16, 0.08, 0, -0.11, 0.02, dark),
+            this.part('stock', 0.06, 0.07, 0.22, 0, -0.01, -0.26, dark),
+            this.part('grip', 0.045, 0.11, 0.05, 0, -0.08, -0.12, dark),
+            this.part('sight', 0.03, 0.03, 0.08, 0, 0.06, 0.02, dark),
+            this.part('sight-dot', 0.012, 0.012, 0.012, 0, 0.075, 0.02, accent),
+            this.part('rail', 0.03, 0.012, 0.3, 0, 0.051, 0.1, mid),
+            this.part('stripe', 0.092, 0.012, 0.1, 0, 0.02, -0.05, accent),
+        ];
+
+        // Ten boxes, three materials: three draw calls instead of ten.
+        for (const material of this.materials) {
+            const group = parts.filter((mesh) => mesh.material === material);
+            const merged = group.length > 1 ? Mesh.MergeMeshes(group, true, true) : group[0];
+            if (!merged) {
+                continue;
+            }
+            merged.parent = this.root;
+            merged.isPickable = false;
+            merged.renderingGroupId = 1;
+        }
     }
 
     buildFlash() {
@@ -144,8 +160,24 @@ export class Viewmodel {
         MeshBuilder.CreateLines('tracer', {
             points: [from, to], instance: this.tracer,
         });
-        this.tracer.color = hit ? new Color3(0.49, 1, 0.73) : new Color3(1, 0.4, 0.4);
+        this.tracer.color.copyFrom(hit ? TRACER_HIT : TRACER_MISS);
         this.tracer.setEnabled(true);
+    }
+
+    /**
+     * The flash and tracer start hidden, so their shaders would otherwise
+     * compile on the first shot and stall that frame.  Compile them now.
+     */
+    async prepare() {
+        const jobs = [this.flash.material.forceCompilationAsync(this.flash)];
+        if (this.tracer.material) {
+            jobs.push(this.tracer.material.forceCompilationAsync(this.tracer));
+        }
+        try {
+            await Promise.all(jobs);
+        } catch (error) {
+            console.warn('Viewmodel: could not precompile effects', error);
+        }
     }
 
     /** @returns {Vector3} world position of the muzzle. */

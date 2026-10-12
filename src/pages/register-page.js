@@ -9,7 +9,6 @@ import { initNavigation } from '../ui/Navigation.js';
 import { Validator, rules } from '../core/Validator.js';
 import { FormController } from '../ui/FormController.js';
 import { Storage } from '../core/Storage.js';
-import { toast } from '../ui/Toast.js';
 import { bindProviderButtons } from '../ui/providers.js';
 
 const backend = await initNavigation('register');
@@ -47,21 +46,27 @@ const controller = new FormController(form, validator, async (values) => {
 
     if (result.needsConfirmation) {
         controller.showNotice(
-            'Account created. Check your inbox for the confirmation link, then log in.',
+            'Check your inbox for a confirmation link. If you already have an account with this email, log in instead.',
             'success',
         );
-        form.querySelector('button[type="submit"]').disabled = true;
-        return;
+        return { keepDisabled: true };
     }
 
     controller.showNotice(`Account created. Welcome, ${result.user.displayName}.`, 'success');
-    toast.success('Account created — taking you to the game.');
     window.setTimeout(() => {
         window.location.href = 'game.html';
     }, 900);
+    return { keepDisabled: true };
 });
 
 controller.init();
+
+// The confirmation depends on the password, so re-check it when the password changes.
+form.elements.namedItem('password').addEventListener('input', () => {
+    if (form.elements.namedItem('confirmPassword').value) {
+        controller.checkField('confirmPassword');
+    }
+});
 bindProviderButtons(backend, document.getElementById('providerButtons'));
 
 if (backend.kind === 'local' && !Storage.isAvailable()) {

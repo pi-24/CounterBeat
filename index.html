@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CounterBeat &mdash; a counter-strafing rhythm game</title>
+    <title>CounterBeat</title>
     <meta name="description"
         content="CounterBeat is a browser rhythm game built around counter-strafing: strafe to the window, tap the opposite key to kill your velocity, then fire on the beat.">
     <link rel="icon" href="images/emblem.png" type="image/png">
@@ -50,7 +50,7 @@
                         CounterBeat turns the single most important movement skill in tactical shooters into a
                         first-person rhythm game. Strafe to the lit window, <strong>tap the opposite key</strong>
                         to kill your momentum, put your crosshair on the bot and click the instant the beat lands.
-                        Move too fast and your shot sprays. Click off the beat and you lose your combo.
+                        Move too fast and your shot sprays. Fire to the rhythm!
                     </p>
                     <div class="hero__actions">
                         <a class="btn btn--primary" href="game.html">Play now</a>
@@ -74,7 +74,7 @@
                         <div class="card__icon" aria-hidden="true">1</div>
                         <h3 class="card__title">Position</h3>
                         <p>A bot steps out behind one window in the wall. You have to be standing in front of that
-                            window to have a line of sight &mdash; from anywhere else the shot hits the wall.</p>
+                            window to have a line of sight. From anywhere else the shot hits the wall.</p>
                     </article>
                     <article class="card card--raised">
                         <div class="card__icon" aria-hidden="true">2</div>
@@ -154,17 +154,21 @@
                     <div class="card">
                         <span class="section__eyebrow">Your account</span>
                         <h2>Scores are saved to your profile</h2>
-                        <p>Register once and every run is scored, ranked and kept in your browser. Your best run on
-                            each chart appears on the public rankings table, with a replay anyone can watch.</p>
                         <div class="hero__actions">
-                            <a class="btn btn--primary" href="register.html">Create an account</a>
+                            <a class="btn btn--primary" href="register.html" data-nav-guest>Create an account</a>
                             <a class="btn btn--ghost" href="rankings.html">See the rankings</a>
                         </div>
                     </div>
                     <div class="card">
                         <span class="section__eyebrow">Live leaders</span>
                         <h2>Top of the board</h2>
-                        <div id="homeLeaders" class="rail__list-wrap">
+                        <div class="field">
+                            <label class="field__label" for="homeChart">Chart</label>
+                            <select class="field__control" id="homeChart">
+                                <option value="daily">Daily challenge (today)</option>
+                            </select>
+                        </div>
+                        <div id="homeLeaders" class="rail__list-wrap" aria-live="polite">
                             <p class="text-dim">Loading scores&hellip;</p>
                         </div>
                     </div>
@@ -176,7 +180,7 @@
 
     <footer class="site-footer">
         <div class="page site-footer__inner">
-            <p class="text-dim">CounterBeat &mdash; a counter-strafe rhythm game. All artwork and audio made for this project.</p>
+            <p class="text-dim">CounterBeat: a counter-strafe rhythm game. All artwork and audio made for this project.</p>
             <div class="site-footer__links">
                 <a href="how-to-play.html">How to play</a>
                 <a href="rankings.html">Rankings</a>

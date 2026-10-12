@@ -14,8 +14,14 @@
  * a few hundred events.
  */
 
-/** Bumped whenever the movement model changes, so old logs are not misjudged. */
-export const LOG_VERSION = 3;
+import { LOG_VERSION } from './rules/config.js';
+
+// Defined in rules/config.js so the replay validator (which the server runs)
+// and the recorder can never disagree about it.
+export { LOG_VERSION };
+
+/** Log versions the replay viewer can still play back (3 = before tick-clock judging). */
+export const REPLAYABLE_VERSIONS = Object.freeze([3, LOG_VERSION]);
 
 /** Hit zones packed as small integers. */
 export const ZONE_CODE = Object.freeze({ none: 0, body: 1, head: 2 });

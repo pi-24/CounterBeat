@@ -41,9 +41,18 @@ if (!user) {
 }
 
 async function refresh() {
-    const runs = await backend.runsForUser(user.id);
-    renderStats(runs);
-    renderBests(runs);
+    // Totals, bests and clears come from every run the player has stored;
+    // the timing chart and history use the most recent ones.
+    const [runs, progress] = await Promise.all([
+        backend.runsForUser(user.id),
+        backend.progress(user.id).catch((error) => {
+            console.warn('Could not load progress', error);
+            return new Map();
+        }),
+    ]);
+    const ranked = [...progress.values()].filter((entry) => entry.kind === 'track' || entry.kind === 'daily');
+    renderStats(ranked);
+    renderBests(progress, ranked);
     renderTiming(runs);
     renderHistory(runs);
 }
@@ -54,17 +63,17 @@ function isRanked(run) {
         && run.levelId > 0 && run.verified !== false;
 }
 
-/** @param {object[]} runs */
-function renderStats(runs) {
-    const ranked = runs.filter(isRanked);
-    const best = ranked.reduce((top, run) => (top === null || run.score > top.score ? run : top), null);
-    const totalCounterStrafes = ranked.reduce((sum, run) => sum + run.counterStrafes, 0);
-    const bestAccuracy = ranked.reduce((top, run) => Math.max(top, run.accuracy), 0);
+/** @param {object[]} ranked progress entries for official and daily charts */
+function renderStats(ranked) {
+    const runCount = ranked.reduce((sum, entry) => sum + entry.runs, 0);
+    const best = ranked.reduce((top, entry) => Math.max(top, entry.bestScore), 0);
+    const bestAccuracy = ranked.reduce((top, entry) => Math.max(top, entry.maxAccuracy), 0);
+    const totalCounterStrafes = ranked.reduce((sum, entry) => sum + entry.counterStrafes, 0);
 
     document.getElementById('profileStats').replaceChildren(
-        statTile('Runs played', String(ranked.length)),
-        statTile('Best score', best ? formatScore(best.score) : '—'),
-        statTile('Best accuracy', ranked.length ? formatAccuracy(bestAccuracy) : '—'),
+        statTile('Runs played', String(runCount)),
+        statTile('Best score', runCount ? formatScore(best) : '-'),
+        statTile('Best accuracy', runCount ? formatAccuracy(bestAccuracy) : '-'),
         statTile('Counter-strafe bonuses', String(totalCounterStrafes)),
     );
 }
@@ -72,8 +81,8 @@ function renderStats(runs) {
 function renderDetails() {
     const fields = [
         ['Display name', user.displayName],
-        ['Email', user.email || '—'],
-        ['Main game', user.mainGame || '—'],
+        ['Email', user.email || '-'],
+        ['Main game', user.mainGame || '-'],
     ];
     const body = document.getElementById('profileDetails');
     body.replaceChildren();
@@ -87,42 +96,46 @@ function renderDetails() {
     }
 }
 
-/** @param {object[]} runs */
-function renderBests(runs) {
+/**
+ * @param {Map<string, object>} progress every chart the player has a run on
+ * @param {object[]} ranked the official and daily entries of it
+ */
+function renderBests(progress, ranked) {
     const host = document.getElementById('profileBests');
     host.replaceChildren();
     const list = el('ul', 'rail__list');
     for (const track of TRACKS) {
-        const best = runs
-            .filter((run) => run.trackId === track.id && isRanked(run))
-            .reduce((top, run) => (top === null || run.score > top.score ? run : top), null);
-        const cleared = DIFFICULTIES.filter((d) => runs.some((run) => run.chartId === `t:${track.id}:${d.id}` && run.passed && run.verified !== false));
+        const best = ranked
+            .filter((entry) => entry.trackId === track.id)
+            .reduce((top, entry) => (top === null || entry.bestScore > top.bestScore ? entry : top), null);
+        const cleared = DIFFICULTIES.filter((d) => progress.get(`t:${track.id}:${d.id}`)?.passed);
         const item = document.createElement('li');
         item.append(
             el('span', '', `${track.name}${cleared.length ? `  ·  cleared ${cleared.map((d) => d.name).join(', ')}` : ''}`),
             el('span', 'mono', best
-                ? `${formatScore(best.score)}  ·  ${formatAccuracy(best.accuracy)}`
+                ? `${formatScore(best.bestScore)}  ·  ${formatAccuracy(best.bestAccuracy)}`
                 : 'Not played'),
         );
         list.append(item);
     }
-    const custom = runs.filter((run) => run.kind === 'custom');
-    if (custom.length) {
-        const bySong = new Map();
-        for (const run of custom) {
-            const key = run.trackName ?? run.levelName;
-            if (!bySong.has(key) || run.score > bySong.get(key).score) {
-                bySong.set(key, run);
-            }
+    // Your own songs: the best run per song, across its difficulties.
+    const bySong = new Map();
+    for (const entry of progress.values()) {
+        if (entry.kind !== 'custom') {
+            continue;
         }
-        for (const [name, run] of bySong) {
-            const item = document.createElement('li');
-            item.append(
-                el('span', '', `${name}  ·  your song`),
-                el('span', 'mono', `${formatScore(run.score)}  ·  ${formatAccuracy(run.accuracy)}`),
-            );
-            list.append(item);
+        const key = entry.trackName ?? entry.trackId ?? entry.chartId;
+        if (!bySong.has(key) || entry.bestScore > bySong.get(key).bestScore) {
+            bySong.set(key, entry);
         }
+    }
+    for (const [name, entry] of bySong) {
+        const item = document.createElement('li');
+        item.append(
+            el('span', '', `${name}  ·  your song`),
+            el('span', 'mono', `${formatScore(entry.bestScore)}  ·  ${formatAccuracy(entry.bestAccuracy)}`),
+        );
+        list.append(item);
     }
     host.append(list);
 }
@@ -139,7 +152,9 @@ function renderTiming(runs) {
     svg.replaceChildren();
     tiles.replaceChildren();
 
-    const withStats = runs.filter((run) => run.stats && Array.isArray(run.stats.buckets) && run.stats.hits > 0);
+    // Verified runs only: custom-song stats come from the client unchecked.
+    const withStats = runs.filter((run) => isRanked(run)
+        && run.stats && Array.isArray(run.stats.buckets) && run.stats.hits > 0);
     if (withStats.length === 0) {
         summary.textContent = 'Play a few charts and your hit timing shows up here.';
         return;
@@ -200,13 +215,13 @@ function renderTiming(runs) {
     summary.textContent = `${hits.toLocaleString('en-GB')} hits across ${withStats.length} runs. `
         + (Math.abs(bias) < 5
             ? 'You sit right on the beat.'
-            : `You tend to fire ${Math.abs(bias)} ms ${bias < 0 ? 'early' : 'late'} — `
-              + (bias < 0 ? 'wait a hair longer on the ring.' : 'try shooting as the ring closes, not after. Calibrating in Settings → Timing may also help.'));
+            : `You tend to fire ${Math.abs(bias)} ms ${bias < 0 ? 'early' : 'late'}. `
+              + (bias < 0 ? 'Wait a hair longer on the ring.' : 'Try shooting as the ring closes, not after. Calibrating in Settings → Timing may also help.'));
     tiles.append(
         statTile('Average offset', `${bias >= 0 ? '+' : ''}${bias} ms`),
-        statTile('Perfect rate', hitsRanked ? `${Math.round((perfects / hitsRanked) * 100)}%` : '—'),
-        statTile('Counter-strafe rate', hitsRanked ? `${Math.round((counterStrafes / hitsRanked) * 100)}%` : '—'),
-        statTile('Headshot rate', hitsRanked ? `${Math.round((headshots / hitsRanked) * 100)}%` : '—'),
+        statTile('Perfect rate', hitsRanked ? `${Math.round((perfects / hitsRanked) * 100)}%` : '-'),
+        statTile('Counter-strafe rate', hitsRanked ? `${Math.round((counterStrafes / hitsRanked) * 100)}%` : '-'),
+        statTile('Headshot rate', hitsRanked ? `${Math.round((headshots / hitsRanked) * 100)}%` : '-'),
     );
 }
 
@@ -234,7 +249,7 @@ function renderHistory(runs) {
             link.href = `game.html?replay=${encodeURIComponent(run.id)}`;
             replay.append(link);
         } else {
-            replay.textContent = '—';
+            replay.textContent = '-';
         }
         tr.append(
             el('td', '', run.levelName),

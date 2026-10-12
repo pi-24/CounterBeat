@@ -93,7 +93,7 @@ export class Calibration {
         if (!this.active) {
             return;
         }
-        const now = this.audio.context.currentTime;
+        const now = this.audio.clockTime();
         const beats = (now - this.t0) / SECONDS_PER_BEAT;
         const index = Math.floor(beats);
         const progress = beats - index;
@@ -104,7 +104,7 @@ export class Calibration {
             this.ring.setAttribute('opacity', index < COUNT_IN ? '0.5' : '1');
             this.status.textContent = index < COUNT_IN
                 ? `Count-in ${index + 1} of ${COUNT_IN}…`
-                : `Tap on the click — ${index - COUNT_IN + 1} of ${MEASURED}   (${this.deltas.length} recorded)`;
+                : `Tap on the click: ${index - COUNT_IN + 1} of ${MEASURED}   (${this.deltas.length} recorded)`;
         }
         if (beats >= COUNT_IN + MEASURED + 0.75) {
             this.finish();
@@ -128,7 +128,9 @@ export class Calibration {
             return;
         }
         event.preventDefault();
-        const now = this.audio.context.currentTime;
+        // Measured the same way the game times a shot: the smoothed audio
+        // clock, wound back to the moment the input actually happened.
+        const now = this.audio.clockTime() - Calibration.inputLag(event);
         const nearest = Math.round((now - this.t0) / SECONDS_PER_BEAT);
         if (nearest < COUNT_IN || nearest >= COUNT_IN + MEASURED) {
             return;
@@ -146,7 +148,7 @@ export class Calibration {
         this.startButton.textContent = 'Redo';
 
         if (this.deltas.length < 6) {
-            this.result.textContent = `Only ${this.deltas.length} taps landed near a click — try again and tap on every one.`;
+            this.result.textContent = `Only ${this.deltas.length} taps landed near a click. Try again and tap on every one.`;
             return;
         }
         const sorted = [...this.deltas].sort((a, b) => a - b);
@@ -167,6 +169,18 @@ export class Calibration {
         }
         this.settings.update({ audioOffset: this.offset });
         this.close();
+    }
+
+    /**
+     * How long ago an input event happened, in seconds.  A click that lands
+     * while a frame is being drawn is only handled after it, so judging it
+     * "now" would make it look late by up to a frame.
+     * @param {Event} event
+     * @returns {number}
+     */
+    static inputLag(event) {
+        const lag = (performance.now() - event.timeStamp) / 1000;
+        return lag > 0 && lag < 0.1 ? lag : 0;
     }
 
     /** @param {number} seconds */

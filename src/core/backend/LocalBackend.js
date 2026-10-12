@@ -112,13 +112,23 @@ export class LocalBackend {
     }
 
     async runsForUser(userId) {
+        const withLogs = this.scores.logIds();
         return this.scores.forUser(userId).map((run) => ({
-            ...run, hasReplay: Boolean(this.scores.logFor(run.id)),
+            ...run, hasReplay: withLogs.has(run.id),
         }));
     }
 
     async personalBest(userId, chartId) {
         return this.scores.personalBest(userId, chartId);
+    }
+
+    async progress(userId) {
+        return this.scores.progress(userId);
+    }
+
+    /** Runs here are verified in the page, so there is no server token to ask for. */
+    async startRun() {
+        return null;
     }
 
     async leaderboard(chartFilter = 'best') {
