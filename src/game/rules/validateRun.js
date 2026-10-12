@@ -20,6 +20,7 @@ import { BeatMap } from './BeatMap.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
 import { Judge } from './Judge.js';
 import { Scorer } from './Scorer.js';
+import { MOVEMENT_SCALE } from './config.js';
 
 const LIMITS = Object.freeze({
     maxTicks: 30000,
@@ -58,6 +59,12 @@ export function validateRun(level, log, claimedScore) {
     if (!Array.isArray(ticks) || !Array.isArray(inputs) || !Array.isArray(shots)) {
         return fail('malformed log');
     }
+    const scale = { speed: 1, accel: 1, ...(log.movement ?? {}) };
+    for (const key of ['speed', 'accel']) {
+        if (!Number.isFinite(scale[key]) || scale[key] < MOVEMENT_SCALE.min || scale[key] > MOVEMENT_SCALE.max) {
+            return fail('movement settings out of range');
+        }
+    }
     if (ticks.length === 0 || ticks.length > LIMITS.maxTicks || shots.length > LIMITS.maxShots) {
         return fail('log size out of range');
     }
@@ -90,7 +97,7 @@ export function validateRun(level, log, claimedScore) {
     const judge = new Judge(level, lanes);
     const scorer = new Scorer(beatMap.total);
     const body = new CounterStrafeBody(
-        level.movement,
+        CounterStrafeBody.scaled(level.movement, scale),
         { min: lanes.left + 16, max: lanes.right - 16 },
         lanes.centre(Math.floor(level.lanes / 2)),
     );

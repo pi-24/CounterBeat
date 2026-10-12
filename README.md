@@ -116,8 +116,11 @@ acceleration pointed backwards on top of friction, which is the
 counter-strafe — about 0.08 s to a dead stop from full speed against ~0.4 s
 for a release. One `MOVEMENT` serves every official difficulty, as in the
 games this is for - difficulty comes from the chart (lane count and spacing,
-stop-zone width, timing windows, note density), not from faster feet. Lane
-spacing is derived per chart from the tempo and the movement
+stop-zone width, timing windows, note density), not from faster feet.
+Settings → Movement lets the player scale speed and acceleration by ±25% for
+feel; the scale is written into the run log, so the server replays the run
+with the same feet, and anything outside the range is refused as tampered.
+Lane spacing is derived per chart from the tempo and the movement
 (`trackScaleFor`), so a lane change always fits in the pattern's longest gap
 and faster tracks pull the windows closer together; dense patterns thin out
 on fast tracks for the same reason.

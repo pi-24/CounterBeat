@@ -21,9 +21,14 @@ export const LOG_VERSION = 3;
 export const ZONE_CODE = Object.freeze({ none: 0, body: 1, head: 2 });
 
 export class RunRecorder {
-    /** @param {string} chartId */
-    constructor(chartId) {
+    /**
+     * @param {string} chartId
+     * @param {{speed:number, accel:number}} [movement] the player's movement
+     *   scale settings, so a replay or the server runs the same body.
+     */
+    constructor(chartId, movement = { speed: 1, accel: 1 }) {
         this.chartId = chartId;
+        this.movement = { speed: movement.speed, accel: movement.accel };
         /** @type {number[]} tick lengths in milliseconds, rounded. */
         this.ticks = [];
         /** @type {Array<[number, number]>} [tickIndex, direction] */
@@ -85,6 +90,7 @@ export class RunRecorder {
         return {
             version: LOG_VERSION,
             chartId: this.chartId,
+            movement: this.movement,
             startSongTime: this.startSongTime ?? 0,
             ticks: this.ticks,
             inputs: this.inputs,

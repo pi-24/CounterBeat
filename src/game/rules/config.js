@@ -92,6 +92,14 @@ export const FOCUS_MAX = 100;
  */
 export const COUNTER_STRAFE_MEMORY_MS = 320;
 
+/**
+ * How far the player may tune movement speed and acceleration.  The range
+ * is deliberately narrow: it is for feel, not for an edge, and the server
+ * replays a run with whatever the player chose, so a value outside it is a
+ * tampered log.
+ */
+export const MOVEMENT_SCALE = Object.freeze({ min: 0.75, max: 1.25 });
+
 /** How long the approach ring is visible before its note lands, in beats. */
 export const APPROACH_BEATS = 2;
 
@@ -128,6 +136,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
     crosshairThickness: 2,
     crosshairDot: false,
     viewBob: true,
+    moveSpeed: 1,           // multiplier on the chart's movement speed (see MOVEMENT_SCALE)
+    moveAccel: 1,           // multiplier on acceleration
     beatRing: true,         // the pulsing circle around the crosshair
     noteHighway: true,      // the upcoming-beats strip at the bottom of the HUD
     audioOffset: 0,         // seconds; measured by the calibration screen

@@ -61,6 +61,26 @@ export class CounterStrafeBody {
         this.lastPlantedAt = Number.NEGATIVE_INFINITY;
     }
 
+    /**
+     * A chart's movement with the player's speed and acceleration settings
+     * applied.  Speed scales the top speed and the friction floor together,
+     * so the slide keeps its shape; acceleration scales how fast speed is
+     * gained (and lost on a counter-strafe).
+     * @param {Movement} movement
+     * @param {{speed?:number, accel?:number}} [scale]
+     * @returns {Movement}
+     */
+    static scaled(movement, scale = {}) {
+        const speed = Number.isFinite(scale.speed) ? scale.speed : 1;
+        const accel = Number.isFinite(scale.accel) ? scale.accel : 1;
+        return {
+            maxSpeed: movement.maxSpeed * speed,
+            accel: movement.accel * accel,
+            friction: movement.friction,
+            stopSpeed: movement.stopSpeed * speed,
+        };
+    }
+
     /** @param {number} direction -1 for left, 1 for right, 0 for no input. */
     setInput(direction) {
         this.inputDirection = Math.sign(direction);

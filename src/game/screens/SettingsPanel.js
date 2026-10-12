@@ -31,6 +31,8 @@ export class SettingsPanel {
             ['crosshairLength', 'input', (v) => Number(v)],
             ['crosshairGap', 'input', (v) => Number(v)],
             ['crosshairThickness', 'input', (v) => Number(v)],
+            ['moveSpeed', 'input', (v) => Number(v)],
+            ['moveAccel', 'input', (v) => Number(v)],
         ];
         for (const [name, event, parse] of bindings) {
             const control = this.field(name);
@@ -77,7 +79,7 @@ export class SettingsPanel {
     refresh() {
         const s = this.settings;
         for (const name of ['sensitivity', 'dpi', 'fov', 'crosshairColour',
-            'crosshairLength', 'crosshairGap', 'crosshairThickness']) {
+            'crosshairLength', 'crosshairGap', 'crosshairThickness', 'moveSpeed', 'moveAccel']) {
             const control = this.field(name);
             if (control) {
                 control.value = String(s.get(name));
@@ -94,6 +96,8 @@ export class SettingsPanel {
         this.readout('sensVal').textContent = s.valorantSensitivity.toFixed(3);
         this.readout('sensCm').textContent = `${s.cmPer360.toFixed(1)} cm`;
         this.readout('fovVal').textContent = `${s.get('fov')}°`;
+        this.readout('moveSpeedVal').textContent = `${Math.round(s.get('moveSpeed') * 100)}%`;
+        this.readout('moveAccelVal').textContent = `${Math.round(s.get('moveAccel') * 100)}%`;
         const offsetMs = Math.round((s.get('audioOffset') ?? 0) * 1000);
         this.readout('offsetVal').textContent = `${offsetMs >= 0 ? '+' : ''}${offsetMs} ms`;
 

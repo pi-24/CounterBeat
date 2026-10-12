@@ -8,7 +8,7 @@
  * audience already knows.
  */
 import { store } from '../core/Storage.js';
-import { DEFAULT_SETTINGS, VALORANT_SENS_RATIO, YAW_PER_COUNT } from './rules/config.js';
+import { DEFAULT_SETTINGS, VALORANT_SENS_RATIO, YAW_PER_COUNT, MOVEMENT_SCALE } from './rules/config.js';
 
 const KEY = 'settings';
 const REMOTE_SAVE_DELAY_MS = 800;
@@ -144,6 +144,14 @@ export class Settings {
         }
         if ('viewBob' in changes) {
             out.viewBob = Boolean(changes.viewBob);
+        }
+        for (const name of ['moveSpeed', 'moveAccel']) {
+            if (name in changes) {
+                const value = Number(changes[name]);
+                out[name] = Number.isFinite(value)
+                    ? Math.round(Math.max(MOVEMENT_SCALE.min, Math.min(MOVEMENT_SCALE.max, value)) * 100) / 100
+                    : 1;
+            }
         }
         if ('beatRing' in changes) {
             out.beatRing = Boolean(changes.beatRing);

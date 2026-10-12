@@ -1471,3 +1471,9 @@
     padding: 0.3rem 0.65rem;
     font-size: 0.78rem;
 }
+
+.settings__note {
+    margin: var(--s-2) 0 0;
+    color: var(--c-text-faint);
+    font-size: 0.78rem;
+}

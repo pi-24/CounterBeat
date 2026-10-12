@@ -213,6 +213,25 @@
                                         </fieldset>
 
                                         <fieldset class="settings__group settings__group--wide">
+                                            <legend class="settings__legend">Movement</legend>
+                                            <div class="settings__row">
+                                                <label class="settings__label" for="setMoveSpeed">Speed</label>
+                                                <input class="settings__range" type="range" id="setMoveSpeed" name="moveSpeed"
+                                                    min="0.75" max="1.25" step="0.05">
+                                                <output class="settings__value mono" id="moveSpeedVal">100%</output>
+                                            </div>
+                                            <div class="settings__row">
+                                                <label class="settings__label" for="setMoveAccel">Acceleration</label>
+                                                <input class="settings__range" type="range" id="setMoveAccel" name="moveAccel"
+                                                    min="0.75" max="1.25" step="0.05">
+                                                <output class="settings__value mono" id="moveAccelVal">100%</output>
+                                            </div>
+                                            <p class="settings__note">Scales each chart's movement for feel &mdash; faster feet reach the
+                                                next window sooner but overshoot more easily. Saved with the run, so ranked scores
+                                                stay comparable within this range.</p>
+                                        </fieldset>
+
+                                        <fieldset class="settings__group settings__group--wide">
                                             <legend class="settings__legend">Timing</legend>
                                             <div class="settings__row settings__row--timing">
                                                 <span class="settings__label">Audio / input offset</span>

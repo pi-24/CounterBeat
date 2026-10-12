@@ -29,13 +29,13 @@ function pilot(body, targetX) {
 }
 
 /** Plays a level the way PlayScreen does, with slightly irregular frames. */
-function playAndRecord(level, aimZone = 'head', jitter = true) {
+function playAndRecord(level, aimZone = 'head', jitter = true, scale = { speed: 1, accel: 1 }) {
     const beatMap = new BeatMap(level);
     const lanes = beatMap.lanes;
     const judge = new Judge(level, lanes);
     const scorer = new Scorer(beatMap.total);
-    const recorder = new RunRecorder(level.chartId);
-    const body = new CounterStrafeBody(level.movement,
+    const recorder = new RunRecorder(level.chartId, scale);
+    const body = new CounterStrafeBody(CounterStrafeBody.scaled(level.movement, scale),
         { min: lanes.left + 16, max: lanes.right - 16 }, lanes.centre(Math.floor(level.lanes / 2)));
     const lead = APPROACH_BEATS * (60 / level.bpm);
 
@@ -135,6 +135,15 @@ robot.log.shots = robot.log.shots.map(([tick, , idx, zone, blocked]) => {
 });
 const r4 = validateRun(level, robot.log, 0);
 check('perfectly timed shots flagged as inhuman', !r4.ok, r4.ok ? 'accepted' : r4.reason);
+
+// A run played with the fastest allowed feet must replay with the same feet.
+const quick = playAndRecord(level, 'head', true, { speed: 1.25, accel: 1.25 });
+const r5 = validateRun(level, quick.log, quick.record.score);
+check('movement settings replay exactly', r5.ok && r5.record.score === quick.record.score,
+    r5.ok ? `${quick.record.score} vs ${r5.record.score}` : r5.reason);
+const tooFast = structuredClone(honest.log);
+tooFast.movement = { speed: 2, accel: 1 };
+check('movement outside the allowed range rejected', !validateRun(level, tooFast).ok);
 
 const spam = structuredClone(honest.log);
 spam.shots = Array.from({ length: 40 }, (_, i) => [5 + i, Math.round((honest.log.startSongTime + 0.1 + i * 0.016) * 1000), -1, 0, 0]);

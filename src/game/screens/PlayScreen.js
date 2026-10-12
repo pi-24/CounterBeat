@@ -65,9 +65,13 @@ export class PlayScreen {
         this.lanes = this.beatMap.lanes;
         this.judge = new Judge(this.level, this.lanes);
         this.scorer = new Scorer(this.beatMap.total);
-        this.recorder = new RunRecorder(this.chartId);
+        const scale = this.replay
+            ? { speed: 1, accel: 1, ...(this.replay.movement ?? {}) }
+            : { speed: settings.get('moveSpeed'), accel: settings.get('moveAccel') };
+        this.movement = CounterStrafeBody.scaled(this.level.movement, scale);
+        this.recorder = new RunRecorder(this.chartId, scale);
         this.body = new CounterStrafeBody(
-            this.level.movement,
+            this.movement,
             { min: this.lanes.left + 16, max: this.lanes.right - 16 },
             this.lanes.centre(Math.floor(this.level.lanes / 2)),
         );
@@ -174,11 +178,11 @@ export class PlayScreen {
         const nextNote = this.beatMap.notes.find((note) => !note.resolved);
         this.arena.setActiveLane(nextNote ? nextNote.lane : -1);
 
-        const speedFraction = Math.min(1, this.body.speed / this.level.movement.maxSpeed);
+        const speedFraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
         camera.update(Arena.toWorldX(this.body.x), dt, speedFraction);
         this.viewmodel.update(dt);
 
-        hud.setVelocity(this.body.velocity, this.level.movement.maxSpeed, SPEED_GRADE.pinPoint, SPEED_GRADE.tight);
+        hud.setVelocity(this.body.velocity, this.movement.maxSpeed, SPEED_GRADE.pinPoint, SPEED_GRADE.tight);
         hud.setBeat(this.conductor.beatProgress);
         hud.setLanes(nextNote ? nextNote.lane : -1,
             (this.body.x - this.lanes.left) / (this.lanes.right - this.lanes.left));
@@ -419,6 +423,9 @@ export class PlayScreen {
             // is judged against where the body really is and the replay sees
             // the same clock the shot was stamped with.
             this.stepSimulation(0, this.readDirection(), songTime);
+            // Settle the chart to the same instant: a bot whose window has
+            // just closed is gone before the shot, exactly as the server sees it.
+            this.expireMissedNotes(songTime);
             ray = this.buildShotRay();
             pick = this.targets.pick(ray);
             this.recorder.shot(songTime, pick.entry ? pick.entry.note.index : -1, pick.zone, pick.blocked);
@@ -482,7 +489,7 @@ export class PlayScreen {
      */
     buildShotRay() {
         const { camera } = this.app;
-        const fraction = Math.min(1, this.body.speed / this.level.movement.maxSpeed);
+        const fraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
         const coneDegrees = SPREAD.baseDegrees + SPREAD.movingDegrees * Math.pow(fraction, SPREAD.exponent);
         const cone = (coneDegrees * Math.PI) / 180;
 
