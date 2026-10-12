@@ -43,6 +43,56 @@ export class Arena {
         this.buildPads();
         this.buildBackstop();
         this.buildDecor();
+        this.mergeStatic();
+        this.freezeMaterials();
+    }
+
+    /**
+     * Folds the boxes that never change into one mesh per material (and per
+     * pickability), so a room with a hundred crates, racks and pillars costs
+     * a handful of draw calls instead of a hundred.  Window frames and pads
+     * swap material when their lane lights up, so they stay separate.
+     */
+    mergeStatic() {
+        const dynamic = new Set([...this.frames.flat(), ...this.pads]);
+        const groups = new Map();
+        for (const item of this.disposables) {
+            if (!(item instanceof Mesh) || dynamic.has(item) || !item.material) {
+                continue;
+            }
+            const key = `${item.material.uniqueId}|${item.isPickable}`;
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(item);
+        }
+        for (const group of groups.values()) {
+            if (group.length < 2) {
+                continue;
+            }
+            const pickable = group[0].isPickable;
+            const merged = Mesh.MergeMeshes(group, true, true);
+            if (!merged) {
+                continue;
+            }
+            merged.isPickable = pickable;
+            merged.freezeWorldMatrix();
+            this.disposables.push(merged);
+            if (pickable) {
+                this.solids.push(merged);
+            }
+        }
+        // MergeMeshes disposed the sources; drop them from the bookkeeping.
+        this.disposables = this.disposables.filter((item) => !(item instanceof Mesh) || !item.isDisposed());
+        this.solids = this.solids.filter((mesh) => !mesh.isDisposed());
+    }
+
+    /** Nothing about these materials changes during a run, so stop re-checking them every frame. */
+    freezeMaterials() {
+        for (const material of [this.floorMaterial, this.wallMaterial, this.frameIdle, this.frameActive,
+            this.padIdle, this.padActive, this.accentMaterial]) {
+            material.freeze();
+        }
     }
 
     /** @param {number} trackX @returns {number} metres */

@@ -19,11 +19,11 @@ export function formatAccuracy(fraction) {
 /** @param {string} isoDate */
 export function formatDate(isoDate) {
     if (!isoDate) {
-        return '—';
+        return '-';
     }
     const date = new Date(isoDate);
     if (Number.isNaN(date.getTime())) {
-        return '—';
+        return '-';
     }
     return date.toLocaleDateString('en-GB', {
         day: '2-digit', month: 'short', year: 'numeric',
@@ -34,7 +34,7 @@ export function formatDate(isoDate) {
 export function formatRelative(isoDate) {
     const date = new Date(isoDate);
     if (Number.isNaN(date.getTime())) {
-        return '—';
+        return '-';
     }
     const seconds = Math.round((Date.now() - date.getTime()) / 1000);
     if (seconds < 60) {

@@ -24,6 +24,51 @@ export class AudioEngine {
         this.musicSource = null;
         this.musicStartedAt = 0;
         this.musicKey = null;
+        /** Playback rate of the current track, and where its position was last anchored. */
+        this.musicRate = 1;
+        this.musicAnchorClock = 0;
+        this.musicAnchorPosition = 0;
+
+        /** Smoothed context time (see clockTime) and the wall time it was taken at. */
+        this.clockEstimate = 0;
+        this.clockWall = -1;
+    }
+
+    /**
+     * The AudioContext clock, smoothed.  `currentTime` only moves when the
+     * audio thread renders a block - every 3 to 10 ms, or worse on some
+     * devices - so reading it raw makes everything timed from it advance in
+     * little stair-steps that a 144 Hz display shows as judder.  This runs a
+     * wall clock between those steps and slews it gently towards the audio
+     * clock, so it agrees with the audio on average, never runs backwards and
+     * re-locks instantly after a pause or a stall.
+     * @returns {number} seconds on the context's timeline
+     */
+    clockTime() {
+        const context = this.context;
+        if (!context) {
+            return 0;
+        }
+        const audioTime = context.currentTime;
+        const wall = performance.now() / 1000;
+        if (this.clockWall < 0 || context.state !== 'running') {
+            this.clockEstimate = audioTime;
+            this.clockWall = wall;
+            return audioTime;
+        }
+        const elapsed = Math.max(0, wall - this.clockWall);
+        let estimate = this.clockEstimate + elapsed;
+        const error = audioTime - estimate;
+        if (Math.abs(error) > 0.1) {
+            // Resumed, stalled or the device glitched: jump to the audio clock.
+            estimate = audioTime;
+        } else {
+            // ~200 ms time constant: invisible on screen, fast enough to track drift.
+            estimate += error * Math.min(1, elapsed * 5);
+        }
+        this.clockEstimate = Math.max(estimate, this.clockEstimate);
+        this.clockWall = wall;
+        return this.clockEstimate;
     }
 
     /** Creates the context.  Must be called from a user gesture. */
@@ -216,6 +261,28 @@ export class AudioEngine {
         this.musicSource = source;
         this.musicStartedAt = startAt;
         this.musicKey = key;
+        // The song position is measured from an anchor so the playback rate
+        // can change mid-track (slow-motion replays) without a jump.
+        this.musicRate = 1;
+        this.musicAnchorClock = startAt;
+        this.musicAnchorPosition = 0;
+    }
+
+    /**
+     * Plays the current track faster or slower (1 = normal).  The song
+     * position keeps counting from where it is, at the new rate.  The pitch
+     * moves with the speed, like a slowed-down tape.
+     * @param {number} rate
+     */
+    setMusicRate(rate) {
+        if (!this.musicSource || !this.context || !(rate > 0)) {
+            return;
+        }
+        const now = this.clockTime();
+        this.musicAnchorPosition += (now - this.musicAnchorClock) * this.musicRate;
+        this.musicAnchorClock = now;
+        this.musicRate = rate;
+        this.musicSource.playbackRate.setValueAtTime(rate, this.context.currentTime);
     }
 
     stopMusic() {
@@ -263,7 +330,7 @@ export class AudioEngine {
         if (!this.musicSource || !this.context) {
             return 0;
         }
-        return this.context.currentTime - this.musicStartedAt;
+        return this.musicAnchorPosition + (this.clockTime() - this.musicAnchorClock) * this.musicRate;
     }
 
     /** @returns {boolean} */

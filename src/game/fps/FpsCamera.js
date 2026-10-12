@@ -77,12 +77,16 @@ export class FpsCamera {
         }
         try {
             // Raw input, as a shooter would: no OS pointer acceleration.
-            const result = this.canvas.requestPointerLock({ unadjustedMovement: true });
-            if (result && typeof result.catch === 'function') {
-                await result.catch(() => this.canvas.requestPointerLock());
-            }
+            await this.canvas.requestPointerLock({ unadjustedMovement: true });
         } catch (error) {
-            this.canvas.requestPointerLock();
+            // Raw input unsupported (or the browser refused, e.g. a re-lock
+            // too soon after Esc): try plain pointer lock, and if that is
+            // refused too, the next click on the arena asks again.
+            try {
+                await this.canvas.requestPointerLock();
+            } catch (retryError) {
+                // Left unlocked; the pause screen stays up.
+            }
         }
     }
 

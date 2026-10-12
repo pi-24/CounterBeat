@@ -7,7 +7,7 @@ beat. Score comes from timing, how planted you were when you fired, and aim
 
 Six original tracks (90–170 BPM) at four difficulties each, a daily
 challenge with its own leaderboard, your own songs charted automatically,
-replays of any ranked run, and a timing profile on your page.
+a replay of every player's best run, and a timing profile on your page.
 
 - Engine: [Babylon.js](https://www.babylonjs.com/) (tree-shaken `@babylonjs/core`), own Web Audio engine
 - Build: [Vite](https://vite.dev/) multi-page site
@@ -95,10 +95,13 @@ so it cannot verify the chart, and the database constraint
 `runs_custom_unverified` keeps them off the rankings. ½× / 2× and ±20 ms
 buttons fix the detector when it is wrong.
 
-**Replays:** every stored run keeps its input log, and anyone can watch a
-run from the rankings or a profile (`game.html?replay=<run id>`). The
-replay drives the same simulation the validator uses, so it reproduces the
-score exactly; the camera auto-aims at the next bot.
+**Replays:** each player's best run on each chart keeps its input log
+(older and lower runs drop theirs), and anyone can watch it from the
+rankings or a profile (`game.html?replay=<run id>`). The replay drives the
+same simulation the validator uses, so it reproduces the score exactly,
+and the camera follows the aim the player recorded (older logs without it
+auto-aim at the next bot). Space, Esc or P pause a replay; the up and down
+arrows play it at 1×, 0.5× or 0.25×.
 
 **Timing profile:** each run records a histogram of hit errors; the profile
 page sums them and reports early/late bias, perfect, counter-strafe and
@@ -126,8 +129,10 @@ and faster tracks pull the windows closer together; dense patterns thin out
 on fast tracks for the same reason.
 
 Changing anything in this file changes what every chart demands and how
-every stored replay plays back, so bump `LOG_VERSION` in `RunRecorder.js`
-when you do (the validator refuses older logs rather than misjudging them).
+every stored replay plays back, so bump `LOG_VERSION` in `rules/config.js`
+when you do (the validator refuses older logs rather than misjudging them;
+the replay viewer still plays version 3 logs with the rules they were
+recorded under).
 
 ## How the anti-cheat works
 
@@ -139,10 +144,22 @@ the log through the very same `rules/` code, lands on the same positions and
 speeds, re-judges every shot and recomputes the score. The run is stored
 with the **server's** score and marked `verified`. Logs that do not replay
 (wrong lane for a claimed hit, too many shots per second, implausibly
-perfect timing, clock drift) are refused and nothing is stored.
+perfect timing, a shot stamped off its tick's time) are refused and nothing
+is stored.
 
-The simulation clock follows the audio clock and sub-steps through frame
-stalls, and the body is caught up to the exact instant of each shot, so
+Every tick is applied in one order on both sides (inputs, movement, spawn
+notes, expire missed notes, shots) and a shot is judged at its tick's own
+time, never at a time the client claims. A ranked run also needs a one-use
+token that the server issues when the run starts and spends when it is
+submitted, at least as long after as the run lasted, and each stored log is
+fingerprinted, so a replay copied from the rankings cannot be resubmitted
+under another name. None of this stops someone who writes a whole input
+log with a bot: the rules are replayed exactly, but the player's hands are
+only ever the client's word.
+
+The simulation clock follows a smoothed audio clock and sub-steps through
+frame stalls (never more than 50 ms per tick), and the body is caught up
+to the instant of each shot, back-dated to when the click happened, so
 honest runs on slow or hitching machines still replay exactly.
 
 `tools/test-validate.mjs` covers the honest cases (levels 0–3, jittered
@@ -154,9 +171,9 @@ anything in `src/game/rules/`.
 1. Create a project at <https://supabase.com/dashboard>. Note the **Project
    URL** and the **anon public key** (Project Settings → API).
 
-2. Apply the schema. Either paste `supabase/migrations/0001_init.sql` and
-   then `0002_charts.sql` into the SQL editor and run them in order, or
-   with the CLI:
+2. Apply the schema. Either paste `supabase/migrations/0001_init.sql`,
+   `0002_charts.sql` and `0003_hardening.sql` into the SQL editor and run
+   them in order, or with the CLI:
 
    ```bash
    npm i -g supabase
@@ -170,7 +187,13 @@ anything in `src/game/rules/`.
    replay log and timing stats), the row-level security policies (anyone can
    read; nobody can insert runs directly — only the edge function with the
    service role can), and the `leaderboard(chart_filter)` and
-   `run_replay(id)` functions.
+   `run_replay(id)` functions. `0003_hardening.sql` adds the `run_tokens`
+   table, the unique log fingerprint on `runs`, the `player_progress(player)`
+   function (bests and clears over every run, not just recent ones), a
+   sign-up trigger that cleans display names instead of failing, and
+   `keep_best_replay` so only each player's best run per chart keeps its
+   replay. Note: applying it also deletes the stored replay logs of runs
+   that are not their player's best (the runs and scores stay).
 
 3. Deploy the run-verification function:
 
@@ -254,6 +277,8 @@ measure +100–200 ms.
 | Esc | pause |
 | T | start the tutorial from the menu |
 | Q | leave a replay |
+| Space / Esc / P | pause or resume a replay |
+| ↑ / ↓ | replay speed (1×, 0.5×, 0.25×) |
 
 Counter-strafe (tap the opposite key for an instant) to stop dead: a shot
 while planted is worth far more than one while sliding, and the spread cone

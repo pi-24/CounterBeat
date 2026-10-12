@@ -5,6 +5,7 @@
  * backend offers.  The local backend offers none, so the container simply
  * stays empty there.
  */
+import { toast } from './Toast.js';
 const LABELS = { discord: 'Continue with Discord' };
 
 /**
@@ -23,10 +24,15 @@ export function bindProviderButtons(backend, container) {
         button.textContent = LABELS[provider] ?? `Continue with ${provider}`;
         button.addEventListener('click', async () => {
             button.disabled = true;
-            const result = await backend.loginWithProvider(provider);
-            if (!result.ok) {
+            try {
+                const result = await backend.loginWithProvider(provider);
+                if (!result.ok) {
+                    button.disabled = false;
+                    toast.error(result.error ?? 'Could not start sign-in. Please try again.');
+                }
+            } catch (error) {
                 button.disabled = false;
-                console.warn(result.error);
+                toast.error('Could not reach the sign-in service. Check your connection and try again.');
             }
         });
         container.append(button);

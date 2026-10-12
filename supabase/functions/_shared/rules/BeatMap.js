@@ -108,6 +108,80 @@ export class BeatMap {
         this.lanes = new Lanes(level.lanes, level.trackScale ?? 1, level.laneInset);
         this.secondsPerBeat = 60 / level.bpm;
         this.notes = this.generate();
+        /** Index of the next note that has not been spawned yet. */
+        this.spawnCursor = 0;
+        /** Index of the earliest note that might still be unresolved. */
+        this.pendingCursor = 0;
+    }
+
+    /**
+     * Spawns, in order, every note whose approach has begun by `songTime`.
+     * Notes are sorted by time, so this only ever looks at the next few.
+     * @param {number} songTime
+     * @param {number} leadSeconds how long before its beat a note appears
+     * @param {(note: Note) => void} [onSpawn]
+     */
+    spawnDue(songTime, leadSeconds, onSpawn) {
+        const notes = this.notes;
+        while (this.spawnCursor < notes.length) {
+            const note = notes[this.spawnCursor];
+            if (note.time - songTime > leadSeconds) {
+                break;
+            }
+            this.spawnCursor += 1;
+            if (!note.spawned && !note.resolved) {
+                note.spawned = true;
+                if (onSpawn) {
+                    onSpawn(note);
+                }
+            }
+        }
+    }
+
+    /**
+     * Hands every spawned, unresolved note whose window closed before
+     * `songTime` to `onExpire`, which must resolve it.
+     * @param {number} songTime
+     * @param {number} windowSeconds the chart's widest timing window
+     * @param {(note: Note) => void} onExpire
+     */
+    expireDue(songTime, windowSeconds, onExpire) {
+        const notes = this.notes;
+        for (let i = this.pendingCursor; i < notes.length; i += 1) {
+            const note = notes[i];
+            if (songTime <= note.time + windowSeconds) {
+                break;
+            }
+            if (note.spawned && !note.resolved) {
+                onExpire(note);
+            }
+        }
+        this.skipResolved();
+    }
+
+    /** @returns {Note | null} the earliest unresolved note, or null when the chart is done. */
+    get nextNote() {
+        this.skipResolved();
+        return this.notes[this.pendingCursor] ?? null;
+    }
+
+    /** @returns {boolean} whether any note is on screen and still waiting for a shot. */
+    get hasLiveNote() {
+        const notes = this.notes;
+        for (let i = this.pendingCursor; i < this.spawnCursor; i += 1) {
+            if (notes[i].spawned && !notes[i].resolved) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Moves the pending cursor past notes that have already been judged. */
+    skipResolved() {
+        const notes = this.notes;
+        while (this.pendingCursor < notes.length && notes[this.pendingCursor].resolved) {
+            this.pendingCursor += 1;
+        }
     }
 
     /** @returns {number} the time of the final note plus a short tail. */

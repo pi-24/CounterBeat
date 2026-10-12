@@ -899,7 +899,42 @@
     stroke-width: 1.5;
 }
 
-.hud__highway-note--next {
+/* Where bots step out: dots below this line have a bot on screen. */
+.hud__highway-spawn {
+    stroke: var(--c-mint);
+    stroke-width: 1.5;
+    stroke-dasharray: 8 5;
+    opacity: 0.8;
+}
+
+.hud__highway-spawn-label {
+    fill: var(--c-mint);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    paint-order: stroke;
+    stroke: rgba(11, 14, 21, 0.85);
+    stroke-width: 3;
+    pointer-events: none;
+}
+
+/* The note's bot is out: mint, ringed, with a short pop as it crosses the line. */
+.hud__highway-note.is-out {
+    fill: var(--c-mint);
+    stroke: rgba(126, 255, 186, 0.45);
+    stroke-width: 6;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: highway-note-out 220ms ease-out;
+}
+
+@keyframes highway-note-out {
+    from { transform: scale(1.7); }
+    to { transform: scale(1); }
+}
+
+.hud__highway-note--next,
+.hud__highway-note--next.is-out {
     fill: var(--c-accent);
     stroke: #ffffff;
     stroke-width: 2;

@@ -16,7 +16,9 @@ export class ResultScreen {
      * @param {object} record
      * @param {string} chartId
      * @param {object} log the RunRecorder log, for verification
-     * @param {{replay?: boolean}} [options] true when this was a replay, not a run
+     * @param {{replay?: boolean, runToken?: Promise<string|null>|null}} [options]
+     *   `replay` when this was a replay, not a run; `runToken` the server's
+     *   token for a ranked run (see PlayScreen.enter)
      */
     constructor(app, record, chartId, log, options = {}) {
         this.app = app;
@@ -24,6 +26,7 @@ export class ResultScreen {
         this.log = log;
         this.level = resolveChart(chartId);
         this.isReplay = Boolean(options.replay);
+        this.runToken = options.runToken ?? null;
         this.follower = ResultScreen.nextChart(this.level);
         this.overlay = app.resultOverlay;
     }
@@ -54,8 +57,10 @@ export class ResultScreen {
         if (!this.level.tutorial && !this.isReplay) {
             // Saving can take a round trip to the server; the screen is up
             // already and updates when the verdict lands.
-            this.outcome = (await this.app.services.onRunComplete(this.record, this.log)) ?? {};
-            this.renderOutcome();
+            this.outcome = (await this.app.services.onRunComplete(this.record, this.log, this.runToken)) ?? {};
+            if (this.app.current === this) {
+                this.renderOutcome();
+            }
         }
     }
 
@@ -64,7 +69,7 @@ export class ResultScreen {
         const o = this.overlay;
         const scoreLabel = o.querySelector('#resultScoreLabel');
         if (this.outcome.rejected) {
-            scoreLabel.textContent = 'NOT VERIFIED \u2014 NOT RANKED';
+            scoreLabel.textContent = 'NOT VERIFIED \u00b7 NOT RANKED';
             scoreLabel.className = 'result__score-label is-rejected';
             return;
         }
@@ -92,23 +97,23 @@ export class ResultScreen {
 
         const headline = o.querySelector('#resultHeadline');
         headline.textContent = this.isReplay ? 'REPLAY OVER' : this.level.tutorial ? 'TUTORIAL COMPLETE' : r.completed
-            ? (passed ? 'CHART CLEARED' : 'FINISHED — NOT CLEAN ENOUGH')
+            ? (passed ? 'CHART CLEARED' : 'FINISHED · NOT CLEAN ENOUGH')
             : 'RUN FAILED';
         headline.className = `result__headline ${passed ? 'result__headline--pass' : (r.completed ? 'result__headline--warn' : 'result__headline--fail')}`;
 
         const subtitle = o.querySelector('#resultSubtitle');
         if (this.isReplay) {
-            subtitle.textContent = `${this.level.name} — as it was played`;
+            subtitle.textContent = `${this.level.name}, as it was played`;
         } else if (this.level.tutorial) {
             subtitle.textContent = 'Not ranked. The Range on Easy is waiting.';
         } else if (this.level.kind === 'custom') {
-            subtitle.textContent = `${this.level.name} — your own song, so this counts as a personal best only`;
+            subtitle.textContent = `${this.level.name}: your own song, so this counts as a personal best only`;
         } else if (this.level.kind === 'daily') {
-            subtitle.textContent = `${this.level.name} — one shot at the daily leaderboard per run, best counts`;
+            subtitle.textContent = `${this.level.name}: one shot at the daily leaderboard per run, best counts`;
         } else if (r.completed) {
             subtitle.textContent = this.follower
-                ? `${this.level.name} — ${Math.round(this.level.passAccuracy * 100)}% accuracy clears it and opens ${this.follower.difficulty.name}`
-                : `${this.level.name} — the top of this track's ladder`;
+                ? `${this.level.name}: ${Math.round(this.level.passAccuracy * 100)}% accuracy clears it and opens ${this.follower.difficulty.name}`
+                : `${this.level.name}: the top of this track's ladder`;
         } else {
             subtitle.textContent = 'Your focus ran out. Missed bots drain it fastest.';
         }

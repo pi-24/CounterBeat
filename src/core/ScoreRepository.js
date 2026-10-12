@@ -5,8 +5,8 @@
  * storage.  Every completed run is appended as a JSON record; the rankings
  * page derives each player's top score from this list rather than storing a
  * second, duplicated table.  Replay logs are heavier (a few thousand tick
- * lengths), so only a bounded number are kept: every personal best plus the
- * most recent runs.
+ * lengths and the recorded aim), so only each player's best run on each
+ * chart keeps one.
  *
  * Record shape (what Scorer.toRecord produces, plus ownership):
  * {
@@ -23,7 +23,6 @@ import { store } from './Storage.js';
 const KEY = 'scores';
 const LOG_KEY = 'logs';
 const MAX_RECORDS = 500;
-const MAX_RECENT_LOGS = 15;
 
 export class ScoreRepository {
     /** @param {import('./Storage.js').Storage} storage */
@@ -57,7 +56,7 @@ export class ScoreRepository {
         const scores = this.all();
         scores.push(record);
         // Keep the store bounded so a long session cannot fill the quota.
-        this.saveAll(scores.slice(-MAX_RECORDS));
+        this.saveAll(ScoreRepository.prune(scores, MAX_RECORDS));
         if (log) {
             this.storeLog(record, log);
         }
@@ -65,41 +64,135 @@ export class ScoreRepository {
     }
 
     /**
-     * Keeps the log for this run, then prunes: a log survives while its run
-     * is a personal best on its chart or one of the most recent runs.
+     * Trims the run list to at most `limit` runs without losing progress:
+     * each player's best run and first pass on every official track chart
+     * survive first (they decide unlocks and the per-track bests), then the
+     * newest runs fill what is left.  Only the official charts are protected
+     * - there are a fixed 24 of them, while the daily challenge is a new
+     * chart every day and would otherwise grow the list forever.
+     * @param {object[]} scores oldest first
+     * @param {number} limit
+     * @returns {object[]} oldest first, never longer than `limit`
+     */
+    static prune(scores, limit) {
+        if (scores.length <= limit) {
+            return scores;
+        }
+        const best = new Map();
+        const passed = new Map();
+        for (const run of scores) {
+            if (!String(run.chartId).startsWith('t:')) {
+                continue;
+            }
+            const key = `${run.userId}|${run.chartId}`;
+            const top = best.get(key);
+            if (!top || run.score > top.score) {
+                best.set(key, run);
+            }
+            if (run.passed && !passed.has(key)) {
+                passed.set(key, run);
+            }
+        }
+        const protectedIds = new Set([...best.values(), ...passed.values()].map((run) => run.id));
+
+        // Protected runs first (newest first, should even they outgrow the
+        // limit), then the newest of everything else up to the limit.
+        const keep = new Set();
+        for (let i = scores.length - 1; i >= 0 && keep.size < limit; i -= 1) {
+            if (protectedIds.has(scores[i].id)) {
+                keep.add(scores[i].id);
+            }
+        }
+        for (let i = scores.length - 1; i >= 0 && keep.size < limit; i -= 1) {
+            keep.add(scores[i].id);
+        }
+        return scores.filter((run) => keep.has(run.id));
+    }
+
+    /**
+     * Best score, best accuracy and pass state per chart for one player,
+     * over every run stored.
+     * @param {string} userId
+     * @returns {Map<string, object>} chartId -> progress entry
+     */
+    progress(userId) {
+        return ScoreRepository.summarise(this.all().filter((run) => run.userId === userId));
+    }
+
+    /**
+     * The shape SupabaseBackend's player_progress function returns, built
+     * from a list of runs.  Unverified runs only count on custom songs.
+     * @param {object[]} runs
+     * @returns {Map<string, object>}
+     */
+    static summarise(runs) {
+        const byChart = new Map();
+        for (const run of runs) {
+            if (run.verified === false && run.kind !== 'custom') {
+                continue;
+            }
+            let entry = byChart.get(run.chartId);
+            if (!entry) {
+                entry = {
+                    chartId: run.chartId, kind: run.kind, trackId: run.trackId, trackName: run.trackName,
+                    bestScore: -1, bestAccuracy: 0, maxAccuracy: 0, passed: false, runs: 0, counterStrafes: 0,
+                };
+                byChart.set(run.chartId, entry);
+            }
+            if (run.score > entry.bestScore) {
+                entry.bestScore = run.score;
+                entry.bestAccuracy = run.accuracy ?? 0;
+            }
+            entry.maxAccuracy = Math.max(entry.maxAccuracy, run.accuracy ?? 0);
+            entry.passed = entry.passed || Boolean(run.passed);
+            entry.runs += 1;
+            entry.counterStrafes += run.counterStrafes ?? 0;
+        }
+        return byChart;
+    }
+
+    /**
+     * Only a player's best run on each chart keeps its replay: store this
+     * run's log, then drop every log that no longer belongs to a best (on a
+     * tie the earlier run stays the best, as on the rankings).
      * @param {object} record
      * @param {object} log
      */
     storeLog(record, log) {
         const logs = this.storage.read(LOG_KEY, {});
         logs[record.id] = log;
-        const runs = this.all();
-        const keep = new Set();
-        const byChart = new Map();
-        for (const run of runs) {
-            const key = `${run.userId}|${run.chartId}`;
-            const best = byChart.get(key);
-            if (!best || run.score > best.score) {
-                byChart.set(key, run);
-            }
-        }
-        for (const best of byChart.values()) {
-            keep.add(best.id);
-        }
-        for (const run of runs.slice(-MAX_RECENT_LOGS)) {
-            keep.add(run.id);
-        }
+        const keep = ScoreRepository.bestRunIds(this.all());
         for (const id of Object.keys(logs)) {
             if (!keep.has(id)) {
                 delete logs[id];
             }
         }
-        try {
-            this.storage.write(LOG_KEY, logs);
-        } catch (error) {
-            // Quota: drop everything but this one and try once more.
+        // Storage.write reports a full quota by returning false rather than
+        // throwing: keep just this run's log (if it is a best) and try again.
+        if (!this.storage.write(LOG_KEY, logs) && keep.has(record.id)) {
             this.storage.write(LOG_KEY, { [record.id]: log });
         }
+    }
+
+    /**
+     * @param {object[]} runs oldest first
+     * @returns {Set<string>} the id of each player's best run on each chart
+     */
+    static bestRunIds(runs) {
+        const best = new Map();
+        for (const run of runs) {
+            const key = `${run.userId}|${run.chartId}`;
+            const top = best.get(key);
+            if (!top || run.score > top.score) {
+                best.set(key, run);
+            }
+        }
+        return new Set([...best.values()].map((run) => run.id));
+    }
+
+    /** @returns {Set<string>} ids of the runs that still have a replay log (one read, not one per run). */
+    logIds() {
+        return new Set(Object.keys(this.storage.read(LOG_KEY, {})));
     }
 
     /** @param {string} runId @returns {object|null} */
@@ -152,6 +245,7 @@ export class ScoreRepository {
      */
     leaderboard(users, chartFilter = 'best') {
         const runs = this.all();
+        const withLogs = this.logIds();
         const rows = [];
 
         for (const user of users) {
@@ -166,7 +260,7 @@ export class ScoreRepository {
                 runId: best.id,
                 userId: user.id,
                 displayName: user.displayName,
-                mainGame: user.mainGame || '—',
+                mainGame: user.mainGame || '-',
                 chartId: best.chartId,
                 levelId: best.levelId,
                 levelName: best.levelName,
@@ -177,7 +271,7 @@ export class ScoreRepository {
                 headshots: best.headshots ?? 0,
                 playedAt: best.playedAt,
                 runs: candidates.length,
-                hasReplay: Boolean(this.logFor(best.id)),
+                hasReplay: withLogs.has(best.id),
             });
         }
         return rows;
@@ -186,20 +280,6 @@ export class ScoreRepository {
     /** @param {object} run @returns {boolean} whether it belongs on the rankings. */
     static isRanked(run) {
         return run.verified !== false && run.kind !== 'custom' && run.kind !== 'tutorial' && run.levelId > 0;
-    }
-
-    /** Summary counters used by the rankings page header. */
-    summary(users) {
-        const runs = this.all().filter(ScoreRepository.isRanked);
-        const totalScore = runs.reduce((sum, run) => sum + run.score, 0);
-        const bestRun = runs.reduce((best, run) => (best === null || run.score > best.score ? run : best), null);
-        return {
-            players: users.length,
-            runs: runs.length,
-            topScore: bestRun ? bestRun.score : 0,
-            topPlayer: bestRun ? bestRun.displayName : '—',
-            averageScore: runs.length ? Math.round(totalScore / runs.length) : 0,
-        };
     }
 }
 

@@ -27,8 +27,10 @@ import { toast } from '../ui/Toast.js';
  * @property {() => boolean} isLoggedIn
  * @property {(chartId:string) => boolean} hasPassed
  * @property {(chartId:string) => number} getPersonalBest
- * @property {(record:object, log:object) => Promise<{personalBest:boolean, saved:boolean, rejected?:boolean, score?:number}>} onRunComplete
+ * @property {(record:object, log:object, runToken?:Promise<string|null>|null) => Promise<{personalBest:boolean, saved:boolean, rejected?:boolean, score?:number}>} onRunComplete
  * @property {(judgement:object) => void} onJudgement
+ * @property {(chartId:string) => (Promise<string|null>|null)} [startRun] asks the server for
+ *   a run token when the run will be ranked; null when it will not be
  */
 
 const AUDIO_MANIFEST = {
@@ -84,6 +86,8 @@ export class GameApp {
         /** @type {{enter:Function, exit:Function, update:Function}|null} */
         this.current = null;
         this.switching = false;
+        /** Bumped on every screen switch, so only the latest one clears `switching`. */
+        this.switchId = 0;
     }
 
     async boot() {
@@ -92,9 +96,15 @@ export class GameApp {
             adaptToDeviceRatio: true,
             preserveDrawingBuffer: false,
             stencil: false,
+            // Laptops with two GPUs: ask for the fast one.
+            powerPreference: 'high-performance',
         });
         this.scene = new Scene(this.engine);
+        // The game does its own hit-scan; the engine never needs to pick
+        // under the pointer, which it would otherwise do on every move and click.
         this.scene.skipPointerMovePicking = true;
+        this.scene.skipPointerDownPicking = true;
+        this.scene.skipPointerUpPicking = true;
         this.camera = new FpsCamera(this.scene, this.canvas, this.settings);
 
         this.settingsPanel.init();
@@ -125,13 +135,21 @@ export class GameApp {
 
     /** @param {{enter:Function, exit:Function, update:Function}} screen */
     async switchTo(screen) {
+        const id = ++this.switchId;
         this.switching = true;
         if (this.current) {
             this.current.exit();
         }
         this.current = screen;
-        await screen.enter();
-        this.switching = false;
+        try {
+            await screen.enter();
+        } finally {
+            // A newer switch may have started while this screen was loading;
+            // that one decides when updates resume.
+            if (id === this.switchId) {
+                this.switching = false;
+            }
+        }
     }
 
     showMenu() {
@@ -196,7 +214,7 @@ export class GameApp {
             if (this.camera.locked) {
                 if (event.button === 0 || event.button === 2) {
                     event.preventDefault();
-                    play.fire();
+                    play.fire(undefined, event.timeStamp);
                 }
             } else if (onStage && event.button === 0) {
                 this.camera.lock();
@@ -209,8 +227,20 @@ export class GameApp {
                 return;
             }
             const play = this.play;
+            // A replay is watched, not played: Space, Esc and P pause it,
+            // the up and down arrows change its speed.
+            if (play && play.replay) {
+                if (code === 'Space' || code === 'Escape' || code === 'KeyP') {
+                    play.togglePause();
+                    return;
+                }
+                if (code === 'ArrowUp' || code === 'ArrowDown') {
+                    play.changeReplaySpeed(code === 'ArrowUp' ? 1 : -1);
+                    return;
+                }
+            }
             if (code === 'Space' && play && !play.paused) {
-                play.fire();
+                play.fire(undefined, event.timeStamp);
             } else if (code === 'KeyR' && play) {
                 play.restart();
             } else if (code === 'KeyQ' && play && play.paused) {

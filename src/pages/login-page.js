@@ -33,6 +33,7 @@ const controller = new FormController(form, validator, async (values) => {
     window.setTimeout(() => {
         window.location.href = 'game.html';
     }, 700);
+    return { keepDisabled: true };
 });
 
 controller.init();

@@ -10,25 +10,41 @@
  * random angle that grows with the player's speed.  Standing still the ray
  * is a laser; at a sprint it can land seven degrees wide.  That spread is
  * what the velocity grade in Judge is modelling, made physical.
+ *
+ * Everything that decides the score happens on the simulation tick clock, in
+ * the same order validateRun replays it:
+ *   inputs -> movement -> spawn notes -> expire missed notes -> shots
+ * so the server lands on the same score to the point.
  */
-import { Vector3, Ray } from '../engine.js';
-import { GRADE, SPEED_GRADE, SPREAD, WORLD } from '../rules/config.js';
+import { Ray } from '../engine.js';
+import { APPROACH_BEATS, GRADE, SPEED_GRADE, SPREAD } from '../rules/config.js';
 import { resolveChart, musicUrls } from '../rules/charts.js';
 import { BeatMap } from '../rules/BeatMap.js';
 import { Conductor } from '../rules/Conductor.js';
 import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
 import { Judge } from '../rules/Judge.js';
 import { Scorer } from '../rules/Scorer.js';
-import { RunRecorder } from '../RunRecorder.js';
+import { RunRecorder, LOG_VERSION, readLook } from '../RunRecorder.js';
 import { Arena } from '../fps/Arena.js';
 import { TargetField } from '../fps/TargetField.js';
 import { Viewmodel } from '../fps/Viewmodel.js';
 
 const RECOIL_DEGREES = 0.55;
-/** Simulation tick bounds, matching the replay validator's limits. */
+/** Simulation tick bounds, inside the replay validator's limits. */
 const MIN_STEP = 0.0005;
-const MAX_STEP = 0.1;
+/** No longer than CounterStrafeBody integrates in one go, so a stall is split into ticks, never clamped. */
+const MAX_STEP = 0.05;
 const MAX_STEPS_PER_FRAME = 50;
+/** A replay's ticks are cheap to apply, so after a stall (a hidden tab) it catches up at once. */
+const MAX_REPLAY_STEPS_PER_FRAME = 5000;
+/** An input event older than this is not trusted to back-date a shot. */
+const MAX_INPUT_LAG = 0.1;
+/** Longest the run waits for shaders to compile before starting anyway. */
+const PREPARE_TIMEOUT_MS = 1500;
+/** Pause between the last bot and the results screen. */
+const RESULTS_DELAY_MS = 900;
+/** Replay playback speeds, slowest first. */
+const REPLAY_SPEEDS = [0.25, 0.5, 1];
 
 export class PlayScreen {
     /**
@@ -42,9 +58,16 @@ export class PlayScreen {
         this.level = resolveChart(chartId);
         this.chartId = chartId;
         this.replay = options.replay ?? null;
+        /** Logs from before LOG_VERSION 4 replay with the rules they were recorded under. */
+        this.legacyReplay = Boolean(this.replay && this.replay.version !== LOG_VERSION);
         this.replayCursor = 0;
         this.replayInput = 0;
         this.replayShots = 0;
+        /** The replay's recorded aim (null for logs from before it was recorded). */
+        this.replayLook = this.replay ? readLook(this.replay) : null;
+        this.replayLookCursor = 0;
+        /** Replay playback speed (REPLAY_SPEEDS). */
+        this.replaySpeed = 1;
 
         this.finished = false;
         this.paused = false;
@@ -52,8 +75,16 @@ export class PlayScreen {
         this.unsubscribe = [];
         this.clearedAt = undefined;
         this.tutorialStage = 0;
-        /** The simulation clock, in ms, advanced by the recorder's ticks. */
+        this.resultsTimer = 0;
+        /** Promise of the server's token for this run (ranked runs only). */
+        this.runToken = null;
+        /** The simulation clock, in ms, advanced tick by tick. */
         this.clockMs = 0;
+    }
+
+    /** @returns {boolean} whether this screen is still the one on show. */
+    get current() {
+        return this.app.current === this;
     }
 
     // ------------------------------------------------------------ enter ----
@@ -63,6 +94,8 @@ export class PlayScreen {
 
         this.beatMap = new BeatMap(this.level);
         this.lanes = this.beatMap.lanes;
+        this.lead = APPROACH_BEATS * (60 / this.level.bpm);
+        this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
         this.judge = new Judge(this.level, this.lanes);
         this.scorer = new Scorer(this.beatMap.total);
         const scale = this.replay
@@ -107,17 +140,39 @@ export class PlayScreen {
             }
         }));
 
+        // A ranked run needs a token from the server, issued now so the
+        // server can tell a run that was actually played from a copied log.
+        if (!this.replay && this.app.services.startRun) {
+            this.runToken = this.app.services.startRun(this.chartId);
+        }
+        // Compile the bot, spark and rifle shaders while the track loads,
+        // so the first bot, hit and shot never stall a frame doing it.
+        const prepared = Promise.race([
+            Promise.all([this.targets.prepare(), this.viewmodel.prepare()]),
+            new Promise((resolve) => { window.setTimeout(resolve, PREPARE_TIMEOUT_MS); }),
+        ]);
+
         await audio.unlock();
+        if (!this.current) {
+            return;
+        }
         if (!audio.has(this.level.musicKey)) {
             hud.setCountdown('LOADING TRACK', true);
             const ok = this.level.trackId && !this.level.custom
                 ? await audio.ensure(this.level.musicKey, musicUrls(this.level.trackId))
                 : false;
+            if (!this.current) {
+                return;
+            }
             if (!ok) {
                 hud.setCountdown('', false);
                 this.app.failStart('The track could not be loaded. Check your connection and try again.');
                 return;
             }
+        }
+        await prepared;
+        if (!this.current) {
+            return;
         }
         audio.resetMusicVolume();
         audio.playMusic(this.level.musicKey);
@@ -127,7 +182,7 @@ export class PlayScreen {
 
         if (this.replay) {
             camera.lookEnabled = false;
-            hud.setHint('Watching a replay — press Q to leave');
+            this.showReplayHint();
         } else {
             await camera.lock();
         }
@@ -135,6 +190,7 @@ export class PlayScreen {
 
     exit() {
         const { camera, hud, audio } = this.app;
+        window.clearTimeout(this.resultsTimer);
         for (const off of this.unsubscribe) {
             off();
         }
@@ -163,7 +219,14 @@ export class PlayScreen {
         if (this.replay) {
             this.advanceReplay(songTime);
         } else {
-            this.stepSimulation(dt, this.readDirection(), songTime);
+            this.stepSimulation(this.readDirection(), songTime, dt);
+        }
+        if (this.legacyReplay && !this.finished) {
+            // Logs from before version 4 spawned and expired notes once per frame.
+            this.advanceChart(songTime);
+        }
+        if (this.finished) {
+            return; // the run failed inside the simulation
         }
 
         if (this.body.counterStrafing && !this.wasCounterStrafing) {
@@ -171,11 +234,9 @@ export class PlayScreen {
         }
         this.wasCounterStrafing = this.body.counterStrafing;
 
-        this.spawnUpcomingNotes(songTime);
         this.targets.update(songTime, this.conductor.secondsPerBeat, this.level.timing.good);
-        this.expireMissedNotes(songTime);
 
-        const nextNote = this.beatMap.notes.find((note) => !note.resolved);
+        const nextNote = this.beatMap.nextNote;
         this.arena.setActiveLane(nextNote ? nextNote.lane : -1);
 
         const speedFraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
@@ -186,21 +247,20 @@ export class PlayScreen {
         hud.setBeat(this.conductor.beatProgress);
         hud.setLanes(nextNote ? nextNote.lane : -1,
             (this.body.x - this.lanes.left) / (this.lanes.right - this.lanes.left));
-        hud.updateHighway(this.beatMap.notes, songTime, this.conductor.secondsPerBeat, this.lanes.count);
+        hud.updateHighway(this.beatMap.notes, songTime, this.conductor.secondsPerBeat, this.beatMap.pendingCursor);
         this.updateCountdown(songTime);
         if (this.level.tutorial) {
-            this.updateTutorial(songTime);
+            this.updateTutorial();
         }
 
         // The run ends shortly after the last bot is dealt with rather than
-        // when the track runs out, and the tutorial cannot be failed.
+        // when the track runs out, and the tutorial cannot be failed.  A
+        // replay ends when its log does (advanceReplay), wherever the music is.
         if (!nextNote && this.clearedAt === undefined) {
             this.clearedAt = songTime;
         }
-        if (this.scorer.failed && !this.level.tutorial) {
-            this.finish(false);
-        } else if ((this.clearedAt !== undefined && songTime >= this.clearedAt + 1.2)
-            || songTime >= this.beatMap.duration) {
+        if (!this.replay && ((this.clearedAt !== undefined && songTime >= this.clearedAt + 1.2)
+            || songTime >= this.beatMap.duration)) {
             this.finish(true);
         }
     }
@@ -214,7 +274,7 @@ export class PlayScreen {
     }
 
     /**
-     * Advances the movement simulation up to the current song time.
+     * Advances the simulation up to `songTime`.
      *
      * The body is stepped on the recorder's tick clock, not the frame delta,
      * so a server replaying the same ticks reproduces it exactly.  The ticks
@@ -222,25 +282,29 @@ export class PlayScreen {
      * a garbage-collection pause) is split into several short ticks instead
      * of one clamped step, so the simulation clock never drifts away from
      * the song and the replay check never rejects an honest run for it.
+     * Notes are spawned and expired at every tick, as the server does.
      *
-     * @param {number} dt wall-clock seconds since the last frame (first-frame fallback)
      * @param {number} direction -1, 0 or 1
      * @param {number} songTime
+     * @param {number} [dt] wall-clock seconds since the last frame (first-frame fallback)
      */
-    stepSimulation(dt, direction, songTime) {
+    stepSimulation(direction, songTime, dt = 0) {
         if (this.simSongTime === undefined) {
             this.simSongTime = songTime - dt;
         }
         this.body.setInput(direction);
         let remaining = songTime - this.simSongTime;
         let steps = 0;
-        while (remaining >= MIN_STEP && steps < MAX_STEPS_PER_FRAME) {
+        while (remaining >= MIN_STEP && steps < MAX_STEPS_PER_FRAME && !this.finished) {
             const step = Math.min(remaining, MAX_STEP);
             this.clockMs = this.recorder.tick(step, direction, this.simSongTime);
             // Use the rounded tick the recorder stored, so client and replay agree bit for bit.
             const stored = this.recorder.ticks[this.recorder.ticks.length - 1] / 1000;
             this.body.update(stored, this.clockMs);
+            // Where the player was looking, for the replay.
+            this.recorder.aim(this.app.camera.yaw, this.app.camera.pitch);
             this.simSongTime = this.recorder.startSongTime + this.clockMs / 1000;
+            this.advanceChart(this.simSongTime);
             remaining = songTime - this.simSongTime;
             steps += 1;
         }
@@ -249,17 +313,45 @@ export class PlayScreen {
     }
 
     /**
+     * Spawns the bots whose approach has begun and expires the ones whose
+     * window has closed, at one instant of the simulation clock.
+     * @param {number} songTime
+     */
+    advanceChart(songTime) {
+        this.beatMap.spawnDue(songTime, this.lead, (note) => this.targets.spawn(note));
+        this.beatMap.expireDue(songTime, this.level.timing.ok, (note) => {
+            this.resolveNote(note, this.targets.entryFor(note), {
+                grade: GRADE.MISS,
+                timingError: songTime - note.time,
+                speed: this.body.speed,
+                inLane: this.lanes.contains(note.lane, this.body.x),
+                counterStrafed: false,
+                headshot: false,
+                reason: 'No shot',
+            }, null);
+        });
+        this.checkFailure();
+    }
+
+    /** Ends the run the moment focus runs out (the tutorial cannot be failed). */
+    checkFailure() {
+        if (this.scorer.failed && !this.level.tutorial) {
+            this.finish(false);
+        }
+    }
+
+    /**
      * Replay: consume the recorded ticks up to the current song time, applying
      * the recorded inputs and shots at exactly the ticks they were logged on.
-     * The same code path the validator uses, so the ghost does what the
-     * player did, to the pixel.
+     * The same order the validator uses, so the ghost does what the player
+     * did, to the pixel, and lands on the stored score.
      * @param {number} songTime
      */
     advanceReplay(songTime) {
         const log = this.replay;
         const ticks = log.ticks;
         let steps = 0;
-        while (this.replayCursor < ticks.length && steps < MAX_STEPS_PER_FRAME) {
+        while (this.replayCursor < ticks.length && steps < MAX_REPLAY_STEPS_PER_FRAME && !this.finished) {
             const index = this.replayCursor;
             const ms = ticks[index];
             if (log.startSongTime + (this.clockMs + ms) / 1000 > songTime) {
@@ -269,16 +361,20 @@ export class PlayScreen {
                 this.body.setInput(log.inputs[this.replayInput][1]);
                 this.replayInput += 1;
             }
-            this.clockMs = this.recorder.tick(ms / 1000, this.body.inputDirection, log.startSongTime + this.clockMs / 1000);
+            this.clockMs += ms;
             this.body.update(ms / 1000, this.clockMs);
-            while (this.replayShots < log.shots.length && log.shots[this.replayShots][0] === index) {
+            const tickTime = log.startSongTime + this.clockMs / 1000;
+            if (!this.legacyReplay) {
+                this.advanceChart(tickTime);
+            }
+            while (!this.finished && this.replayShots < log.shots.length && log.shots[this.replayShots][0] === index) {
                 const [, songMs, noteIndex, zoneCode, blocked] = log.shots[this.replayShots];
                 this.replayShots += 1;
                 const note = noteIndex >= 0 ? this.beatMap.notes[noteIndex] : null;
                 const entry = note ? this.targets.entryFor(note) ?? null : null;
                 const zone = ['none', 'body', 'head'][zoneCode] ?? 'none';
                 this.fire({
-                    songTime: songMs / 1000,
+                    songTime: this.legacyReplay ? songMs / 1000 : tickTime,
                     pick: {
                         entry: entry && zone !== 'none' ? entry : null,
                         zone: entry ? zone : 'none',
@@ -290,26 +386,92 @@ export class PlayScreen {
             this.replayCursor += 1;
             steps += 1;
         }
-        this.aimReplayCamera();
+        if (this.replayLook) {
+            this.applyRecordedLook(this.replayCursor - 1);
+        } else {
+            this.aimReplayCamera();
+        }
         if (this.replayCursor >= ticks.length && !this.finished) {
             // The log ran out: the recorded run ended here.
             this.finish(this.beatMap.notes.every((note) => note.resolved));
         }
     }
 
-    /** Points the ghost's camera at the bot it is about to deal with. */
+    /**
+     * Turns the replay camera to where the player was looking at a tick,
+     * blending between the recorded samples either side of it.
+     * @param {number} tick
+     */
+    applyRecordedLook(tick) {
+        const { ticks, yaw, pitch } = this.replayLook;
+        let i = this.replayLookCursor;
+        while (i + 1 < ticks.length && ticks[i + 1] <= tick) {
+            i += 1;
+        }
+        this.replayLookCursor = i;
+        const camera = this.app.camera;
+        if (tick <= ticks[i] || i + 1 >= ticks.length) {
+            camera.yaw = yaw[i];
+            camera.pitch = pitch[i];
+            return;
+        }
+        const t = (tick - ticks[i]) / (ticks[i + 1] - ticks[i]);
+        camera.yaw = yaw[i] + (yaw[i + 1] - yaw[i]) * t;
+        camera.pitch = pitch[i] + (pitch[i + 1] - pitch[i]) * t;
+    }
+
+    /** The replay's controls, and its speed when it is not normal. */
+    showReplayHint() {
+        const speed = this.replaySpeed === 1 ? '' : ` · ${this.replaySpeed}×`;
+        this.app.hud.setHint(`Replay${speed} · Space pause · ↑↓ speed · Q leave`);
+    }
+
+    /** Space, Esc or P during a replay. */
+    togglePause() {
+        if (this.paused) {
+            this.resume();
+        } else {
+            this.pause();
+        }
+    }
+
+    /**
+     * Steps the replay speed through REPLAY_SPEEDS.
+     * @param {number} step +1 faster, -1 slower
+     */
+    changeReplaySpeed(step) {
+        if (!this.replay || this.finished) {
+            return;
+        }
+        const index = REPLAY_SPEEDS.indexOf(this.replaySpeed);
+        const next = REPLAY_SPEEDS[Math.max(0, Math.min(REPLAY_SPEEDS.length - 1, index + step))];
+        if (next === this.replaySpeed) {
+            return;
+        }
+        this.replaySpeed = next;
+        this.app.audio.setMusicRate(next);
+        this.showReplayHint();
+    }
+
+    /** Points the ghost's camera at the bot it is about to deal with (replays without recorded aim). */
     aimReplayCamera() {
         const camera = this.app.camera;
-        const next = this.targets.entries
-            .filter((entry) => !entry.resolved)
-            .sort((a, b) => a.note.time - b.note.time)[0];
+        let next = null;
+        for (const entry of this.targets.entries) {
+            if (!entry.resolved && (!next || entry.note.time < next.note.time)) {
+                next = entry;
+            }
+        }
         let targetYaw = 0;
         let targetPitch = 0;
         if (next) {
             const eye = camera.position;
-            const to = next.sprite.position.subtract(eye);
-            targetYaw = Math.atan2(to.x, to.z);
-            targetPitch = -Math.atan2(to.y - next.sprite.height * 0.3, Math.hypot(to.x, to.z));
+            const position = next.sprite.position;
+            const dx = position.x - eye.x;
+            const dy = position.y - eye.y;
+            const dz = position.z - eye.z;
+            targetYaw = Math.atan2(dx, dz);
+            targetPitch = -Math.atan2(dy - next.sprite.height * 0.3, Math.hypot(dx, dz));
         }
         const ease = 0.18;
         camera.yaw += (targetYaw - camera.yaw) * ease;
@@ -319,9 +481,8 @@ export class PlayScreen {
     /**
      * Coaching for the tutorial level: one instruction at a time, each one
      * cleared by the player actually doing it.
-     * @param {number} songTime
      */
-    updateTutorial(songTime) {
+    updateTutorial() {
         const hud = this.app.hud;
         const stage = this.tutorialStage ?? 0;
         if (stage === 0) {
@@ -330,18 +491,18 @@ export class PlayScreen {
                 this.tutorialStage = 1;
             }
         } else if (stage === 1) {
-            hud.setHint('While moving, TAP the opposite key and let go \u2014 that is a counter-strafe');
+            hud.setHint('While moving, TAP the opposite key and let go. That is a counter-strafe');
             if (Number.isFinite(this.body.lastPlantedAt)) {
                 this.tutorialStage = 2;
                 this.app.audio.play('sfx-perfect', { volume: 0.5 });
             }
         } else if (stage === 2) {
-            hud.setHint('Dead stop. Bots will step out behind a lit window \u2014 stand in front of it, stop, and click when the ring closes');
+            hud.setHint('Dead stop. Bots will step out behind a lit window: stand in front of it, stop, and click when the ring closes');
             if (this.scorer.judged > 0) {
                 this.tutorialStage = 3;
             }
         } else if (stage === 3) {
-            hud.setHint('The strip at the bottom shows which window is next and when. Shots spray while you move \u2014 stop first');
+            hud.setHint('The strip at the bottom shows which window is next and when. Shots spray while you move, so stop first');
             if (this.scorer.judged >= 4) {
                 this.tutorialStage = 4;
             }
@@ -351,39 +512,8 @@ export class PlayScreen {
     }
 
     /** @param {number} songTime */
-    spawnUpcomingNotes(songTime) {
-        const lead = 2 * this.conductor.secondsPerBeat;
-        for (const note of this.beatMap.notes) {
-            if (note.resolved || note.spawned || note.time - songTime > lead) {
-                continue;
-            }
-            note.spawned = true;
-            this.targets.spawn(note);
-        }
-    }
-
-    /** @param {number} songTime */
-    expireMissedNotes(songTime) {
-        for (const note of this.beatMap.notes) {
-            if (note.resolved || !note.spawned || songTime <= note.time + this.level.timing.ok) {
-                continue;
-            }
-            const entry = this.targets.entryFor(note);
-            this.resolveNote(note, entry, {
-                grade: GRADE.MISS,
-                timingError: songTime - note.time,
-                speed: this.body.speed,
-                inLane: this.lanes.contains(note.lane, this.body.x),
-                counterStrafed: false,
-                headshot: false,
-                reason: 'No shot',
-            }, null);
-        }
-    }
-
-    /** @param {number} songTime */
     updateCountdown(songTime) {
-        const first = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
+        const first = this.firstNoteTime;
         const until = first - songTime;
         const spb = this.conductor.secondsPerBeat;
         if (until > 0 && until < spb * 4) {
@@ -400,34 +530,46 @@ export class PlayScreen {
     /**
      * @param {{songTime:number, pick:object}} [replayed] during a replay, the
      *   recorded shot time and what the recorded shot found.
+     * @param {number} [inputTimeStamp] the click or key event's timeStamp, so
+     *   a shot handled late (after a frame was drawn) is timed when it happened.
      */
-    fire(replayed) {
+    fire(replayed, inputTimeStamp) {
         if (this.finished || this.paused || !this.conductor) {
             return;
         }
         if (this.replay && !replayed) {
             return; // the player is only watching
         }
-        const songTime = replayed ? replayed.songTime : this.conductor.songPosition;
-        if (songTime < 0) {
-            return;
-        }
         const { camera, audio, hud } = this.app;
+        let songTime;
         let pick;
         let ray;
         if (replayed) {
+            songTime = replayed.songTime;
             pick = replayed.pick;
             ray = this.buildShotRay();
         } else {
-            // Bring the simulation up to the instant of the shot, so the shot
-            // is judged against where the body really is and the replay sees
-            // the same clock the shot was stamped with.
-            this.stepSimulation(0, this.readDirection(), songTime);
-            // Settle the chart to the same instant: a bot whose window has
-            // just closed is gone before the shot, exactly as the server sees it.
-            this.expireMissedNotes(songTime);
+            let target = this.conductor.songPosition;
+            if (target < 0 || this.recorder.tickIndex === 0) {
+                return; // the music has not started: nothing to shoot at yet
+            }
+            if (inputTimeStamp !== undefined) {
+                const lag = (performance.now() - inputTimeStamp) / 1000;
+                if (lag > 0 && lag < MAX_INPUT_LAG) {
+                    target -= lag;
+                }
+            }
+            // Bring the simulation (and the chart) up to the instant of the
+            // shot, and judge it on the tick clock - exactly the time the
+            // server will replay it at.
+            this.stepSimulation(this.readDirection(), target);
+            if (this.finished) {
+                return;
+            }
+            songTime = this.simSongTime;
             ray = this.buildShotRay();
             pick = this.targets.pick(ray);
+            this.recorder.aim(camera.yaw, camera.pitch, true);
             this.recorder.shot(songTime, pick.entry ? pick.entry.note.index : -1, pick.zone, pick.blocked);
         }
         const hitPoint = pick.point ?? ray.origin.add(ray.direction.scale(60));
@@ -451,6 +593,7 @@ export class PlayScreen {
                 grade: GRADE.MISS, reason: 'Too early', timingError: songTime - note.time,
                 speed: this.body.speed, counterStrafed: false, headshot: false, points: 0,
             });
+            this.checkFailure();
             return;
         }
 
@@ -462,8 +605,7 @@ export class PlayScreen {
         if (!note) {
             // A shot with no bot on screen - before the first one, or after
             // the last - is free.  Only spraying between live bots costs.
-            const live = this.beatMap.notes.some((candidate) => candidate.spawned && !candidate.resolved);
-            if (!live) {
+            if (!this.beatMap.hasLiveNote) {
                 return;
             }
             this.scorer.registerWildShot();
@@ -473,6 +615,7 @@ export class PlayScreen {
                 grade: GRADE.MISS, reason: 'Wild shot', timingError: 0,
                 speed: this.body.speed, counterStrafed: false, headshot: false, points: 0,
             });
+            this.checkFailure();
             return;
         }
 
@@ -481,6 +624,7 @@ export class PlayScreen {
             { hit: pick.entry !== null, zone: pick.zone, blocked: pick.blocked },
         );
         this.resolveNote(note, entry, judgement, pick.point);
+        this.checkFailure();
     }
 
     /**
@@ -569,13 +713,19 @@ export class PlayScreen {
             return;
         }
         this.app.pauseOverlay.hidden = true;
-        await this.app.camera.lock();
+        // A replay is watched, not played: no pointer lock and no mouse look.
+        if (!this.replay) {
+            await this.app.camera.lock();
+        }
         await this.app.audio.resume();
-        this.app.camera.lookEnabled = true;
+        this.app.camera.lookEnabled = !this.replay;
         this.paused = false;
     }
 
     restart() {
+        if (this.finished) {
+            return; // the run is over and on its way to the results (and to being saved)
+        }
         if (this.replay) {
             this.app.showReplay(this.chartId, this.replay);
             return;
@@ -602,10 +752,15 @@ export class PlayScreen {
         record.rank = this.scorer.rank;
         record.passed = completed && this.scorer.accuracy >= this.level.passAccuracy;
 
-        const log = this.recorder.toJSON();
-        window.setTimeout(() => {
+        // A replay hands back the log it was playing, so "Watch again" has the shots too.
+        const log = this.replay ?? this.recorder.toJSON();
+        const runToken = this.runToken;
+        this.resultsTimer = window.setTimeout(() => {
+            if (!this.current) {
+                return; // the player already left this screen
+            }
             this.app.camera.unlock();
-            this.app.showResults(record, this.chartId, log, { replay: Boolean(this.replay) });
-        }, 900);
+            this.app.showResults(record, this.chartId, log, { replay: Boolean(this.replay), runToken });
+        }, RESULTS_DELAY_MS);
     }
 }

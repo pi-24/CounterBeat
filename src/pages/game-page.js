@@ -8,7 +8,7 @@
  */
 import { initNavigation } from '../ui/Navigation.js';
 import { GameApp } from '../game/GameApp.js';
-import { LOG_VERSION } from '../game/RunRecorder.js';
+import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
 import { GRADE_LABEL } from '../game/rules/config.js';
 import { settings } from '../game/Settings.js';
@@ -27,17 +27,29 @@ if (!user) {
     guestNotice.hidden = false;
 }
 
-/** The player's runs, cached so the menu can read them synchronously. */
-let runs = user ? await backend.runsForUser(user.id) : [];
+/**
+ * Best score and pass state per chart over every run the player has stored
+ * (not just the recent ones), cached so the menu can read it synchronously.
+ * @type {Map<string, object>}
+ */
+let progress = user ? await loadProgress() : new Map();
 
 /** Guest progress and scores only last as long as the page is open. */
 const guestState = { passed: new Set(), bestByChart: new Map() };
 
+/** @returns {Promise<Map<string, object>>} */
+async function loadProgress() {
+    try {
+        return await backend.progress(user.id);
+    } catch (error) {
+        console.warn('Could not load progress', error);
+        return new Map();
+    }
+}
+
 /** @param {string} chartId */
 function bestOf(chartId) {
-    return runs
-        .filter((run) => run.chartId === chartId && (run.verified !== false || run.kind === 'custom'))
-        .reduce((top, run) => Math.max(top, run.score), 0);
+    return progress.get(chartId)?.bestScore ?? 0;
 }
 
 /** A replay requested in the URL (?replay=<run id>), loaded before boot. */
@@ -48,11 +60,11 @@ async function pendingReplay() {
     }
     try {
         const found = await backend.replay(runId);
-        if (!found || !resolveChart(found.run.chartId) || found.log.version !== LOG_VERSION) {
-            toast.error('That replay is not available any more (it was recorded on an older version).');
+        if (!found || !resolveChart(found.run.chartId) || !REPLAYABLE_VERSIONS.includes(found.log.version)) {
+            toast.error("That replay isn't available. Only each player's best run on a chart keeps its replay.");
             return null;
         }
-        toast.info(`Replay: ${found.run.displayName ?? 'a player'} on ${found.run.levelName} — ${formatScore(found.run.score)}.`);
+        toast.info(`Replay: ${found.run.displayName ?? 'a player'} on ${found.run.levelName}, scoring ${formatScore(found.run.score)}.`);
         return { chartId: found.run.chartId, log: found.log };
     } catch (error) {
         console.warn(error);
@@ -74,14 +86,19 @@ const services = {
         if (!user) {
             return guestState.passed.has(chartId);
         }
-        return runs.some((run) => run.chartId === chartId && run.passed && run.verified !== false);
+        return Boolean(progress.get(chartId)?.passed);
     },
 
     getPersonalBest(chartId) {
         return user ? bestOf(chartId) : (guestState.bestByChart.get(chartId) ?? 0);
     },
 
-    async onRunComplete(record, log) {
+    startRun(chartId) {
+        // Guests' runs are not saved, so they need no token.
+        return user ? backend.startRun(chartId) : null;
+    },
+
+    async onRunComplete(record, log, runToken) {
         if (!user) {
             const previous = guestState.bestByChart.get(record.chartId) ?? 0;
             if (record.score > previous) {
@@ -95,9 +112,14 @@ const services = {
             return { saved: false, personalBest: record.score > previous, score: record.score };
         }
 
-        const result = await backend.submitRun(record, log);
+        const token = runToken ? await runToken : null;
+        const result = await backend.submitRun(record, log, token);
+        if (result.reason === 'signed-out') {
+            toast.error('Your session has expired, so the run was not saved. Log in again to keep saving scores.');
+            return { saved: false, score: record.score, personalBest: false };
+        }
         if (result.rejected) {
-            toast.error(`Run not verified (${result.reason ?? 'replay failed'}) — it will not be ranked.`);
+            toast.error(`Run not verified (${result.reason ?? 'replay failed'}). It will not be ranked.`);
             return { saved: false, rejected: true, reason: result.reason, score: record.score, personalBest: false };
         }
         if (!result.saved) {
@@ -105,7 +127,7 @@ const services = {
             return { saved: false, score: record.score, personalBest: false };
         }
 
-        runs = await backend.runsForUser(user.id);
+        progress = await loadProgress();
         renderPersonalBests();
         if (record.kind === 'custom') {
             toast.success(result.personalBest
@@ -160,17 +182,22 @@ function renderPersonalBests() {
         const item = document.createElement('li');
         item.append(
             el('span', '', track.name),
-            el('span', 'mono', best ? `${formatScore(best)} · ${bestDifficulty.name}` : '—'),
+            el('span', 'mono', best ? `${formatScore(best)} · ${bestDifficulty.name}` : '-'),
         );
         list.append(item);
     }
     personalBests.append(list);
 
-    const best = runs.filter((run) => run.kind === 'track' || run.kind === 'daily')
-        .reduce((top, run) => (top === null || run.accuracy > top.accuracy ? run : top), null);
-    if (best && best.accuracy > 0) {
+    let best = null;
+    for (const entry of progress.values()) {
+        if ((entry.kind === 'track' || entry.kind === 'daily') && (best === null || entry.maxAccuracy > best.maxAccuracy)) {
+            best = entry;
+        }
+    }
+    if (best && best.maxAccuracy > 0) {
+        const name = resolveChart(best.chartId)?.name ?? best.chartId;
         personalBests.append(el('p', 'card__foot',
-            `Best accuracy so far: ${formatAccuracy(best.accuracy)} on ${best.levelName}.`));
+            `Best accuracy so far: ${formatAccuracy(best.maxAccuracy)} on ${name}.`));
     }
 }
 
