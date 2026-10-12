@@ -96,33 +96,43 @@ const PATTERNS = Object.freeze([
     { beats: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5], alt: [0, 0.5, 1, 1.5, 2, 3, 3.5, 3.75] },
 ]);
 
+/**
+ * One movement model for every official difficulty, as in the games this is
+ * for: a CS player moves at the same speed in a pistol round and a final.
+ * Difficulty comes from the chart - lane count and spacing, how tight the
+ * stop zone is, the timing windows and the note density - not from faster
+ * feet.  Full speed in ~0.15 s, a release slides ~0.4 s, a counter-strafe
+ * stops in ~0.08 s.
+ */
+export const MOVEMENT = Object.freeze({ maxSpeed: 600, accel: 11, friction: 5.2, stopSpeed: 190 });
+
 export const DIFFICULTIES = Object.freeze([
     {
         id: 'easy', name: 'Easy', tier: 1, targetNps: 0.9, patterns: [0],
-        lanes: 3, trackScale: 1, laneInset: 0.62,
+        lanes: 3, trackScale: 1, laneInset: 0.66,
         timing: { perfect: 0.065, good: 0.125, ok: 0.190 },
-        movement: { maxSpeed: 390, accel: 8.5, friction: 5.2, stopSpeed: 120 },
+        movement: MOVEMENT,
         passAccuracy: 0.50,
     },
     {
-        id: 'normal', name: 'Normal', tier: 2, targetNps: 2.0, patterns: [1],
-        lanes: 4, trackScale: 0.80, laneInset: 0.55,
+        id: 'normal', name: 'Normal', tier: 2, targetNps: 2.2, patterns: [0, 1],
+        lanes: 4, trackScale: 0.84, laneInset: 0.60,
         timing: { perfect: 0.050, good: 0.100, ok: 0.160 },
-        movement: { maxSpeed: 700, accel: 11, friction: 5.2, stopSpeed: 220 },
+        movement: MOVEMENT,
         passAccuracy: 0.58,
     },
     {
-        id: 'hard', name: 'Hard', tier: 3, targetNps: 2.6, patterns: [1, 2],
-        lanes: 5, trackScale: 0.76, laneInset: 0.50,
+        id: 'hard', name: 'Hard', tier: 3, targetNps: 2.4, patterns: [1, 2],
+        lanes: 5, trackScale: 0.78, laneInset: 0.55,
         timing: { perfect: 0.040, good: 0.080, ok: 0.130 },
-        movement: { maxSpeed: 800, accel: 11, friction: 5.5, stopSpeed: 255 },
+        movement: MOVEMENT,
         passAccuracy: 0.64,
     },
     {
-        id: 'expert', name: 'Expert', tier: 4, targetNps: 3.2, patterns: [2, 3],
-        lanes: 5, trackScale: 0.66, laneInset: 0.46,
+        id: 'expert', name: 'Expert', tier: 4, targetNps: 2.6, patterns: [2, 3],
+        lanes: 5, trackScale: 0.70, laneInset: 0.50,
         timing: { perfect: 0.034, good: 0.068, ok: 0.110 },
-        movement: { maxSpeed: 900, accel: 12, friction: 5.8, stopSpeed: 285 },
+        movement: MOVEMENT,
         passAccuracy: 0.70,
     },
 ]);
@@ -139,21 +149,22 @@ export function getDifficulty(id) {
  * @returns {number[][]} the primary pattern and its variation.
  */
 export function patternsFor(bpm, targetNps, allowed = [0, 1, 2, 3]) {
+    // The densest allowed pattern that stays within the target (with a
+    // little headroom), so a fast track thins out rather than turning into
+    // a wall of doubles; the sparsest allowed pattern when none fits.
     let best = PATTERNS[allowed[0]];
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const pattern of allowed.map((i) => PATTERNS[i])) {
+    for (const index of allowed) {
+        const pattern = PATTERNS[index];
         const nps = pattern.beats.length * bpm / 240;
-        const distance = Math.abs(nps - targetNps);
-        if (distance < bestDistance) {
+        if (nps <= targetNps * 1.15) {
             best = pattern;
-            bestDistance = distance;
         }
     }
     return [best.beats, best.alt];
 }
 
 /** Lanes never get narrower than this, whatever the tempo asks for. */
-const MIN_LANE_WIDTH = 96;
+const MIN_LANE_WIDTH = 84;
 
 /**
  * How much of the track the lanes occupy, so that a lane change fits in the
@@ -207,7 +218,7 @@ const TUTORIAL = Object.freeze({
     laneInset: 0.70,
     patterns: [[0]],
     timing: { perfect: 0.080, good: 0.140, ok: 0.220 },
-    movement: { maxSpeed: 390, accel: 8.5, friction: 5.2, stopSpeed: 120 },
+    movement: MOVEMENT,
     passAccuracy: 0,
     seed: 707,
     arena: { ...ARENAS.range, accent: [0.49, 1.0, 0.73] },

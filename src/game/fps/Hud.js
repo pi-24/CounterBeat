@@ -203,6 +203,18 @@ export class Hud {
     }
 
     /** @param {number} progress 0..1 through the current beat */
+    /**
+     * Shows or hides the optional HUD elements from the settings.
+     * @param {import('../Settings.js').Settings} settings
+     */
+    applyVisibility(settings) {
+        this.beatRing.setAttribute('visibility', settings.get('beatRing') ? 'visible' : 'hidden');
+        const highway = this.find('noteHighway');
+        if (highway) {
+            highway.hidden = !settings.get('noteHighway');
+        }
+    }
+
     setBeat(progress) {
         const radius = 11 + 28 * (1 - progress);
         this.beatRing.setAttribute('r', String(radius));

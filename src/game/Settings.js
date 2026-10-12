@@ -145,6 +145,12 @@ export class Settings {
         if ('viewBob' in changes) {
             out.viewBob = Boolean(changes.viewBob);
         }
+        if ('beatRing' in changes) {
+            out.beatRing = Boolean(changes.beatRing);
+        }
+        if ('noteHighway' in changes) {
+            out.noteHighway = Boolean(changes.noteHighway);
+        }
         if ('audioOffset' in changes) {
             out.audioOffset = Settings.clamp(Number(changes.audioOffset), -0.25, 0.25);
         }

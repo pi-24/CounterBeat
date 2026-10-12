@@ -114,10 +114,13 @@ full speed (a 16 ms tap is a 2–3 px nudge that friction eats in ~80 ms, a
 hold reaches full speed in ~0.15 s); the opposite key is the same
 acceleration pointed backwards on top of friction, which is the
 counter-strafe — about 0.08 s to a dead stop from full speed against ~0.4 s
-for a release. Each difficulty sets `maxSpeed`, `accel`, `friction` and
-`stopSpeed`. Lane spacing is derived per chart from the tempo and the
-movement (`trackScaleFor`), so a lane change always fits in the pattern's
-longest gap and faster tracks pull the windows closer together.
+for a release. One `MOVEMENT` serves every official difficulty, as in the
+games this is for - difficulty comes from the chart (lane count and spacing,
+stop-zone width, timing windows, note density), not from faster feet. Lane
+spacing is derived per chart from the tempo and the movement
+(`trackScaleFor`), so a lane change always fits in the pattern's longest gap
+and faster tracks pull the windows closer together; dense patterns thin out
+on fast tracks for the same reason.
 
 Changing anything in this file changes what every chart demands and how
 every stored replay plays back, so bump `LOG_VERSION` in `RunRecorder.js`
@@ -228,6 +231,9 @@ separate chunk, so builds without it ship nothing extra. Errors are tagged
 with the page and backend kind; no personal data is sent.
 
 ## Audio-offset calibration
+
+Settings also has toggles for the beat ring around the crosshair and the
+upcoming-beats strip, for players who want a cleaner screen.
 
 Settings → Timing → **Calibrate**. A 120 BPM click plays; tap SPACE or click
 on each click for sixteen beats. The median tap offset is stored as

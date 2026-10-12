@@ -85,6 +85,7 @@ export class PlayScreen {
         hud.setLevel(this.replay ? `REPLAY · ${this.level.name}` : this.level.name, this.level.bpm);
         hud.buildLanes(this.lanes.count);
         hud.applyCrosshair(settings);
+        hud.applyVisibility(settings);
         hud.setFocus(1);
         hud.setScore(0, 0, 1);
         hud.setAccuracy(0);
@@ -92,7 +93,10 @@ export class PlayScreen {
         hud.setHint('');
         hud.buildHighway(this.lanes.count);
 
-        this.unsubscribe.push(settings.onChange(() => hud.applyCrosshair(settings)));
+        this.unsubscribe.push(settings.onChange(() => {
+            hud.applyCrosshair(settings);
+            hud.applyVisibility(settings);
+        }));
         this.unsubscribe.push(camera.onLockChange((locked) => {
             if (!locked && !this.finished && !this.paused && !this.replay) {
                 this.pause();

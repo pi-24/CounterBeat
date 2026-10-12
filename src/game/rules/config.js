@@ -128,5 +128,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     crosshairThickness: 2,
     crosshairDot: false,
     viewBob: true,
+    beatRing: true,         // the pulsing circle around the crosshair
+    noteHighway: true,      // the upcoming-beats strip at the bottom of the HUD
     audioOffset: 0,         // seconds; measured by the calibration screen
 });
