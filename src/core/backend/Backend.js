@@ -53,7 +53,6 @@
  * @property {(userId:string, chartId?:string) => Promise<object|null>} personalBest
  * @property {(chartFilter:string|'best') => Promise<object[]>} leaderboard  one row per player, a chart id or 'best'
  * @property {(runId:string) => Promise<{run:object, log:object}|null>} replay  a stored run with its input log
- * @property {() => Promise<{players:number,runs:number,topScore:number,topPlayer:string,averageScore:number}>} summary
  * @property {(userId:string) => Promise<void>} clearRuns
  * @property {() => Promise<object|null>} loadSettings
  * @property {(values:object) => Promise<void>} saveSettings

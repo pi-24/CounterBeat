@@ -340,23 +340,6 @@ export class SupabaseBackend {
         };
     }
 
-    async summary() {
-        const [{ count: players }, { count: runs }, { data: best }] = await Promise.all([
-            this.client.from('profiles').select('id', { count: 'exact', head: true }),
-            this.client.from('runs').select('id', { count: 'exact', head: true }).eq('verified', true).in('kind', ['track', 'daily']),
-            this.client.from('runs').select('score, profiles(display_name)')
-                .eq('verified', true).in('kind', ['track', 'daily']).order('score', { ascending: false }).limit(1),
-        ]);
-        const top = best && best[0];
-        return {
-            players: players ?? 0,
-            runs: runs ?? 0,
-            topScore: top ? top.score : 0,
-            topPlayer: top && top.profiles ? top.profiles.display_name : '-',
-            averageScore: 0,
-        };
-    }
-
     async clearRuns(userId) {
         await this.client.from('runs').delete().eq('user_id', userId);
     }

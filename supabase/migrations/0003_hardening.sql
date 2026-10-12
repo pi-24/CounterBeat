@@ -19,6 +19,39 @@ create table if not exists public.run_tokens (
 create index if not exists run_tokens_user_issued on public.run_tokens (user_id, issued_at desc);
 alter table public.run_tokens enable row level security;
 
+-- Issues a token unless the player already started p_max runs in the last
+-- ten minutes; returns the token id, or null when over the limit.  The
+-- per-player advisory lock makes the count and the insert one step, so
+-- requests fired at the same moment cannot all slip under the limit.
+create or replace function public.issue_run_token(p_user uuid, p_chart text, p_max int)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    recent int;
+    issued uuid;
+begin
+    perform pg_advisory_xact_lock(hashtextextended('run_tokens:' || p_user::text, 0));
+    select count(*) into recent
+      from public.run_tokens
+     where user_id = p_user
+       and issued_at >= now() - interval '10 minutes';
+    if recent >= p_max then
+        return null;
+    end if;
+    insert into public.run_tokens (user_id, chart_id)
+    values (p_user, p_chart)
+    returning id into issued;
+    return issued;
+end;
+$$;
+
+-- It takes any user id, so only the edge function (service role) may call it.
+revoke execute on function public.issue_run_token(uuid, text, int) from public, anon, authenticated;
+grant execute on function public.issue_run_token(uuid, text, int) to service_role;
+
 -- ------------------------------------------------------- log fingerprints
 -- What a run did (which bot each shot went to, where, and when), hashed by
 -- submit-run.  Unique, so a replay log copied from the rankings cannot be

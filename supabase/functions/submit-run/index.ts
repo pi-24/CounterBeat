@@ -30,14 +30,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { resolveChart, dailyDate } from '../_shared/rules/charts.js';
 import { validateRun, logDuration } from '../_shared/rules/validateRun.js';
+import { TIMING_BUCKETS } from '../_shared/rules/Scorer.js';
 
 /** A replay log is a few thousand numbers; anything far bigger is not one (60,000 ticks fit). */
 const MAX_LOG_BYTES = 800_000;
 /** Custom-song charts the server cannot rebuild: stored as unranked bests. */
 const CUSTOM_RECORD_KEYS = ['score', 'accuracy', 'bestCombo', 'counterStrafes', 'headshots', 'perfect',
     'good', 'loose', 'missed', 'notes', 'completed', 'passed', 'rank'];
-/** Shape of Scorer.timingStats(). */
-const TIMING_BUCKETS = 20;
 /** A token is good for this long after it is issued. */
 const TOKEN_LIFETIME_MS = 3 * 60 * 60 * 1000;
 /** Slack between the run's simulated length and the real time since its token was issued. */
@@ -146,26 +145,22 @@ Deno.serve(async (request) => {
         if (level.kind === 'daily' && !dailyIsOpen(level.date as string)) {
             return json({ error: 'that daily challenge has closed' }, 400);
         }
-        const now = Date.now();
-        const { count } = await admin.from('run_tokens')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .gte('issued_at', new Date(now - 10 * 60 * 1000).toISOString());
-        if ((count ?? 0) >= MAX_STARTS_PER_10_MIN) {
-            return json({ error: 'too many runs started; wait a few minutes' }, 429);
-        }
         // Housekeeping: this player's tokens from abandoned runs a day ago.
         await admin.from('run_tokens').delete()
             .eq('user_id', user.id)
-            .lt('issued_at', new Date(now - 24 * 60 * 60 * 1000).toISOString());
-        const { data: issued, error } = await admin.from('run_tokens')
-            .insert({ user_id: user.id, chart_id: level.chartId })
-            .select('id')
-            .single();
+            .lt('issued_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+        // Count and insert in one locked step (issue_run_token in migration
+        // 0003), so simultaneous requests cannot all slip under the limit.
+        const { data: issued, error } = await admin.rpc('issue_run_token', {
+            p_user: user.id, p_chart: level.chartId, p_max: MAX_STARTS_PER_10_MIN,
+        });
         if (error) {
             return json({ error: error.message }, 500);
         }
-        return json({ token: issued.id });
+        if (!issued) {
+            return json({ error: 'too many runs started; wait a few minutes' }, 429);
+        }
+        return json({ token: issued });
     }
 
     // ---- submit -----------------------------------------------------------

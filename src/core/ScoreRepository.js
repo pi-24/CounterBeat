@@ -65,21 +65,26 @@ export class ScoreRepository {
     }
 
     /**
-     * Trims the run list to `limit` without losing progress: every player's
-     * best run and first pass on each chart always survive (they decide
-     * personal bests and unlocks); the rest is filled with the newest runs.
+     * Trims the run list to at most `limit` runs without losing progress:
+     * each player's best run and first pass on every official track chart
+     * survive first (they decide unlocks and the per-track bests), then the
+     * newest runs fill what is left.  Only the official charts are protected
+     * - there are a fixed 24 of them, while the daily challenge is a new
+     * chart every day and would otherwise grow the list forever.
      * @param {object[]} scores oldest first
      * @param {number} limit
-     * @returns {object[]} oldest first
+     * @returns {object[]} oldest first, never longer than `limit`
      */
     static prune(scores, limit) {
         if (scores.length <= limit) {
             return scores;
         }
-        const keep = new Set();
         const best = new Map();
         const passed = new Map();
         for (const run of scores) {
+            if (!String(run.chartId).startsWith('t:')) {
+                continue;
+            }
             const key = `${run.userId}|${run.chartId}`;
             const top = best.get(key);
             if (!top || run.score > top.score) {
@@ -89,8 +94,15 @@ export class ScoreRepository {
                 passed.set(key, run);
             }
         }
-        for (const run of [...best.values(), ...passed.values()]) {
-            keep.add(run.id);
+        const protectedIds = new Set([...best.values(), ...passed.values()].map((run) => run.id));
+
+        // Protected runs first (newest first, should even they outgrow the
+        // limit), then the newest of everything else up to the limit.
+        const keep = new Set();
+        for (let i = scores.length - 1; i >= 0 && keep.size < limit; i -= 1) {
+            if (protectedIds.has(scores[i].id)) {
+                keep.add(scores[i].id);
+            }
         }
         for (let i = scores.length - 1; i >= 0 && keep.size < limit; i -= 1) {
             keep.add(scores[i].id);
@@ -267,20 +279,6 @@ export class ScoreRepository {
     /** @param {object} run @returns {boolean} whether it belongs on the rankings. */
     static isRanked(run) {
         return run.verified !== false && run.kind !== 'custom' && run.kind !== 'tutorial' && run.levelId > 0;
-    }
-
-    /** Summary counters used by the rankings page header. */
-    summary(users) {
-        const runs = this.all().filter(ScoreRepository.isRanked);
-        const totalScore = runs.reduce((sum, run) => sum + run.score, 0);
-        const bestRun = runs.reduce((best, run) => (best === null || run.score > best.score ? run : best), null);
-        return {
-            players: users.length,
-            runs: runs.length,
-            topScore: bestRun ? bestRun.score : 0,
-            topPlayer: bestRun ? bestRun.displayName : '-',
-            averageScore: runs.length ? Math.round(totalScore / runs.length) : 0,
-        };
     }
 }
 

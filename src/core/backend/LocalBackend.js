@@ -141,10 +141,6 @@ export class LocalBackend {
         return run && log ? { run, log } : null;
     }
 
-    async summary() {
-        return this.scores.summary(this.users.all());
-    }
-
     async clearRuns(userId) {
         this.scores.removeForUser(userId);
     }
