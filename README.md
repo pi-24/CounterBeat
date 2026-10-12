@@ -7,7 +7,7 @@ beat. Score comes from timing, how planted you were when you fired, and aim
 
 Six original tracks (90–170 BPM) at four difficulties each, a daily
 challenge with its own leaderboard, your own songs charted automatically,
-replays of any ranked run, and a timing profile on your page.
+a replay of every player's best run, and a timing profile on your page.
 
 - Engine: [Babylon.js](https://www.babylonjs.com/) (tree-shaken `@babylonjs/core`), own Web Audio engine
 - Build: [Vite](https://vite.dev/) multi-page site
@@ -95,10 +95,13 @@ so it cannot verify the chart, and the database constraint
 `runs_custom_unverified` keeps them off the rankings. ½× / 2× and ±20 ms
 buttons fix the detector when it is wrong.
 
-**Replays:** every stored run keeps its input log, and anyone can watch a
-run from the rankings or a profile (`game.html?replay=<run id>`). The
-replay drives the same simulation the validator uses, so it reproduces the
-score exactly; the camera auto-aims at the next bot.
+**Replays:** each player's best run on each chart keeps its input log
+(older and lower runs drop theirs), and anyone can watch it from the
+rankings or a profile (`game.html?replay=<run id>`). The replay drives the
+same simulation the validator uses, so it reproduces the score exactly,
+and the camera follows the aim the player recorded (older logs without it
+auto-aim at the next bot). Space, Esc or P pause a replay; the up and down
+arrows play it at 1×, 0.5× or 0.25×.
 
 **Timing profile:** each run records a histogram of hit errors; the profile
 page sums them and reports early/late bias, perfect, counter-strafe and
@@ -186,8 +189,11 @@ anything in `src/game/rules/`.
    service role can), and the `leaderboard(chart_filter)` and
    `run_replay(id)` functions. `0003_hardening.sql` adds the `run_tokens`
    table, the unique log fingerprint on `runs`, the `player_progress(player)`
-   function (bests and clears over every run, not just recent ones) and a
-   sign-up trigger that cleans display names instead of failing.
+   function (bests and clears over every run, not just recent ones), a
+   sign-up trigger that cleans display names instead of failing, and
+   `keep_best_replay` so only each player's best run per chart keeps its
+   replay. Note: applying it also deletes the stored replay logs of runs
+   that are not their player's best (the runs and scores stay).
 
 3. Deploy the run-verification function:
 
@@ -271,6 +277,8 @@ measure +100–200 ms.
 | Esc | pause |
 | T | start the tutorial from the menu |
 | Q | leave a replay |
+| Space / Esc / P | pause or resume a replay |
+| ↑ / ↓ | replay speed (1×, 0.5×, 0.25×) |
 
 Counter-strafe (tap the opposite key for an instant) to stop dead: a shot
 while planted is worth far more than one while sliding, and the spread cone

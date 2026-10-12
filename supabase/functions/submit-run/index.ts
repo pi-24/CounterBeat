@@ -90,6 +90,21 @@ async function fingerprint(chartId: string, shots: unknown[]): Promise<string | 
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Only a player's best run on each chart keeps its replay: every run is
+ * stored with its log, then this clears the log from all of the player's
+ * other runs on that chart (keep_best_replay in migration 0003).  A failure
+ * here only leaves an extra replay behind, so it does not fail the run.
+ */
+async function keepBestReplay(
+    admin: ReturnType<typeof createClient>, userId: string, chartId: string,
+): Promise<void> {
+    const { error } = await admin.rpc('keep_best_replay', { p_user: userId, p_chart: chartId });
+    if (error) {
+        console.warn('keep_best_replay failed', error.message);
+    }
+}
+
 const CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -215,6 +230,7 @@ Deno.serve(async (request) => {
         if (error) {
             return json({ error: error.message }, 500);
         }
+        await keepBestReplay(admin, user.id, chartId.slice(0, 120));
         return json({ accepted: true, mismatch: false, run: inserted, record: clean });
     }
 
@@ -293,5 +309,6 @@ Deno.serve(async (request) => {
         }
         return json({ error: error.message }, 500);
     }
+    await keepBestReplay(admin, user.id, level.chartId);
     return json({ accepted: true, mismatch: verdict.mismatch, run: inserted, record: v });
 });

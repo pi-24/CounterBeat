@@ -5,8 +5,8 @@
  * storage.  Every completed run is appended as a JSON record; the rankings
  * page derives each player's top score from this list rather than storing a
  * second, duplicated table.  Replay logs are heavier (a few thousand tick
- * lengths), so only a bounded number are kept: every personal best plus the
- * most recent runs.
+ * lengths and the recorded aim), so only each player's best run on each
+ * chart keeps one.
  *
  * Record shape (what Scorer.toRecord produces, plus ownership):
  * {
@@ -23,7 +23,6 @@ import { store } from './Storage.js';
 const KEY = 'scores';
 const LOG_KEY = 'logs';
 const MAX_RECORDS = 500;
-const MAX_RECENT_LOGS = 15;
 
 export class ScoreRepository {
     /** @param {import('./Storage.js').Storage} storage */
@@ -153,40 +152,42 @@ export class ScoreRepository {
     }
 
     /**
-     * Keeps the log for this run, then prunes: a log survives while its run
-     * is a personal best on its chart or one of the most recent runs.
+     * Only a player's best run on each chart keeps its replay: store this
+     * run's log, then drop every log that no longer belongs to a best (on a
+     * tie the earlier run stays the best, as on the rankings).
      * @param {object} record
      * @param {object} log
      */
     storeLog(record, log) {
         const logs = this.storage.read(LOG_KEY, {});
         logs[record.id] = log;
-        const runs = this.all();
-        const keep = new Set();
-        const byChart = new Map();
-        for (const run of runs) {
-            const key = `${run.userId}|${run.chartId}`;
-            const best = byChart.get(key);
-            if (!best || run.score > best.score) {
-                byChart.set(key, run);
-            }
-        }
-        for (const best of byChart.values()) {
-            keep.add(best.id);
-        }
-        for (const run of runs.slice(-MAX_RECENT_LOGS)) {
-            keep.add(run.id);
-        }
+        const keep = ScoreRepository.bestRunIds(this.all());
         for (const id of Object.keys(logs)) {
             if (!keep.has(id)) {
                 delete logs[id];
             }
         }
         // Storage.write reports a full quota by returning false rather than
-        // throwing: keep just this run's log and try once more.
-        if (!this.storage.write(LOG_KEY, logs)) {
+        // throwing: keep just this run's log (if it is a best) and try again.
+        if (!this.storage.write(LOG_KEY, logs) && keep.has(record.id)) {
             this.storage.write(LOG_KEY, { [record.id]: log });
         }
+    }
+
+    /**
+     * @param {object[]} runs oldest first
+     * @returns {Set<string>} the id of each player's best run on each chart
+     */
+    static bestRunIds(runs) {
+        const best = new Map();
+        for (const run of runs) {
+            const key = `${run.userId}|${run.chartId}`;
+            const top = best.get(key);
+            if (!top || run.score > top.score) {
+                best.set(key, run);
+            }
+        }
+        return new Set([...best.values()].map((run) => run.id));
     }
 
     /** @returns {Set<string>} ids of the runs that still have a replay log (one read, not one per run). */

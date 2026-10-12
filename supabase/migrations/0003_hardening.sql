@@ -60,6 +60,48 @@ alter table public.runs add column if not exists log_fingerprint text;
 create unique index if not exists runs_log_fingerprint
     on public.runs (log_fingerprint) where log_fingerprint is not null;
 
+-- ------------------------------------------------------- best-run replays
+-- Only a player's best run on each chart keeps its replay log.  submit-run
+-- stores every run with its log and then calls this, which clears the log
+-- from the player's other runs on that chart (on a tie the earlier run stays
+-- the best, matching the rankings).  The fingerprint stays on every run, so
+-- a copied log is still refused after its replay is gone.
+create or replace function public.keep_best_replay(p_user uuid, p_chart text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+    update public.runs
+       set log = null
+     where user_id = p_user
+       and chart_id = p_chart
+       and log is not null
+       and id <> (
+           select b.id from public.runs b
+            where b.user_id = p_user and b.chart_id = p_chart
+            order by b.score desc, b.played_at asc
+            limit 1
+       );
+$$;
+
+-- It takes any user id, so only the edge function (service role) may call it.
+revoke execute on function public.keep_best_replay(uuid, text) from public, anon, authenticated;
+grant execute on function public.keep_best_replay(uuid, text) to service_role;
+
+-- One-off: apply the same rule to the runs already stored.  This permanently
+-- deletes the replay logs of runs that are not their player's best on that
+-- chart (the runs and scores themselves are kept).
+update public.runs r
+   set log = null
+ where r.log is not null
+   and exists (
+       select 1 from public.runs b
+        where b.user_id = r.user_id
+          and b.chart_id = r.chart_id
+          and (b.score > r.score or (b.score = r.score and b.played_at < r.played_at))
+   );
+
 -- ------------------------------------------------------------- progress
 -- Best score, accuracy and pass state per chart for one player, over all of
 -- their runs (the client only lists the most recent 200).  Unverified runs

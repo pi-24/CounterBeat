@@ -24,7 +24,7 @@ import { Conductor } from '../rules/Conductor.js';
 import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
 import { Judge } from '../rules/Judge.js';
 import { Scorer } from '../rules/Scorer.js';
-import { RunRecorder, LOG_VERSION } from '../RunRecorder.js';
+import { RunRecorder, LOG_VERSION, readLook } from '../RunRecorder.js';
 import { Arena } from '../fps/Arena.js';
 import { TargetField } from '../fps/TargetField.js';
 import { Viewmodel } from '../fps/Viewmodel.js';
@@ -43,6 +43,8 @@ const MAX_INPUT_LAG = 0.1;
 const PREPARE_TIMEOUT_MS = 1500;
 /** Pause between the last bot and the results screen. */
 const RESULTS_DELAY_MS = 900;
+/** Replay playback speeds, slowest first. */
+const REPLAY_SPEEDS = [0.25, 0.5, 1];
 
 export class PlayScreen {
     /**
@@ -61,6 +63,11 @@ export class PlayScreen {
         this.replayCursor = 0;
         this.replayInput = 0;
         this.replayShots = 0;
+        /** The replay's recorded aim (null for logs from before it was recorded). */
+        this.replayLook = this.replay ? readLook(this.replay) : null;
+        this.replayLookCursor = 0;
+        /** Replay playback speed (REPLAY_SPEEDS). */
+        this.replaySpeed = 1;
 
         this.finished = false;
         this.paused = false;
@@ -175,7 +182,7 @@ export class PlayScreen {
 
         if (this.replay) {
             camera.lookEnabled = false;
-            hud.setHint('Watching a replay. Press Q to leave.');
+            this.showReplayHint();
         } else {
             await camera.lock();
         }
@@ -294,6 +301,8 @@ export class PlayScreen {
             // Use the rounded tick the recorder stored, so client and replay agree bit for bit.
             const stored = this.recorder.ticks[this.recorder.ticks.length - 1] / 1000;
             this.body.update(stored, this.clockMs);
+            // Where the player was looking, for the replay.
+            this.recorder.aim(this.app.camera.yaw, this.app.camera.pitch);
             this.simSongTime = this.recorder.startSongTime + this.clockMs / 1000;
             this.advanceChart(this.simSongTime);
             remaining = songTime - this.simSongTime;
@@ -377,14 +386,74 @@ export class PlayScreen {
             this.replayCursor += 1;
             steps += 1;
         }
-        this.aimReplayCamera();
+        if (this.replayLook) {
+            this.applyRecordedLook(this.replayCursor - 1);
+        } else {
+            this.aimReplayCamera();
+        }
         if (this.replayCursor >= ticks.length && !this.finished) {
             // The log ran out: the recorded run ended here.
             this.finish(this.beatMap.notes.every((note) => note.resolved));
         }
     }
 
-    /** Points the ghost's camera at the bot it is about to deal with. */
+    /**
+     * Turns the replay camera to where the player was looking at a tick,
+     * blending between the recorded samples either side of it.
+     * @param {number} tick
+     */
+    applyRecordedLook(tick) {
+        const { ticks, yaw, pitch } = this.replayLook;
+        let i = this.replayLookCursor;
+        while (i + 1 < ticks.length && ticks[i + 1] <= tick) {
+            i += 1;
+        }
+        this.replayLookCursor = i;
+        const camera = this.app.camera;
+        if (tick <= ticks[i] || i + 1 >= ticks.length) {
+            camera.yaw = yaw[i];
+            camera.pitch = pitch[i];
+            return;
+        }
+        const t = (tick - ticks[i]) / (ticks[i + 1] - ticks[i]);
+        camera.yaw = yaw[i] + (yaw[i + 1] - yaw[i]) * t;
+        camera.pitch = pitch[i] + (pitch[i + 1] - pitch[i]) * t;
+    }
+
+    /** The replay's controls, and its speed when it is not normal. */
+    showReplayHint() {
+        const speed = this.replaySpeed === 1 ? '' : ` · ${this.replaySpeed}×`;
+        this.app.hud.setHint(`Replay${speed} · Space pause · ↑↓ speed · Q leave`);
+    }
+
+    /** Space, Esc or P during a replay. */
+    togglePause() {
+        if (this.paused) {
+            this.resume();
+        } else {
+            this.pause();
+        }
+    }
+
+    /**
+     * Steps the replay speed through REPLAY_SPEEDS.
+     * @param {number} step +1 faster, -1 slower
+     */
+    changeReplaySpeed(step) {
+        if (!this.replay || this.finished) {
+            return;
+        }
+        const index = REPLAY_SPEEDS.indexOf(this.replaySpeed);
+        const next = REPLAY_SPEEDS[Math.max(0, Math.min(REPLAY_SPEEDS.length - 1, index + step))];
+        if (next === this.replaySpeed) {
+            return;
+        }
+        this.replaySpeed = next;
+        this.app.audio.setMusicRate(next);
+        this.showReplayHint();
+    }
+
+    /** Points the ghost's camera at the bot it is about to deal with (replays without recorded aim). */
     aimReplayCamera() {
         const camera = this.app.camera;
         let next = null;
@@ -500,6 +569,7 @@ export class PlayScreen {
             songTime = this.simSongTime;
             ray = this.buildShotRay();
             pick = this.targets.pick(ray);
+            this.recorder.aim(camera.yaw, camera.pitch, true);
             this.recorder.shot(songTime, pick.entry ? pick.entry.note.index : -1, pick.zone, pick.blocked);
         }
         const hitPoint = pick.point ?? ray.origin.add(ray.direction.scale(60));

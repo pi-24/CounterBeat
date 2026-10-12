@@ -24,6 +24,10 @@ export class AudioEngine {
         this.musicSource = null;
         this.musicStartedAt = 0;
         this.musicKey = null;
+        /** Playback rate of the current track, and where its position was last anchored. */
+        this.musicRate = 1;
+        this.musicAnchorClock = 0;
+        this.musicAnchorPosition = 0;
 
         /** Smoothed context time (see clockTime) and the wall time it was taken at. */
         this.clockEstimate = 0;
@@ -257,6 +261,28 @@ export class AudioEngine {
         this.musicSource = source;
         this.musicStartedAt = startAt;
         this.musicKey = key;
+        // The song position is measured from an anchor so the playback rate
+        // can change mid-track (slow-motion replays) without a jump.
+        this.musicRate = 1;
+        this.musicAnchorClock = startAt;
+        this.musicAnchorPosition = 0;
+    }
+
+    /**
+     * Plays the current track faster or slower (1 = normal).  The song
+     * position keeps counting from where it is, at the new rate.  The pitch
+     * moves with the speed, like a slowed-down tape.
+     * @param {number} rate
+     */
+    setMusicRate(rate) {
+        if (!this.musicSource || !this.context || !(rate > 0)) {
+            return;
+        }
+        const now = this.clockTime();
+        this.musicAnchorPosition += (now - this.musicAnchorClock) * this.musicRate;
+        this.musicAnchorClock = now;
+        this.musicRate = rate;
+        this.musicSource.playbackRate.setValueAtTime(rate, this.context.currentTime);
     }
 
     stopMusic() {
@@ -304,7 +330,7 @@ export class AudioEngine {
         if (!this.musicSource || !this.context) {
             return 0;
         }
-        return this.clockTime() - this.musicStartedAt;
+        return this.musicAnchorPosition + (this.clockTime() - this.musicAnchorClock) * this.musicRate;
     }
 
     /** @returns {boolean} */

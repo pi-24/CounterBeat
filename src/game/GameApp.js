@@ -227,6 +227,18 @@ export class GameApp {
                 return;
             }
             const play = this.play;
+            // A replay is watched, not played: Space, Esc and P pause it,
+            // the up and down arrows change its speed.
+            if (play && play.replay) {
+                if (code === 'Space' || code === 'Escape' || code === 'KeyP') {
+                    play.togglePause();
+                    return;
+                }
+                if (code === 'ArrowUp' || code === 'ArrowDown') {
+                    play.changeReplaySpeed(code === 'ArrowUp' ? 1 : -1);
+                    return;
+                }
+            }
             if (code === 'Space' && play && !play.paused) {
                 play.fire(undefined, event.timeStamp);
             } else if (code === 'KeyR' && play) {

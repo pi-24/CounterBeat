@@ -13,9 +13,13 @@
  * only reaches the DOM when the value actually changed: an unchanged
  * attribute or class still costs a style recalculation if it is written.
  */
-import { GRADE_LABEL } from '../rules/config.js';
+import { APPROACH_BEATS, GRADE_LABEL } from '../rules/config.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+/** How far ahead the note strip shows, in beats (bots appear APPROACH_BEATS ahead). */
+const HIGHWAY_BEATS = 4;
+/** Height of the strip in its SVG viewBox units. */
+const HIGHWAY_HEIGHT = 110;
 
 /** Last value written per element and attribute, so repeats are skipped. */
 const written = new WeakMap();
@@ -133,6 +137,24 @@ export class Hud {
             this.highway.append(line);
             this.highwayLines.push(line);
         }
+
+        // The strip looks further ahead than bots appear.  This line marks
+        // the moment a bot steps out: a dot crossing it turns "out" at the
+        // same instant its bot appears behind the window.
+        const spawnY = String(HIGHWAY_HEIGHT - (APPROACH_BEATS / HIGHWAY_BEATS) * HIGHWAY_HEIGHT);
+        const spawnLine = document.createElementNS(SVG_NS, 'line');
+        spawnLine.setAttribute('x1', '0');
+        spawnLine.setAttribute('x2', '600');
+        spawnLine.setAttribute('y1', spawnY);
+        spawnLine.setAttribute('y2', spawnY);
+        spawnLine.setAttribute('class', 'hud__highway-spawn');
+        const spawnLabel = document.createElementNS(SVG_NS, 'text');
+        spawnLabel.setAttribute('x', '596');
+        spawnLabel.setAttribute('y', String(Number(spawnY) - 4));
+        spawnLabel.setAttribute('text-anchor', 'end');
+        spawnLabel.setAttribute('class', 'hud__highway-spawn-label');
+        spawnLabel.textContent = 'bots step out';
+        this.highway.append(spawnLine, spawnLabel);
     }
 
     /**
@@ -142,8 +164,8 @@ export class Hud {
      * @param {number} [fromIndex] the earliest note that can still be unresolved
      */
     updateHighway(notes, songTime, secondsPerBeat, fromIndex = 0) {
-        const lookahead = 4 * secondsPerBeat;
-        const height = 110;
+        const lookahead = HIGHWAY_BEATS * secondsPerBeat;
+        const height = HIGHWAY_HEIGHT;
         const slot = 600 / this.highwayLanes;
 
         // Beat grid lines scroll down with the music.
@@ -184,7 +206,8 @@ export class Hud {
             }
             const y = height - (Math.max(0, remaining) / lookahead) * height;
             write(node, 'cy', y.toFixed(1));
-            write(node, 'class', first ? 'hud__highway-note hud__highway-note--next' : 'hud__highway-note');
+            // "is-out" once the note's bot has stepped out (it crossed the spawn line).
+            write(node, 'class', `hud__highway-note${note.spawned ? ' is-out' : ''}${first ? ' hud__highway-note--next' : ''}`);
             first = false;
         }
     }

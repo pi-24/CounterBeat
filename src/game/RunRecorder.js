@@ -23,6 +23,9 @@ export { LOG_VERSION };
 /** Log versions the replay viewer can still play back (3 = before tick-clock judging). */
 export const REPLAYABLE_VERSIONS = Object.freeze([3, LOG_VERSION]);
 
+/** Aim is sampled at most this often (~125 Hz), so a 66 s run adds well under 150 KB. */
+const LOOK_INTERVAL_MS = 8;
+
 /** Hit zones packed as small integers. */
 export const ZONE_CODE = Object.freeze({ none: 0, body: 1, head: 2 });
 
@@ -42,10 +45,50 @@ export class RunRecorder {
         /** @type {Array<[number, number, number, number, number]>}
          *  [tickIndex, songTimeMs, noteIndex or -1, zoneCode, blocked 0/1] */
         this.shots = [];
+        /**
+         * Where the player was looking, for replays only (the validator
+         * ignores it): flat triples [tickIndex, yaw, pitch], angles in
+         * milliradians, written when the view moves.
+         * @type {number[]}
+         */
+        this.look = [];
+        this.lastLook = null;
+        this.lastLookMs = Number.NEGATIVE_INFINITY;
         /** Song time (seconds) at the first tick, so a replay can rebuild the clock. */
         this.startSongTime = null;
         this.lastDirection = 0;
         this.clockMs = 0;
+    }
+
+    /**
+     * Records the view direction against the tick just simulated, when it
+     * moved by at least a milliradian and at most every LOOK_INTERVAL_MS
+     * (a shot always records it, so the replay aims exactly where it fired).
+     * @param {number} yaw radians
+     * @param {number} pitch radians
+     * @param {boolean} [force] record even inside the interval
+     */
+    aim(yaw, pitch, force = false) {
+        const tick = this.tickIndex - 1;
+        if (tick < 0) {
+            return;
+        }
+        const y = Math.round(yaw * 1000);
+        const p = Math.round(pitch * 1000);
+        const last = this.lastLook;
+        if (last && last[1] === y && last[2] === p) {
+            return;
+        }
+        if (!force && this.clockMs - this.lastLookMs < LOOK_INTERVAL_MS) {
+            return;
+        }
+        if (last && last[0] === tick) {
+            // Same tick as the last sample: overwrite it rather than add one.
+            this.look.length -= 3;
+        }
+        this.look.push(tick, y, p);
+        this.lastLook = [tick, y, p];
+        this.lastLookMs = this.clockMs;
     }
 
     /** @returns {number} the index the next tick will get. */
@@ -101,6 +144,35 @@ export class RunRecorder {
             ticks: this.ticks,
             inputs: this.inputs,
             shots: this.shots,
+            look: this.look,
         };
     }
+}
+
+/**
+ * Reads a log's recorded view directions, or null when it has none (logs
+ * from before aim was recorded) or they are malformed.
+ * @param {object} log
+ * @returns {{ticks: number[], yaw: number[], pitch: number[]} | null} radians
+ */
+export function readLook(log) {
+    const flat = log?.look;
+    if (!Array.isArray(flat) || flat.length < 3 || flat.length % 3 !== 0) {
+        return null;
+    }
+    const ticks = [];
+    const yaw = [];
+    const pitch = [];
+    let lastTick = -1;
+    for (let i = 0; i < flat.length; i += 3) {
+        const [tick, y, p] = [flat[i], flat[i + 1], flat[i + 2]];
+        if (!Number.isInteger(tick) || tick < lastTick || !Number.isFinite(y) || !Number.isFinite(p)) {
+            return null;
+        }
+        ticks.push(tick);
+        yaw.push(y / 1000);
+        pitch.push(p / 1000);
+        lastTick = tick;
+    }
+    return { ticks, yaw, pitch };
 }

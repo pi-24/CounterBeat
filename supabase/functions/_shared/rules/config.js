@@ -25,7 +25,9 @@ export const WORLD = Object.freeze({
     wallHeight: 2.9,
     pillarDepth: 0.45,
     targetZ: 12.5,                  // bots stand here, behind the windows
-    backstopZ: 15,
+    // Bots queued in one lane stand 1 m apart behind targetZ; the deepest queue
+    // any chart can build is 4 (a bot at 16.5), so the wall must stand behind that.
+    backstopZ: 18,
     botHeight: 2.0,
     botHeadFraction: 0.78,          // above this fraction of height = head
     arenaHalfWidth: 14,

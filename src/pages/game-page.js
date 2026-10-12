@@ -61,7 +61,7 @@ async function pendingReplay() {
     try {
         const found = await backend.replay(runId);
         if (!found || !resolveChart(found.run.chartId) || !REPLAYABLE_VERSIONS.includes(found.log.version)) {
-            toast.error('That replay is not available any more (it was recorded on an older version).');
+            toast.error("That replay isn't available. Only each player's best run on a chart keeps its replay.");
             return null;
         }
         toast.info(`Replay: ${found.run.displayName ?? 'a player'} on ${found.run.levelName}, scoring ${formatScore(found.run.score)}.`);
