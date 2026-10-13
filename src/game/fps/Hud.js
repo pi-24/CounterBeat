@@ -148,13 +148,7 @@ export class Hud {
         spawnLine.setAttribute('y1', spawnY);
         spawnLine.setAttribute('y2', spawnY);
         spawnLine.setAttribute('class', 'hud__highway-spawn');
-        const spawnLabel = document.createElementNS(SVG_NS, 'text');
-        spawnLabel.setAttribute('x', '596');
-        spawnLabel.setAttribute('y', String(Number(spawnY) - 4));
-        spawnLabel.setAttribute('text-anchor', 'end');
-        spawnLabel.setAttribute('class', 'hud__highway-spawn-label');
-        spawnLabel.textContent = 'bots step out';
-        this.highway.append(spawnLine, spawnLabel);
+        this.highway.append(spawnLine);
     }
 
     /**
