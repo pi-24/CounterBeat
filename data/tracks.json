@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "menuMusic": {
+    "key": "music-menu",
+    "audio": [
+      "audio/music-menu.ogg",
+      "audio/music-menu.mp3"
+    ]
+  },
+  "sfx": {
+    "sfx-shot": [
+      "audio/sfx-shot.ogg",
+      "audio/sfx-shot.mp3"
+    ],
+    "sfx-skid": [
+      "audio/sfx-skid.ogg",
+      "audio/sfx-skid.mp3"
+    ],
+    "sfx-perfect": [
+      "audio/sfx-perfect.ogg",
+      "audio/sfx-perfect.mp3"
+    ],
+    "sfx-good": [
+      "audio/sfx-good.ogg",
+      "audio/sfx-good.mp3"
+    ],
+    "sfx-miss": [
+      "audio/sfx-miss.ogg",
+      "audio/sfx-miss.mp3"
+    ],
+    "sfx-ui": [
+      "audio/sfx-ui.ogg",
+      "audio/sfx-ui.mp3"
+    ],
+    "sfx-levelup": [
+      "audio/sfx-levelup.ogg",
+      "audio/sfx-levelup.mp3"
+    ],
+    "sfx-gameover": [
+      "audio/sfx-gameover.ogg",
+      "audio/sfx-gameover.mp3"
+    ]
+  },
+  "tracks": [
+    {
+      "id": "range",
+      "title": "The Range",
+      "artist": "CounterBeat (generated)",
+      "mood": "Warm-up groove",
+      "licence": "LICENSES/generated-original.txt",
+      "bpm": 90,
+      "offset": 0,
+      "key": "C",
+      "scale": "minor-pentatonic",
+      "audio": [
+        "audio/music-range.ogg",
+        "audio/music-range.mp3"
+      ],
+      "placeholder": true,
+      "chartVersion": 1,
+      "bars": 24,
+      "firstNoteBar": 2,
+      "arena": "range",
+      "seed": 1101
+    },
+    {
+      "id": "drift",
+      "title": "Lo-fi Drift",
+      "artist": "CounterBeat (generated)",
+      "mood": "Head-nod swing",
+      "licence": "LICENSES/generated-original.txt",
+      "bpm": 105,
+      "offset": 0,
+      "key": "D",
+      "scale": "minor-pentatonic",
+      "audio": [
+        "audio/music-drift.ogg",
+        "audio/music-drift.mp3"
+      ],
+      "placeholder": true,
+      "chartVersion": 1,
+      "bars": 28,
+      "firstNoteBar": 2,
+      "arena": "range",
+      "seed": 1707
+    },
+    {
+      "id": "neon",
+      "title": "Neon Alley",
+      "artist": "CounterBeat (generated)",
+      "mood": "Four on the floor",
+      "licence": "LICENSES/generated-original.txt",
+      "bpm": 120,
+      "offset": 0,
+      "key": "E",
+      "scale": "minor-pentatonic",
+      "audio": [
+        "audio/music-neon.ogg",
+        "audio/music-neon.mp3"
+      ],
+      "placeholder": true,
+      "chartVersion": 1,
+      "bars": 32,
+      "firstNoteBar": 3,
+      "arena": "neon",
+      "seed": 2202
+    },
+    {
+      "id": "breakneck",
+      "title": "Breakneck",
+      "artist": "CounterBeat (generated)",
+      "mood": "Broken beats",
+      "licence": "LICENSES/generated-original.txt",
+      "bpm": 135,
+      "offset": 0,
+      "key": "F",
+      "scale": "minor-pentatonic",
+      "audio": [
+        "audio/music-breakneck.ogg",
+        "audio/music-breakneck.mp3"
+      ],
+      "placeholder": true,
+      "chartVersion": 1,
+      "bars": 36,
+      "firstNoteBar": 3,
+      "arena": "neon",
+      "seed": 2909
+    },
+    {
+      "id": "vault",
+      "title": "Server Vault",
+      "artist": "CounterBeat (generated)",
+      "mood": "Driving techno",
+      "licence": "LICENSES/generated-original.txt",
+      "bpm": 150,
+      "offset": 0,
+      "key": "G",
+      "scale": "minor-pentatonic",
+      "audio": [
+        "audio/music-vault.ogg",
+        "audio/music-vault.mp3"
+      ],
+      "placeholder": true,
+      "chartVersion": 1,
+      "bars": 40,
+      "firstNoteBar": 4,
+      "arena": "vault",
+      "seed": 3303
+    },
+    {
+      "id": "overclock",
+      "title": "Overclock",
+      "artist": "CounterBeat (generated)",
+      "mood": "Rolling drum & bass",
+      "licence": "LICENSES/generated-original.txt",
+      "bpm": 170,
+      "offset": 0,
+      "key": "A",
+      "scale": "minor-pentatonic",
+      "audio": [
+        "audio/music-overclock.ogg",
+        "audio/music-overclock.mp3"
+      ],
+      "placeholder": true,
+      "chartVersion": 1,
+      "bars": 44,
+      "firstNoteBar": 4,
+      "arena": "vault",
+      "seed": 4404
+    }
+  ]
+}

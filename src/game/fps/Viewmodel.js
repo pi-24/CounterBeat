@@ -8,6 +8,7 @@
  * never clips through the wall when the player stands close to a window.
  */
 import { Scene, Vector3, Color3, Camera, Mesh, TransformNode, StandardMaterial, Texture, PointLight, MeshBuilder } from '../engine.js';
+import { assets } from '../providers/index.js';
 
 const REST = { x: 0.34, y: -0.30, z: 0.98 };
 const KICK = { back: 0.1, up: 0.04, pitch: 0.14 };
@@ -105,7 +106,7 @@ export class Viewmodel {
         const material = new StandardMaterial('flash', this.scene);
         material.emissiveColor = new Color3(1, 0.85, 0.5);
         material.diffuseColor = Color3.Black();
-        material.opacityTexture = new Texture('images/spark.png', this.scene);
+        material.opacityTexture = new Texture(assets.spark(), this.scene);
         material.disableLighting = true;
         material.fogEnabled = false;
         material.backFaceCulling = false;

@@ -15,6 +15,7 @@
  */
 import { Scene, Vector3, Color3, Color4, Mesh, StandardMaterial, Texture, HemisphericLight, DirectionalLight, MeshBuilder } from '../engine.js';
 import { LAYOUT, WORLD } from '../rules/config.js';
+import { themeProvider } from '../providers/index.js';
 
 const TRACK_CENTRE = (LAYOUT.trackLeft + LAYOUT.trackRight) / 2;
 
@@ -28,7 +29,7 @@ export class Arena {
         this.scene = scene;
         this.level = level;
         this.lanes = lanes;
-        this.arena = level.arena;
+        this.arena = themeProvider.resolveArena(level.arena);
 
         /** @type {Mesh[]} meshes the hit-scan treats as solid. */
         this.solids = [];

@@ -11,9 +11,10 @@
  */
 import {
     TRACKS, DIFFICULTIES, ARENAS, resolveChart, dailyChartId, dailyDate, unlockRequirement,
-    buildCustomChart, musicUrls,
+    buildCustomChart,
 } from '../rules/charts.js';
 import { Showcase } from '../fps/Showcase.js';
+import { themeProvider, trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
 
 export class MenuScreen {
@@ -98,7 +99,7 @@ export class MenuScreen {
         card.type = 'button';
         const art = document.createElement('img');
         art.className = 'daily__thumb';
-        art.src = chart.arena.thumb;
+        art.src = themeProvider.resolveArena(chart.arena).thumb;
         art.alt = '';
         const body = el('span', 'daily__body');
         body.append(
@@ -142,7 +143,7 @@ export class MenuScreen {
         const tutorial = resolveChart('tutorial');
         host.append(this.trackCard({
             key: 'T', name: 'Tutorial', mood: 'Learn the counter-strafe (cannot be failed, not ranked)',
-            bpm: tutorial.bpm, thumb: ARENAS.range.thumb,
+            bpm: tutorial.bpm, thumb: themeProvider.theme('range').thumb,
         }, [{ label: 'Start', chart: tutorial, unlocked: true, best: 0, passed: false }]));
 
         for (const track of TRACKS) {
@@ -161,7 +162,7 @@ export class MenuScreen {
             });
             host.append(this.trackCard({
                 key: `${track.bpm} BPM`, name: track.name, mood: track.mood, bpm: track.bpm,
-                thumb: ARENAS[track.arena].thumb, trackId: track.id,
+                thumb: themeProvider.theme(ARENAS[track.arena].theme).thumb, trackId: track.id,
             }, options));
         }
     }
@@ -200,7 +201,7 @@ export class MenuScreen {
             if (info.trackId) {
                 button.addEventListener('pointerenter', () => {
                     // Warm the music cache while the player reads the card.
-                    this.app.audio.ensure(`music-${info.trackId}`, musicUrls(info.trackId));
+                    this.app.audio.ensure(`music-${info.trackId}`, trackProvider.musicUrls(info.trackId));
                 }, { once: true });
             }
             row.append(button);

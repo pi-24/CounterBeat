@@ -13,9 +13,9 @@
  */
 import { Scene, Vector3, Color3, Color4, Ray, Mesh, StandardMaterial, Texture, SpriteManager, Sprite, ParticleSystem, MeshBuilder } from '../engine.js';
 import { APPROACH_BEATS, WORLD } from '../rules/config.js';
+import { themeProvider, assets } from '../providers/index.js';
 import { Arena } from './Arena.js';
 
-const SHEET = { url: 'images/bot-sheet.png', cellWidth: 96, cellHeight: 128 };
 const FRAMES = {
     idle: [0, 3],
     hit: [4, 5],
@@ -41,13 +41,16 @@ export class TargetField {
      * @param {import('../BeatMap.js').Lanes} lanes
      * @param {import('./FpsCamera.js').FpsCamera} camera
      * @param {number[]} accent level accent colour as [r, g, b]
+     * @param {string} [skinId] id from data/targets.json (default skin when omitted)
      */
-    constructor(scene, lanes, camera, accent) {
+    constructor(scene, lanes, camera, accent, skinId) {
+        const SHEET = themeProvider.target(skinId);
+        this.sheet = SHEET;
         this.scene = scene;
         this.lanes = lanes;
         this.camera = camera;
 
-        this.manager = new SpriteManager('bots', SHEET.url, 32,
+        this.manager = new SpriteManager('bots', SHEET.sheet, 32,
             { width: SHEET.cellWidth, height: SHEET.cellHeight }, scene);
         this.manager.isPickable = true;
 
@@ -64,7 +67,7 @@ export class TargetField {
         this.ringClose.specularColor = Color3.Black();
         this.ringClose.disableLighting = true;
 
-        this.sparkTexture = new Texture('images/spark.png', scene);
+        this.sparkTexture = new Texture(assets.spark(), scene);
 
         // One torus for every approach ring: each bot gets a clone that shares
         // its geometry, so spawning a bot never builds or uploads a mesh.
@@ -111,7 +114,7 @@ export class TargetField {
     spawn(note) {
         const x = Arena.toWorldX(this.lanes.centre(note.lane));
         const height = WORLD.botHeight;
-        const width = height * (SHEET.cellWidth / SHEET.cellHeight);
+        const width = height * (this.sheet.cellWidth / this.sheet.cellHeight);
 
         // Notes that share a lane queue up behind one another, so a double
         // reads as two bots in a line rather than one bot drawn twice.

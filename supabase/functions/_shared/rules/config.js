@@ -154,5 +154,6 @@ export const DEFAULT_SETTINGS = Object.freeze({
     moveAccel: 1,           // multiplier on acceleration
     beatRing: true,         // the pulsing circle around the crosshair
     noteHighway: true,      // the upcoming-beats strip at the bottom of the HUD
+    targetSkin: 'bot',      // id in data/targets.json (cosmetic only)
     audioOffset: 0,         // seconds; measured by the calibration screen
 });

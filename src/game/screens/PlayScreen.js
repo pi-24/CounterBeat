@@ -18,7 +18,8 @@
  */
 import { Ray } from '../engine.js';
 import { APPROACH_BEATS, GRADE, SPEED_GRADE, SPREAD } from '../rules/config.js';
-import { resolveChart, musicUrls } from '../rules/charts.js';
+import { resolveChart } from '../rules/charts.js';
+import { themeProvider, trackProvider } from '../providers/index.js';
 import { BeatMap } from '../rules/BeatMap.js';
 import { Conductor } from '../rules/Conductor.js';
 import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
@@ -111,7 +112,7 @@ export class PlayScreen {
 
         this.tutorialStartX = this.body.x;
         this.arena = new Arena(scene, this.level, this.lanes);
-        this.targets = new TargetField(scene, this.lanes, camera, this.level.arena.accent);
+        this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, settings.get('targetSkin'));
         this.viewmodel = new Viewmodel(scene, camera.camera);
 
         camera.resetLook();
@@ -159,7 +160,7 @@ export class PlayScreen {
         if (!audio.has(this.level.musicKey)) {
             hud.setCountdown('LOADING TRACK', true);
             const ok = this.level.trackId && !this.level.custom
-                ? await audio.ensure(this.level.musicKey, musicUrls(this.level.trackId))
+                ? await audio.ensure(this.level.musicKey, trackProvider.musicUrls(this.level.trackId))
                 : false;
             if (!this.current) {
                 return;

@@ -142,6 +142,9 @@ export class Settings {
         if ('crosshairDot' in changes) {
             out.crosshairDot = Boolean(changes.crosshairDot);
         }
+        if ('targetSkin' in changes && /^[\w-]{1,32}$/.test(String(changes.targetSkin))) {
+            out.targetSkin = String(changes.targetSkin);
+        }
         if ('viewBob' in changes) {
             out.viewBob = Boolean(changes.viewBob);
         }

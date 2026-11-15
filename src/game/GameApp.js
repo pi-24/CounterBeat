@@ -19,6 +19,7 @@ import { ResultScreen } from './screens/ResultScreen.js';
 import { SettingsPanel } from './screens/SettingsPanel.js';
 import { Calibration } from './screens/Calibration.js';
 import { SongLibrary } from './library/SongLibrary.js';
+import { assets } from './providers/index.js';
 import { toast } from '../ui/Toast.js';
 
 /**
@@ -32,18 +33,6 @@ import { toast } from '../ui/Toast.js';
  * @property {(chartId:string) => (Promise<string|null>|null)} [startRun] asks the server for
  *   a run token when the run will be ranked; null when it will not be
  */
-
-const AUDIO_MANIFEST = {
-    'music-menu': ['audio/music-menu.ogg', 'audio/music-menu.mp3'],
-    'sfx-shot': ['audio/sfx-shot.ogg', 'audio/sfx-shot.mp3'],
-    'sfx-skid': ['audio/sfx-skid.ogg', 'audio/sfx-skid.mp3'],
-    'sfx-perfect': ['audio/sfx-perfect.ogg', 'audio/sfx-perfect.mp3'],
-    'sfx-good': ['audio/sfx-good.ogg', 'audio/sfx-good.mp3'],
-    'sfx-miss': ['audio/sfx-miss.ogg', 'audio/sfx-miss.mp3'],
-    'sfx-ui': ['audio/sfx-ui.ogg', 'audio/sfx-ui.mp3'],
-    'sfx-levelup': ['audio/sfx-levelup.ogg', 'audio/sfx-levelup.mp3'],
-    'sfx-gameover': ['audio/sfx-gameover.ogg', 'audio/sfx-gameover.mp3'],
-};
 
 export class GameApp {
     /**
@@ -110,7 +99,7 @@ export class GameApp {
         this.settingsPanel.init();
         this.bindControls();
 
-        await this.audio.load(AUDIO_MANIFEST, this.onProgress);
+        await this.audio.load(assets.audioManifest(), this.onProgress);
 
         this.engine.runRenderLoop(() => {
             const dt = Math.min(0.05, this.engine.getDeltaTime() / 1000);

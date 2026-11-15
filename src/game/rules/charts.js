@@ -24,37 +24,12 @@ import { LAYOUT } from './config.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
 
 // ------------------------------------------------------------------ arenas
+// An arena only names a theme; ThemeProvider (data/themes.json) owns textures,
+// colours and thumbnails, so rules code never holds an asset path.
 export const ARENAS = Object.freeze({
-    range: {
-        floorTexture: 'images/textures/floor-range.png',
-        wallTexture: 'images/textures/wall-range.png',
-        sky: [0.72, 0.78, 0.86],
-        fog: { colour: [0.72, 0.78, 0.86], density: 0.012 },
-        accent: [1.0, 0.54, 0.16],
-        ambient: 0.85,
-        decor: 'crates',
-        thumb: 'images/levels/level-1.png',
-    },
-    neon: {
-        floorTexture: 'images/textures/floor-neon.png',
-        wallTexture: 'images/textures/wall-neon.png',
-        sky: [0.05, 0.04, 0.12],
-        fog: { colour: [0.05, 0.04, 0.12], density: 0.028 },
-        accent: [0.42, 0.89, 1.0],
-        ambient: 0.45,
-        decor: 'neon',
-        thumb: 'images/levels/level-2.png',
-    },
-    vault: {
-        floorTexture: 'images/textures/floor-vault.png',
-        wallTexture: 'images/textures/wall-vault.png',
-        sky: [0.03, 0.08, 0.06],
-        fog: { colour: [0.03, 0.08, 0.06], density: 0.040 },
-        accent: [0.49, 1.0, 0.73],
-        ambient: 0.40,
-        decor: 'racks',
-        thumb: 'images/levels/level-3.png',
-    },
+    range: { theme: 'range' },
+    neon: { theme: 'neon' },
+    vault: { theme: 'vault' },
 });
 
 // ------------------------------------------------------------------ tracks
@@ -77,10 +52,6 @@ export function getTrack(id) {
     return TRACKS.find((track) => track.id === id);
 }
 
-/** @param {string} trackId @returns {string[]} candidate URLs, best first. */
-export function musicUrls(trackId) {
-    return [`audio/music-${trackId}.ogg`, `audio/music-${trackId}.mp3`];
-}
 
 // ------------------------------------------------------------ difficulties
 /**

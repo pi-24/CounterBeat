@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sparkTexture": "images/spark.png",
+  "targets": [
+    { "id": "bot", "name": "Bot", "placeholder": true, "starCost": 0, "sheet": "images/bot-sheet.png", "cellWidth": 96, "cellHeight": 128 },
+    { "id": "bot-hex", "name": "Hex Bot", "placeholder": true, "starCost": 10, "sheet": "images/bot-hex-sheet.png", "cellWidth": 96, "cellHeight": 128 },
+    { "id": "bot-chevron", "name": "Chevron Bot", "placeholder": true, "starCost": 20, "sheet": "images/bot-chevron-sheet.png", "cellWidth": 96, "cellHeight": 128 }
+  ]
+}
