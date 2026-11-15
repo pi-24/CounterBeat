@@ -22,6 +22,7 @@
 
 import { LAYOUT } from './config.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
+import { RULES } from './rules.js';
 
 // ------------------------------------------------------------------ arenas
 // An arena only names a theme; ThemeProvider (data/themes.json) owns textures,
@@ -77,35 +78,32 @@ const PATTERNS = Object.freeze([
  */
 export const MOVEMENT = Object.freeze({ maxSpeed: 600, accel: 11, friction: 5.2, stopSpeed: 190 });
 
+const R = RULES.difficulties;
+
+/**
+ * Per-difficulty numbers (density, windows, hitbox and spread scale, fail-out,
+ * pass accuracy) come from data/rules.json; only the chart-shape fields
+ * (lanes, scale, inset) live here.
+ */
+function difficultyFrom(id, name, tier, shape) {
+    const rules = R[id];
+    return {
+        id, name, tier, ...shape,
+        targetNps: rules.notesPerSecond,
+        timing: rules.timing,
+        movement: MOVEMENT,
+        passAccuracy: rules.passAccuracy,
+        hitboxScale: rules.hitboxScale,
+        spreadScale: rules.spreadScale,
+        failOut: rules.failOut,
+    };
+}
+
 export const DIFFICULTIES = Object.freeze([
-    {
-        id: 'easy', name: 'Easy', tier: 1, targetNps: 0.9, patterns: [0],
-        lanes: 3, trackScale: 1, laneInset: 0.66,
-        timing: { perfect: 0.065, good: 0.125, ok: 0.190 },
-        movement: MOVEMENT,
-        passAccuracy: 0.50,
-    },
-    {
-        id: 'normal', name: 'Normal', tier: 2, targetNps: 2.2, patterns: [0, 1],
-        lanes: 4, trackScale: 0.84, laneInset: 0.60,
-        timing: { perfect: 0.050, good: 0.100, ok: 0.160 },
-        movement: MOVEMENT,
-        passAccuracy: 0.58,
-    },
-    {
-        id: 'hard', name: 'Hard', tier: 3, targetNps: 2.4, patterns: [1, 2],
-        lanes: 5, trackScale: 0.78, laneInset: 0.55,
-        timing: { perfect: 0.040, good: 0.080, ok: 0.130 },
-        movement: MOVEMENT,
-        passAccuracy: 0.64,
-    },
-    {
-        id: 'expert', name: 'Expert', tier: 4, targetNps: 2.6, patterns: [2, 3],
-        lanes: 5, trackScale: 0.70, laneInset: 0.50,
-        timing: { perfect: 0.034, good: 0.068, ok: 0.110 },
-        movement: MOVEMENT,
-        passAccuracy: 0.70,
-    },
+    difficultyFrom('easy', 'Easy', 1, { lanes: 3, trackScale: 1, laneInset: 0.66 }),
+    difficultyFrom('normal', 'Normal', 2, { lanes: 4, trackScale: 0.84, laneInset: 0.60 }),
+    difficultyFrom('hard', 'Hard', 3, { lanes: 5, trackScale: 0.78, laneInset: 0.55 }),
+    difficultyFrom('expert', 'Expert', 4, { lanes: 5, trackScale: 0.70, laneInset: 0.50 }),
 ]);
 
 /** @param {string} id @returns {object|undefined} */
@@ -114,24 +112,36 @@ export function getDifficulty(id) {
 }
 
 /**
- * @param {number} bpm
- * @param {number} targetNps
- * @param {number[]} [allowed] indexes into PATTERNS this difficulty may use
- * @returns {number[][]} the primary pattern and its variation.
+ * The pattern (beat offsets inside one 4/4 bar) with exactly `count` notes:
+ * the hand-made pattern when there is one, otherwise evenly spaced on the
+ * 8th-note grid (16th-note grid above eight notes).
+ * @param {number} count
+ * @returns {number[]}
  */
-export function patternsFor(bpm, targetNps, allowed = [0, 1, 2, 3]) {
-    // The densest allowed pattern that stays within the target (with a
-    // little headroom), so a fast track thins out rather than turning into
-    // a wall of doubles; the sparsest allowed pattern when none fits.
-    let best = PATTERNS[allowed[0]];
-    for (const index of allowed) {
-        const pattern = PATTERNS[index];
-        const nps = pattern.beats.length * bpm / 240;
-        if (nps <= targetNps * 1.15) {
-            best = pattern;
-        }
+export function patternForCount(count) {
+    const k = Math.max(1, Math.min(16, Math.round(count)));
+    const known = PATTERNS.find((pattern) => pattern.beats.length === k);
+    if (known) {
+        return known.beats;
     }
-    return [best.beats, best.alt];
+    const grid = k <= 8 ? 8 : 16;
+    const beats = [];
+    for (let i = 0; i < k; i += 1) {
+        beats.push(Math.floor((i * grid) / k) * (4 / grid));
+    }
+    return beats;
+}
+
+/**
+ * @param {number} bpm
+ * @param {number} targetNps notes per second the chart should average
+ * @returns {number[][]} the densest pattern a bar may use, twice (the chart
+ *   generator thins bars to hit `targetNps`; see BeatMap.generate).
+ */
+export function patternsFor(bpm, targetNps) {
+    const perBar = targetNps * (240 / bpm);
+    const pattern = patternForCount(Math.ceil(perBar));
+    return [pattern, pattern];
 }
 
 /** Lanes never get narrower than this, whatever the tempo asks for. */
@@ -202,7 +212,7 @@ const TUTORIAL = Object.freeze({
  * @param {object} [extra] overrides (daily uses a different id, name and seed)
  */
 function buildTrackChart(track, difficulty, extra = {}) {
-    const patterns = patternsFor(track.bpm, difficulty.targetNps, difficulty.patterns);
+    const patterns = patternsFor(track.bpm, difficulty.targetNps);
     return {
         chartId: `t:${track.id}:${difficulty.id}`,
         kind: 'track',
@@ -220,6 +230,7 @@ function buildTrackChart(track, difficulty, extra = {}) {
         trackScale: trackScaleFor(track.bpm, patterns, difficulty),
         laneInset: difficulty.laneInset,
         patterns,
+        noteRate: difficulty.targetNps,
         timing: difficulty.timing,
         movement: difficulty.movement,
         passAccuracy: difficulty.passAccuracy,
@@ -299,7 +310,7 @@ export function buildCustomChart(song, difficultyId) {
     const bars = Math.max(4, Math.floor((song.duration - song.gridOffset - 2) / (4 * spb)));
     const arenaKeys = Object.keys(ARENAS);
     const hash = hashString(song.id);
-    const patterns = patternsFor(song.bpm, difficulty.targetNps, difficulty.patterns);
+    const patterns = patternsFor(song.bpm, difficulty.targetNps);
     const chart = {
         chartId: `custom:${song.id}:${difficulty.id}`,
         kind: 'custom',
@@ -317,6 +328,7 @@ export function buildCustomChart(song, difficultyId) {
         trackScale: trackScaleFor(song.bpm, patterns, difficulty),
         laneInset: difficulty.laneInset,
         patterns,
+        noteRate: difficulty.targetNps,
         timing: difficulty.timing,
         movement: difficulty.movement,
         passAccuracy: difficulty.passAccuracy,

@@ -6,6 +6,8 @@
  * makes the judging logic straightforward to reason about.
  */
 
+import { STOP_SPEED, COUNTER_STRAFE_WINDOW_MS } from './rules.js';
+
 /**
  * The track the player strafes along is measured in abstract "track units"
  * (0 .. 1024) so the movement model, the chart generator and the headless
@@ -40,9 +42,9 @@ export const WORLD = Object.freeze({
  * a dead stop the player was at the moment they fired.
  */
 export const SPEED_GRADE = Object.freeze({
-    pinPoint: 20,
-    tight: 65,
-    loose: 140,
+    pinPoint: STOP_SPEED.perfect,
+    tight: STOP_SPEED.good,
+    loose: STOP_SPEED.loose,
 });
 
 /**
@@ -92,7 +94,7 @@ export const FOCUS_MAX = 100;
  * many milliseconds of the shot.  Long enough to be generous, short enough
  * that simply releasing the key never qualifies.
  */
-export const COUNTER_STRAFE_MEMORY_MS = 320;
+export const COUNTER_STRAFE_MEMORY_MS = COUNTER_STRAFE_WINDOW_MS;
 
 /**
  * How far the player may tune movement speed and acceleration.  The range

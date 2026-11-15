@@ -5,7 +5,8 @@
  * conditions, and the final grade is the worst of them - being perfectly on
  * the beat does not rescue a shot fired at a sprint.
  */
-import { GRADE, SPEED_GRADE } from './config.js';
+import { GRADE } from './config.js';
+import { gradeStop, gradeTiming, worstGrade } from './rules.js';
 
 /** Ordered worst-to-best so two grades can be compared numerically. */
 const ORDER = [GRADE.MISS, GRADE.OK, GRADE.GOOD, GRADE.PERFECT];
@@ -39,33 +40,14 @@ export class Judge {
         this.lanes = lanes;
     }
 
-    /** @param {number} error absolute timing error in seconds. */
+    /** @param {number} error timing error in seconds. */
     gradeTiming(error) {
-        const absolute = Math.abs(error);
-        if (absolute <= this.timing.perfect) {
-            return GRADE.PERFECT;
-        }
-        if (absolute <= this.timing.good) {
-            return GRADE.GOOD;
-        }
-        if (absolute <= this.timing.ok) {
-            return GRADE.OK;
-        }
-        return GRADE.MISS;
+        return gradeTiming(error, this.timing);
     }
 
     /** @param {number} speed absolute speed in track units per second. */
     gradeSpeed(speed) {
-        if (speed <= SPEED_GRADE.pinPoint) {
-            return GRADE.PERFECT;
-        }
-        if (speed <= SPEED_GRADE.tight) {
-            return GRADE.GOOD;
-        }
-        if (speed <= SPEED_GRADE.loose) {
-            return GRADE.OK;
-        }
-        return GRADE.MISS;
+        return gradeStop(speed);
     }
 
     /**
@@ -118,8 +100,6 @@ export class Judge {
 
     /** @param {...string} grades @returns {string} the lowest grade given. */
     static worst(...grades) {
-        return grades.reduce((lowest, grade) => (
-            ORDER.indexOf(grade) < ORDER.indexOf(lowest) ? grade : lowest
-        ), GRADE.PERFECT);
+        return worstGrade(...grades);
     }
 }

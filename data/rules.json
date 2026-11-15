@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "note": "Starting values, retuned after the M0 and M7 playtests. Edit this file, then run `npm run sync-rules` (regenerates src/game/rules/rulesData.js and the edge-function copy).",
+  "grading": {
+    "stopSpeed": { "perfect": 20, "good": 65, "loose": 140 },
+    "counterStrafeWindowMs": 320
+  },
+  "stars": {
+    "rankAccuracy": 0.85,
+    "challengeNoMiss": true,
+    "challengeStopQuality": 0.8
+  },
+  "starGates": [0, 3, 8, 14, 21, 28],
+  "difficulties": {
+    "easy": {
+      "notesPerSecond": 0.95,
+      "timing": { "perfect": 0.065, "good": 0.125, "ok": 0.190 },
+      "hitboxScale": 1.3,
+      "spreadScale": 0,
+      "failOut": { "campaign": false, "quickPlay": false, "daily": false, "ranked": false },
+      "passAccuracy": 0.5
+    },
+    "normal": {
+      "notesPerSecond": 1.6,
+      "timing": { "perfect": 0.050, "good": 0.100, "ok": 0.160 },
+      "hitboxScale": 1.15,
+      "spreadScale": 0,
+      "failOut": { "campaign": false, "quickPlay": false, "daily": false, "ranked": false },
+      "passAccuracy": 0.5
+    },
+    "hard": {
+      "notesPerSecond": 2.4,
+      "timing": { "perfect": 0.040, "good": 0.080, "ok": 0.130 },
+      "hitboxScale": 1.0,
+      "spreadScale": 1.0,
+      "failOut": { "campaign": false, "quickPlay": true, "daily": true, "ranked": true },
+      "passAccuracy": 0.64
+    },
+    "expert": {
+      "notesPerSecond": 3.3,
+      "timing": { "perfect": 0.034, "good": 0.068, "ok": 0.110 },
+      "hitboxScale": 1.0,
+      "spreadScale": 1.0,
+      "failOut": { "campaign": false, "quickPlay": true, "daily": true, "ranked": true },
+      "passAccuracy": 0.7
+    }
+  }
+}
