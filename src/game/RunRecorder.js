@@ -15,6 +15,7 @@
  */
 
 import { LOG_VERSION } from './rules/config.js';
+import { chartRef } from './charts/chartLoader.js';
 
 // Defined in rules/config.js so the replay validator (which the server runs)
 // and the recorder can never disagree about it.
@@ -37,6 +38,13 @@ export class RunRecorder {
      */
     constructor(chartId, movement = { speed: 1, accel: 1 }) {
         this.chartId = chartId;
+        /** Version and hash of the authored chart, so the server can reject a stale one. */
+        this.chartRef = chartRef(chartId);
+        // Authored (Hard/Expert track) charts must always carry a ref: if the
+        // loader regresses, log it and flag the run instead of crashing; the
+        // server rejects an unversioned Hard/Expert log, so it cannot rank.
+        this.unversioned = /^t:[a-z0-9-]+:(hard|expert)$/.test(chartId) && !this.chartRef;
+        if (this.unversioned) console.error(`no authored chart found for ${chartId}; run is unversioned`);
         this.movement = { speed: movement.speed, accel: movement.accel };
         /** @type {number[]} tick lengths in milliseconds, rounded. */
         this.ticks = [];
@@ -139,6 +147,7 @@ export class RunRecorder {
         return {
             version: LOG_VERSION,
             chartId: this.chartId,
+            ...(this.chartRef ? { chartVersion: this.chartRef.chartVersion, chartHash: this.chartRef.contentHash } : {}),
             movement: this.movement,
             startSongTime: this.startSongTime ?? 0,
             ticks: this.ticks,

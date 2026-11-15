@@ -31,4 +31,9 @@ const to = resolve(root, 'supabase/functions/_shared/rules');
 rmSync(to, { recursive: true, force: true });
 mkdirSync(to, { recursive: true });
 cpSync(from, to, { recursive: true });
+// The chart loader (and the bundled authored charts) sit beside rules/ so the
+// relative import '../charts/chartLoader.js' resolves the same way there.
+const chartsTo = resolve(root, 'supabase/functions/_shared/charts');
+rmSync(chartsTo, { recursive: true, force: true });
+cpSync(resolve(root, 'src/game/charts'), chartsTo, { recursive: true });
 console.log(`synced ${from} -> ${to}`);

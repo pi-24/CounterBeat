@@ -23,6 +23,7 @@
 import { LAYOUT } from './config.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
 import { RULES } from './rules.js';
+import { loadChart } from '../charts/chartLoader.js';
 
 // ------------------------------------------------------------------ arenas
 // An arena only names a theme; ThemeProvider (data/themes.json) owns textures,
@@ -369,6 +370,34 @@ export function buildCustomChart(song, difficultyId) {
 
 // ----------------------------------------------------------------- resolve
 /**
+ * The hand-authored chart for a track and difficulty, if charts/ has one:
+ * its notes, version and hash go on the definition.  A file that fails
+ * verification (tampered hash, malformed) makes the chart unresolvable
+ * rather than silently falling back to generated notes.
+ */
+function authoredFor(chartId) {
+    const loaded = loadChart(chartId);
+    if (!loaded.ok) {
+        return loaded.reason === 'none' ? {} : { invalid: loaded.reason };
+    }
+    const file = loaded.chart;
+    return {
+        authoredNotes: file.notes,
+        chartVersion: file.chartVersion,
+        contentHash: file.contentHash,
+    };
+}
+
+/**
+ * The generated (procedural) chart for a track and difficulty, ignoring any
+ * authored file.  Used by tools/chart-hash.mjs to author the files.
+ * @param {string} trackId @param {string} difficultyId
+ */
+export function buildProceduralChart(trackId, difficultyId) {
+    return buildTrackChart(getTrack(trackId), getDifficulty(difficultyId));
+}
+
+/**
  * @param {string} chartId
  * @returns {object|undefined} the chart definition, or undefined when the id
  *   names nothing this build knows about.
@@ -384,7 +413,11 @@ export function resolveChart(chartId) {
     if (parts[0] === 't' && parts.length === 3) {
         const track = getTrack(parts[1]);
         const difficulty = getDifficulty(parts[2]);
-        return track && difficulty ? buildTrackChart(track, difficulty) : undefined;
+        if (!track || !difficulty) {
+            return undefined;
+        }
+        const authored = authoredFor(chartId);
+        return authored.invalid ? undefined : buildTrackChart(track, difficulty, authored);
     }
     if (parts[0] === 'daily' && parts.length === 2) {
         return buildDailyChart(parts[1]);

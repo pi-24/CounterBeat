@@ -9,7 +9,7 @@
     "simulate": "node tools/simulate.mjs",
     "sync-rules": "node tools/sync-rules.mjs",
     "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
-    "test": "node tools/chart-stats.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run test:unit"
+    "test": "node tools/chart-hash.mjs --verify && node tools/chart-stats.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run test:unit"
   },
   "license": "UNLICENSED",
   "dependencies": {

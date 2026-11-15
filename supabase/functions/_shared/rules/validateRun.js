@@ -26,6 +26,7 @@ import { BeatMap } from './BeatMap.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
 import { Judge } from './Judge.js';
 import { Scorer } from './Scorer.js';
+import { checkRunChartRef } from '../charts/chartLoader.js';
 
 const LIMITS = Object.freeze({
     /** Room for ~66 s runs on monitors up to roughly 900 Hz. */
@@ -64,6 +65,10 @@ export function validateRun(level, log, claimedScore) {
     }
     if (log.chartId !== level.chartId) {
         return fail('chart mismatch');
+    }
+    const ref = checkRunChartRef(level, log);
+    if (!ref.ok) {
+        return fail(ref.reason);
     }
     const { ticks, inputs, shots } = log;
     if (!Array.isArray(ticks) || !Array.isArray(inputs) || !Array.isArray(shots)) {

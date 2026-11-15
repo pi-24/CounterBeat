@@ -194,6 +194,11 @@ export class BeatMap {
     /** @returns {Note[]} */
     generate() {
         const level = this.level;
+        if (level.authoredNotes) {
+            // Hand-authored chart (charts/<track>/<difficulty>.json): [beat, lane].
+            const base = level.gridOffset ?? 0;
+            return level.authoredNotes.map(([beat, lane], index) => new Note(index, base + beat * this.secondsPerBeat, lane));
+        }
         const random = new SeededRandom(level.seed);
         const spb = this.secondsPerBeat;
         const notes = [];
