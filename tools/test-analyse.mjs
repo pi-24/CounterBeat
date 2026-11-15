@@ -33,10 +33,12 @@ function readWav(path) {
 }
 
 let failures = 0;
+let skipped = 0;
 for (const [track, bpm] of Object.entries(EXPECTED)) {
     const path = resolve(root, `tools/asset-tools/audio_raw/music-${track}.wav`);
     if (!existsSync(path)) {
-        console.log(`SKIP  ${track}: ${path} missing`);
+        skipped += 1;
+        console.log(`SKIP  ${track}: raw WAV not found at ${path} (clean clone; run \`cd tools/asset-tools && python3 gen_audio.py\` to enable this check)`);
         continue;
     }
     const started = Date.now();
@@ -50,5 +52,8 @@ for (const [track, bpm] of Object.entries(EXPECTED)) {
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${track}: ${result.bpm} BPM (want ${bpm}), first beat ${result.gridOffset}s `
         + `(grid error ${Math.round(gridError * 1000)} ms), confidence ${result.confidence.toFixed(2)}, ${Date.now() - started} ms`);
 }
-console.log(failures ? `\n${failures} failure(s)` : '\nall good');
+const ran = Object.keys(EXPECTED).length - skipped;
+if (failures) console.log(`\n${failures} failure(s)`);
+else if (ran === 0) console.log('\nSKIPPED ALL: no WAVs present, beat detector not verified (not a failure in a clean clone)');
+else console.log(`\nall good (${ran} run, ${skipped} skipped)`);
 process.exit(failures ? 1 : 0);

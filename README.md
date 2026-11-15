@@ -14,6 +14,16 @@ a replay of every player's best run, and a timing profile on your page.
 - Accounts, leaderboard, settings sync: [Supabase](https://supabase.com/) (optional — the game runs fully offline without it)
 - Anti-cheat: every run is recorded as an input log and replayed on the server; only the server-computed score is ranked
 
+## Fresh clone: install, build, test, run
+
+1. `npm install`
+2. `npm run build` (production build to `dist/`)
+3. `npm test` (replay validator, beat detector, unit tests; `npm run test:unit` runs only the unit tests)
+4. `npm run dev` (http://localhost:5173) or `npm run preview` (http://localhost:4173/game.html)
+
+In a clean clone the beat-detector test prints `SKIP` for each track because the
+raw WAVs are not committed; it only fails if WAVs exist and the result is wrong.
+
 ## Run it locally
 
 ```bash
