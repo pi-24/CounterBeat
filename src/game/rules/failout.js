@@ -14,18 +14,19 @@ import { RULES } from './rules.js';
 export const FAIL_MODES = Object.freeze(['campaign', 'quickPlay', 'daily', 'ranked']);
 
 /**
- * @param {string} mode one of FAIL_MODES (anything else is treated as quickPlay)
+ * @param {string} mode one of FAIL_MODES (practice and unknown modes never fail out)
  * @param {string} difficultyId
  * @returns {boolean} true when Focus 0 ends the run
  */
 export function failsOut(mode, difficultyId) {
-    if (mode === 'campaign') {
+    // Campaign never fails out, and neither does Practice or any mode the
+    // table does not know: an unknown mode is the forgiving case.
+    if (mode === 'campaign' || !FAIL_MODES.includes(mode)) {
         return false;
     }
     // An unknown difficulty or a row without a table is the strict case.
     const table = (RULES.difficulties[difficultyId] ?? RULES.difficulties.hard)?.failOut;
-    const key = FAIL_MODES.includes(mode) ? mode : 'quickPlay';
-    return table?.[key] === true;
+    return table?.[mode] === true;
 }
 
 /**
