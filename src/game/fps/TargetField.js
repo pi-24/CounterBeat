@@ -15,18 +15,12 @@ import { Scene, Vector3, Color3, Color4, Ray, Mesh, StandardMaterial, Texture, S
 import { APPROACH_BEATS, WORLD } from '../rules/config.js';
 import { themeProvider, assets } from '../providers/index.js';
 import { Arena } from './Arena.js';
+import { HITBOX, scaleHitbox, zoneAt } from '../rules/aim.js';
 
 const FRAMES = {
     idle: [0, 3],
     hit: [4, 5],
     death: [6, 9],
-};
-const HITBOX = {
-    bodyHalfWidth: 0.46,
-    bodyBottom: 0.04,
-    bodyTop: 0.76,       // fraction of height
-    headCentre: 0.84,    // fraction of height
-    headRadius: 0.22,
 };
 /** Enough spark systems for the fastest charts' overlapping bursts. */
 const SPARK_POOL_SIZE = 6;
@@ -43,7 +37,8 @@ export class TargetField {
      * @param {number[]} accent level accent colour as [r, g, b]
      * @param {string} [skinId] id from data/targets.json (default skin when omitted)
      */
-    constructor(scene, lanes, camera, accent, skinId) {
+    constructor(scene, lanes, camera, accent, skinId, hitboxScale = 1) {
+        this.hitbox = scaleHitbox(HITBOX, hitboxScale);
         const SHEET = themeProvider.target(skinId);
         this.sheet = SHEET;
         this.scene = scene;
@@ -213,17 +208,7 @@ export class TargetField {
         const height = sprite.height;
         const fromBottom = point.y - (sprite.position.y - height / 2);
 
-        const headY = HITBOX.headCentre * height;
-        const headDistance = Math.hypot(dx, fromBottom - headY);
-        if (headDistance <= HITBOX.headRadius) {
-            return 'head';
-        }
-        if (Math.abs(dx) <= HITBOX.bodyHalfWidth
-            && fromBottom >= HITBOX.bodyBottom
-            && fromBottom <= HITBOX.bodyTop * height) {
-            return 'body';
-        }
-        return 'none';
+        return zoneAt(dx, fromBottom, height, this.hitbox);
     }
 
     /**

@@ -368,7 +368,8 @@ export class MenuScreen {
             return;
         }
         this.app.audio.play('sfx-ui', { volume: 0.5 });
-        this.app.showPlay(chartId);
+        // Menu runs are Quick Play (or the daily); ranked and campaign get their own entries later.
+        this.app.showPlay(chartId, chart.kind === 'daily' ? 'daily' : 'quickPlay');
     }
 
     /** Keyboard shortcut target: the tutorial. */

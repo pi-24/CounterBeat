@@ -30,6 +30,10 @@ const CHARTS = [
 for (const level of CHARTS) {
     const { record, log } = playAndRecord(level);
     const result = validateRun(level, log, record.score);
+    if ((log.mode === 'quickPlay' && !['hard', 'expert'].includes(level.difficulty?.id)) || level.tutorial) {
+        check(`${level.chartId} (not ranked) is not submittable`, !result.ok);
+        continue;
+    }
     check(`${level.chartId} replay matches client score`, result.ok && result.record.score === record.score,
         result.ok ? `${record.score} vs ${result.record.score}, ${log.ticks.length} ticks, ${record.notes} notes` : result.reason);
     check(`${level.chartId} no mismatch flag`, result.ok && !result.mismatch);

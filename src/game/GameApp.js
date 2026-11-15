@@ -145,9 +145,9 @@ export class GameApp {
         return this.switchTo(new MenuScreen(this));
     }
 
-    /** @param {string} chartId */
-    showPlay(chartId) {
-        return this.switchTo(new PlayScreen(this, chartId));
+    /** @param {string} chartId @param {string} [mode] campaign | quickPlay | daily | ranked */
+    showPlay(chartId, mode) {
+        return this.switchTo(new PlayScreen(this, chartId, { mode }));
     }
 
     /** @param {string} chartId @param {object} log a RunRecorder log */

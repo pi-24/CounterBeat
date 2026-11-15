@@ -17,7 +17,9 @@
  * so the server lands on the same score to the point.
  */
 import { Ray } from '../engine.js';
-import { APPROACH_BEATS, GRADE, SPEED_GRADE, SPREAD } from '../rules/config.js';
+import { APPROACH_BEATS, GRADE, SPEED_GRADE } from '../rules/config.js';
+import { replayCanFailOut, modeForLevel } from '../rules/failout.js';
+import { aimScalesForLevel, coneDegrees } from '../rules/aim.js';
 import { resolveChart } from '../rules/charts.js';
 import { themeProvider, trackProvider } from '../providers/index.js';
 import { BeatMap } from '../rules/BeatMap.js';
@@ -59,8 +61,14 @@ export class PlayScreen {
         this.level = resolveChart(chartId);
         this.chartId = chartId;
         this.replay = options.replay ?? null;
+        /** 'campaign' | 'quickPlay' | 'daily' | 'ranked' - decides fail-out with the difficulty. */
+        this.mode = options.mode ?? null;
+        /** Mode the run is played (and logged) in. */
+        this.runMode = this.mode ?? (this.replay?.mode) ?? modeForLevel(this.level);
+        /** hitbox and spread scales for this level, read once. */
+        this.aim = aimScalesForLevel(this.level);
         /** Logs from before LOG_VERSION 4 replay with the rules they were recorded under. */
-        this.legacyReplay = Boolean(this.replay && this.replay.version !== LOG_VERSION);
+        this.legacyReplay = Boolean(this.replay && this.replay.version < 5);
         this.replayCursor = 0;
         this.replayInput = 0;
         this.replayShots = 0;
@@ -103,7 +111,7 @@ export class PlayScreen {
             ? { speed: 1, accel: 1, ...(this.replay.movement ?? {}) }
             : { speed: settings.get('moveSpeed'), accel: settings.get('moveAccel') };
         this.movement = CounterStrafeBody.scaled(this.level.movement, scale);
-        this.recorder = new RunRecorder(this.chartId, scale);
+        this.recorder = new RunRecorder(this.chartId, scale, this.runMode);
         this.body = new CounterStrafeBody(
             this.movement,
             { min: this.lanes.left + 16, max: this.lanes.right - 16 },
@@ -112,7 +120,7 @@ export class PlayScreen {
 
         this.tutorialStartX = this.body.x;
         this.arena = new Arena(scene, this.level, this.lanes);
-        this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, settings.get('targetSkin'));
+        this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, settings.get('targetSkin'), this.aim.hitboxScale);
         this.viewmodel = new Viewmodel(scene, camera.camera);
 
         camera.resetLook();
@@ -336,7 +344,8 @@ export class PlayScreen {
 
     /** Ends the run the moment focus runs out (the tutorial cannot be failed). */
     checkFailure() {
-        if (this.scorer.failed && !this.level.tutorial) {
+        // v5 and older replays keep their original rule: every chart but the tutorial fails out.
+        if (this.scorer.failed && replayCanFailOut(this.level, this.replay, this.runMode)) {
             this.finish(false);
         }
     }
@@ -634,9 +643,8 @@ export class PlayScreen {
      */
     buildShotRay() {
         const { camera } = this.app;
-        const fraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
-        const coneDegrees = SPREAD.baseDegrees + SPREAD.movingDegrees * Math.pow(fraction, SPREAD.exponent);
-        const cone = (coneDegrees * Math.PI) / 180;
+        const cone = (coneDegrees(this.body.speed, this.movement.maxSpeed, this.aim.spreadScale)
+            * Math.PI) / 180;
 
         // Uniform over the disc, so the shot is as likely to land at any
         // radius inside the cone as at the centre.
@@ -731,7 +739,7 @@ export class PlayScreen {
             this.app.showReplay(this.chartId, this.replay);
             return;
         }
-        this.app.showPlay(this.chartId);
+        this.app.showPlay(this.chartId, this.runMode);
     }
 
     quit() {

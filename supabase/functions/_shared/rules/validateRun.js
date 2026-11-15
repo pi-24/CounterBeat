@@ -26,6 +26,8 @@ import { BeatMap } from './BeatMap.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
 import { Judge } from './Judge.js';
 import { Scorer } from './Scorer.js';
+import { canFailOut } from './failout.js';
+import { resolveShot } from './aim.js';
 import { checkRunChartRef } from '../charts/chartLoader.js';
 
 const LIMITS = Object.freeze({
@@ -44,8 +46,6 @@ const LIMITS = Object.freeze({
     inhumanSampleSize: 25,
     inhumanErrorSeconds: 0.006,
     inhumanFraction: 0.95,
-    /** Server-side lane check is a little looser than the client zone. */
-    laneTolerance: 1.15,
 });
 
 const ZONES = ['none', 'body', 'head'];
@@ -65,6 +65,19 @@ export function validateRun(level, log, claimedScore) {
     }
     if (log.chartId !== level.chartId) {
         return fail('chart mismatch');
+    }
+    // The run's mode decides fail-out, so it is part of the log. Daily runs,
+    // and Hard/Expert runs played as ranked or Quick Play, are submitted
+    // (the two fail out identically); Easy/Normal, campaign and practice are not.
+    const mode = log.mode;
+    if (!['daily', 'ranked', 'quickPlay'].includes(mode)) {
+        return fail('mode not submittable');
+    }
+    if ((level.kind === 'daily') !== (mode === 'daily')) {
+        return fail('mode does not match chart');
+    }
+    if (mode !== 'daily' && !['hard', 'expert'].includes(level.difficulty?.id)) {
+        return fail('ranked needs hard or expert');
     }
     const ref = checkRunChartRef(level, log);
     if (!ref.ok) {
@@ -129,7 +142,7 @@ export function validateRun(level, log, claimedScore) {
     );
     const lead = APPROACH_BEATS * (60 / level.bpm);
     const notes = beatMap.notes;
-    const canFail = !level.tutorial;
+    const canFail = canFailOut(level, mode);
 
     let clockMs = 0;
     let inputCursor = 0;
@@ -256,10 +269,11 @@ function replayShot({ level, beatMap, lanes, judge, scorer, body, notes, shotTim
     }
 
     // A claimed hit only stands if the replayed position had line of sight.
-    const inLane = Math.abs(body.x - lanes.centre(note.lane)) <= lanes.halfZone * LIMITS.laneTolerance;
-    const hit = zone !== 'none' && inLane;
+    const offset = body.x - lanes.centre(note.lane);
+    const aim = resolveShot({ zone, offset, halfZone: lanes.halfZone });
+    const hit = aim.hit;
     const judgement = judge.judge(note, shotTime, body.x, body.speed, body.isPlanted(clockMs),
-        { hit, zone: hit ? zone : 'none', blocked: !inLane });
+        { hit, zone: aim.zone, blocked: aim.blocked });
     note.resolved = true;
     scorer.apply(judgement);
     return { ok: true, timingError: judgement.grade === GRADE.MISS ? undefined : judgement.timingError };

@@ -8,7 +8,7 @@ import { sha256, verifyChart, loadChart, computeContentHash } from '../../src/ga
 import { resolveChart, TRACKS } from '../../src/game/rules/charts.js';
 import { validateRun } from '../../src/game/rules/validateRun.js';
 import { BeatMap } from '../../src/game/rules/BeatMap.js';
-import { RunRecorder } from '../../src/game/RunRecorder.js';
+import { RunRecorder, LOG_VERSION } from '../../src/game/RunRecorder.js';
 import { chartQualityProblems } from '../../tools/lib/chart-quality.mjs';
 import { playAndRecord } from '../../tools/lib/scripted-player.mjs';
 
@@ -62,7 +62,7 @@ test('validator accepts a valid run and rejects a tampered hash or old version',
     const chartId = 't:neon:hard';
     const level = resolveChart(chartId);
     const log = {
-        version: 5, chartId, movement: { speed: 1, accel: 1 }, startSongTime: -2,
+        version: LOG_VERSION, mode: 'ranked', chartId, movement: { speed: 1, accel: 1 }, startSongTime: -2,
         ticks: Array(60 * 70).fill(16.5), inputs: [], shots: [], look: [],
     };
     const ref = new RunRecorder(chartId).toJSON();
@@ -80,7 +80,7 @@ test('validator accepts a valid run and rejects a tampered hash or old version',
 test('a valid scored replay on an authored chart is accepted and carries the chart ref', () => {
     const chartId = 't:neon:hard';
     const level = resolveChart(chartId);
-    const rec = new RunRecorder(chartId);
+    const rec = new RunRecorder(chartId, undefined, 'ranked');
     const log = rec.toJSON();
     const out = validateRun(level, { ...log, ticks: Array(60 * 70).fill(16.5) });
     assert.equal(out.ok, true);

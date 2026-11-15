@@ -10,6 +10,8 @@ import { CounterStrafeBody } from '../../src/game/rules/CounterStrafeBody.js';
 import { Judge } from '../../src/game/rules/Judge.js';
 import { Scorer } from '../../src/game/rules/Scorer.js';
 import { SPEED_GRADE, GRADE, APPROACH_BEATS } from '../../src/game/rules/config.js';
+import { aimScalesForLevel, resolveShot } from '../../src/game/rules/aim.js';
+import { canFailOut, modeForLevel } from '../../src/game/rules/failout.js';
 import { RunRecorder } from '../../src/game/RunRecorder.js';
 
 const STEP = 1 / 60;
@@ -45,11 +47,12 @@ export function playAndRecord(level, options = {}) {
         aimZone = 'head', jitter = true, scale = { speed: 1, accel: 1 }, step = STEP,
         exact = false, reaction = 0,
     } = options;
+    const canFail = canFailOut(level, options.mode ?? modeForLevel(level));
     const beatMap = new BeatMap(level);
     const lanes = beatMap.lanes;
     const judge = new Judge(level, lanes);
     const scorer = new Scorer(beatMap.total);
-    const recorder = new RunRecorder(level.chartId, scale);
+    const recorder = new RunRecorder(level.chartId, scale, options.mode ?? modeForLevel(level));
     const body = new CounterStrafeBody(CounterStrafeBody.scaled(level.movement, scale),
         { min: lanes.left + 16, max: lanes.right - 16 }, lanes.centre(Math.floor(level.lanes / 2)));
     const lead = APPROACH_BEATS * (60 / level.bpm);
@@ -81,7 +84,7 @@ export function playAndRecord(level, options = {}) {
             scorer.apply({ grade: GRADE.MISS, timingError: songTime - note.time, speed: body.speed,
                 inLane: false, counterStrafed: false, headshot: false, reason: 'No shot' });
         });
-        if (scorer.failed && !level.tutorial) {
+        if (scorer.failed && canFail) {
             failed = true;
             break;
         }
@@ -90,14 +93,15 @@ export function playAndRecord(level, options = {}) {
         const target = beatMap.nextNote;
         const delay = reaction * (((target?.index ?? 0) * 7919) % 101) / 100;
         if (!idle && target && target.spawned && songTime >= target.time + delay) {
-            const inLane = lanes.contains(target.lane, body.x);
-            const zone = inLane ? aimZone : 'none';
-            recorder.shot(songTime, inLane ? target.index : -1, zone, !inLane);
+            const aim = resolveShot({ zone: aimZone, offset: body.x - lanes.centre(target.lane), halfZone: lanes.halfZone });
+            const inLane = !aim.blocked;
+            const zone = aim.zone;
+            recorder.shot(songTime, inLane ? target.index : -1, zone, aim.blocked);
             const judgement = judge.judge(target, songTime, body.x, body.speed, body.isPlanted(clockMs),
-                { hit: inLane, zone, blocked: !inLane });
+                { hit: aim.hit, zone, blocked: aim.blocked });
             target.resolved = true;
             scorer.apply(judgement);
-            if (scorer.failed && !level.tutorial) {
+            if (scorer.failed && canFail) {
                 failed = true;
             }
         }

@@ -158,12 +158,12 @@ export class ResultScreen {
             this.app.showReplay(this.level.chartId, this.log);
             return;
         }
-        this.app.showPlay(this.level.chartId);
+        this.app.showPlay(this.level.chartId, this.log?.mode);
     }
 
     next() {
         if (this.follower && (this.record.passed || this.level.tutorial)) {
-            this.app.showPlay(this.follower.chartId);
+            this.app.showPlay(this.follower.chartId, this.log?.mode);
         }
     }
 
