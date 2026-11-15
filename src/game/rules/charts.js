@@ -118,6 +118,33 @@ export function getDifficulty(id) {
  * @param {number} count
  * @returns {number[]}
  */
+export function patternVariantsForCount(count) {
+    const k = Math.max(1, Math.min(16, Math.round(count)));
+    const known = PATTERNS.find((pattern) => pattern.beats.length === k);
+    if (known) {
+        return [known.beats, known.alt];
+    }
+    // No hand-made phrase for this count: syncopate the even grid by pushing
+    // one off-beat note half a step later, so bars still vary in feel while
+    // keeping exactly `k` notes (density is unchanged).
+    const beats = patternForCount(k);
+    const step = 4 / (k <= 8 ? 8 : 16);
+    const alt = beats.slice();
+    for (let i = alt.length - 1; i > 0; i -= 1) {
+        const pushed = alt[i] + step / 2;
+        const next = i + 1 < alt.length ? alt[i + 1] : 4;
+        if (alt[i] % 1 !== 0 && pushed < next) {
+            alt[i] = pushed;
+            break;
+        }
+    }
+    return [beats, alt];
+}
+
+/**
+ * @param {number} count
+ * @returns {number[]} the main pattern for `count` notes
+ */
 export function patternForCount(count) {
     const k = Math.max(1, Math.min(16, Math.round(count)));
     const known = PATTERNS.find((pattern) => pattern.beats.length === k);

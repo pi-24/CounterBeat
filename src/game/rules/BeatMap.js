@@ -10,7 +10,7 @@
  */
 import { LAYOUT } from './config.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
-import { patternForCount } from './charts.js';
+import { patternVariantsForCount } from './charts.js';
 
 /** Seconds trimmed from every dash budget, see chooseLane. */
 const REACTION_ALLOWANCE = 0.04;
@@ -210,14 +210,17 @@ export class BeatMap {
         for (let bar = level.firstNoteBar; bar < level.bars; bar += 1) {
             // Mostly the main pattern, now and then its variation, so a chart
             // has phrases rather than one loop - still fixed by the seed.
-            let pattern = patterns.length > 1 && random.next() < 0.3 ? patterns[1] : patterns[0];
+            const useAlt = random.next() < 0.3;
+            let pattern = patterns.length > 1 && useAlt ? patterns[1] : patterns[0];
             if (level.noteRate) {
                 // Density-driven charts: error diffusion decides how many
                 // notes this bar gets so the chart averages `noteRate`.
                 owed += level.noteRate * spb * 4;
                 const count = Math.max(1, Math.min(16, Math.round(owed)));
                 owed -= count;
-                pattern = patternForCount(count);
+                // Keep phrase variation on density-driven charts too.
+                const [main, alt] = patternVariantsForCount(count);
+                pattern = useAlt ? alt : main;
             }
             for (const offset of pattern) {
                 const time = gridOffset + (bar * 4 + offset) * spb;

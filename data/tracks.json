@@ -57,7 +57,7 @@
         "audio/music-range.mp3"
       ],
       "placeholder": true,
-      "chartVersion": 1,
+      "chartVersion": 2,
       "bars": 24,
       "firstNoteBar": 2,
       "arena": "range",
@@ -78,7 +78,7 @@
         "audio/music-drift.mp3"
       ],
       "placeholder": true,
-      "chartVersion": 1,
+      "chartVersion": 2,
       "bars": 28,
       "firstNoteBar": 2,
       "arena": "range",
@@ -99,7 +99,7 @@
         "audio/music-neon.mp3"
       ],
       "placeholder": true,
-      "chartVersion": 1,
+      "chartVersion": 2,
       "bars": 32,
       "firstNoteBar": 3,
       "arena": "neon",
@@ -120,7 +120,7 @@
         "audio/music-breakneck.mp3"
       ],
       "placeholder": true,
-      "chartVersion": 1,
+      "chartVersion": 2,
       "bars": 36,
       "firstNoteBar": 3,
       "arena": "neon",
@@ -141,7 +141,7 @@
         "audio/music-vault.mp3"
       ],
       "placeholder": true,
-      "chartVersion": 1,
+      "chartVersion": 2,
       "bars": 40,
       "firstNoteBar": 4,
       "arena": "vault",
@@ -162,7 +162,7 @@
         "audio/music-overclock.mp3"
       ],
       "placeholder": true,
-      "chartVersion": 1,
+      "chartVersion": 2,
       "bars": 44,
       "firstNoteBar": 4,
       "arena": "vault",

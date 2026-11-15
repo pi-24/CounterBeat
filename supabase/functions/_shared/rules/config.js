@@ -116,8 +116,10 @@ export const APPROACH_BEATS = 2;
  *      clock), notes expired after a tick's shots.
  *   4  shots judged on the tick clock itself, notes spawned and expired at
  *      every tick before its shots, chart processing stops at a failure.
+ *   5  official charts regenerated from data/rules.json densities (T3) with
+ *      phrase variation kept; earlier replays no longer match their charts.
  */
-export const LOG_VERSION = 4;
+export const LOG_VERSION = 5;
 
 /** Grade names used throughout the game and the score records. */
 export const GRADE = Object.freeze({
