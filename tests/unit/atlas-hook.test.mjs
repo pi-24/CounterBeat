@@ -47,3 +47,29 @@ test('practice and results scenes parse; synthetic timing errors are determinist
     assert.deepEqual(syntheticTimingErrors(3), syntheticTimingErrors(3));
     assert.equal(syntheticTimingErrors(3).length, 48);
 });
+
+test('markAtlasReady waits for the lazy chunks, shaders and streamed audio', async () => {
+    const { markAtlasReady } = await import('../../src/game/atlasHook.js');
+    const done = [];
+    const later = (label, ms) => new Promise((r) => setTimeout(() => { done.push(label); r(); }, ms));
+    globalThis.window = {};
+    const app = {
+        ready3d: later('3d', 10),
+        scene: { whenReadyAsync: () => later('shaders', 30) },
+        audioStreaming: later('audio', 60),
+    };
+    const ready = markAtlasReady(app);
+    assert.equal(globalThis.window.__atlasReady, undefined, 'not ready while chunks are still loading');
+    await ready;
+    assert.deepEqual(done, ['3d', 'shaders', 'audio']);
+    assert.equal(globalThis.window.__atlasReady, true);
+    delete globalThis.window;
+});
+
+test('markAtlasReady still signals when a step fails or is missing', async () => {
+    const { markAtlasReady } = await import('../../src/game/atlasHook.js');
+    globalThis.window = {};
+    await markAtlasReady({ ready3d: Promise.reject(new Error('no webgl')), scene: null, audioStreaming: undefined });
+    assert.equal(globalThis.window.__atlasReady, true);
+    delete globalThis.window;
+});

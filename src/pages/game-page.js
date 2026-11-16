@@ -7,7 +7,6 @@
  * player's data.
  */
 import { initNavigation } from '../ui/Navigation.js';
-import { GameApp } from '../game/GameApp.js';
 import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
 import { GRADE_LABEL } from '../game/rules/config.js';
@@ -15,7 +14,10 @@ import { settings } from '../game/Settings.js';
 import { ProgressStore } from '../game/progress/store.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
 import { toast } from '../ui/Toast.js';
-import { parseAtlasParams, atlasServices, memoryStorage, showAtlasScene } from '../game/atlasHook.js';
+import { early } from './game-early.js';
+import { parseAtlasParams, atlasServices, memoryStorage, showAtlasScene, markAtlasReady } from '../game/atlasHook.js';
+
+
 
 const backend = await initNavigation('game');
 await settings.sync(backend);
@@ -235,11 +237,12 @@ setupEmbedded();
 async function boot() {
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('gameCanvas');
-    const loadingText = document.getElementById('loadingText');
 
     try {
         const replay = await pendingReplay();
+        const { GameApp } = await import('../game/GameApp.js');
         const app = new GameApp({
+            early,
             replay,
             skipStart: Boolean(atlasParams),
             storage: atlasParams ? memoryStorage() : undefined,
@@ -255,13 +258,15 @@ async function boot() {
             },
             settingsForm: document.getElementById('settingsForm'),
             services: atlasParams ? atlasServices(services) : services,
-            onProgress(done, total) {
-                loadingText.textContent = `Loading audio ${done}/${total}…`;
-            },
         });
         await app.boot();
         if (atlasParams) {
             await showAtlasScene(app, atlasParams);
+        } else {
+            // Plain load too: the splash is on screen, but the flag waits until the lazily loaded
+            // chunks and streamed audio are in, so a screenshot harness never stops the server
+            // mid-fetch.
+            markAtlasReady(app);
         }
     } catch (error) {
         console.error(error);

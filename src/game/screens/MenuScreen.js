@@ -13,7 +13,6 @@ import {
     TRACKS, DIFFICULTIES, ARENAS, resolveChart, dailyChartId, dailyDate,
     buildCustomChart,
 } from '../rules/charts.js';
-import { Showcase } from '../fps/Showcase.js';
 import { themeProvider, trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
 import { STAR_DIFFICULTIES, STARS_PER_CHART, CAMPAIGN_TRACK_IDS } from '../progress/stars.js';
@@ -33,7 +32,15 @@ export class MenuScreen {
 
     async enter() {
         const daily = resolveChart(dailyChartId());
-        this.showcase = new Showcase(this.app.scene, this.app.camera, daily ?? resolveChart('t:range:normal'));
+        this.exited = false;
+        this.showcase = null;
+        // The 3D backdrop appears once the engine has loaded; the menu itself does not wait for it.
+        const backdrop = daily ?? resolveChart('t:range:normal');
+        this.app.ready3d?.then(() => {
+            if (!this.exited) {
+                this.showcase = new this.app.Showcase(this.app.scene, this.app.camera, backdrop);
+            }
+        }, () => {});
 
         this.app.mainMenu?.showRoot();
         this.renderHeader();
@@ -42,6 +49,9 @@ export class MenuScreen {
         this.bindLibrary();
         this.renderLibrary();
         this.overlay.hidden = false;
+        if (typeof performance !== 'undefined' && performance.mark) {
+            performance.mark('cb-menu-ready');
+        }
 
         this.countdown = window.setInterval(() => this.renderDailyClock(), 30000);
 
@@ -69,13 +79,15 @@ export class MenuScreen {
         this.unsubscribe = [];
         window.clearInterval(this.countdown);
         this.overlay.hidden = true;
-        this.showcase.dispose();
+        this.exited = true;
+        this.showcase?.dispose();
+        this.showcase = null;
         this.app.audio.stopMusic();
     }
 
     /** @param {number} dt */
     update(dt) {
-        this.showcase.update(dt);
+        this.showcase?.update(dt);
     }
 
     // ----------------------------------------------------------- header ----
@@ -194,6 +206,9 @@ export class MenuScreen {
             el('span', 'track__key', info.key),
             el('span', 'track__name', info.name),
             el('span', 'track__mood', info.mood),
+            ...(info.trackId && trackProvider.isPlaceholder(info.trackId)
+                ? [el('span', 'track__placeholder', 'Placeholder music')]
+                : []),
         );
         const row = el('div', 'track__difficulties');
         for (const option of options) {

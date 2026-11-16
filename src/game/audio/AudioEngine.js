@@ -9,6 +9,8 @@
  * Pausing suspends the whole context, which freezes that clock too, so the
  * Conductor never has to special-case a pause.
  */
+import { streamBytes } from '../../audio/streamLoader.js';
+
 export class AudioEngine {
     constructor() {
         this.musicLevel = 0.55;
@@ -138,11 +140,10 @@ export class AudioEngine {
     async fetchFirst(urls) {
         for (const url of urls) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) {
+                const bytes = await streamBytes(url);
+                if (!bytes) {
                     continue;
                 }
-                const bytes = await response.arrayBuffer();
                 return await this.context.decodeAudioData(bytes);
             } catch (error) {
                 console.warn(`AudioEngine: could not load ${url}`, error);

@@ -7,9 +7,11 @@
     "build": "vite build",
     "preview": "vite preview --port 4173",
     "simulate": "node tools/simulate.mjs",
+    "validate:tracks": "node tools/validate-tracks.mjs",
+    "validate:release": "node tools/validate-tracks.mjs --release",
     "sync-rules": "node tools/sync-rules.mjs",
     "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
-    "test": "node tools/chart-hash.mjs --verify && node tools/chart-stats.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run test:unit"
+    "test": "node tools/chart-hash.mjs --verify && node tools/chart-stats.mjs && node tools/validate-tracks.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run test:unit"
   },
   "license": "UNLICENSED",
   "dependencies": {

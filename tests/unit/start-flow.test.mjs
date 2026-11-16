@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { requestFullscreenFromGesture, lockPromptNeeded } from '../../src/game/onboarding/startFlow.js';
+import { requestFullscreenFromGesture, lockPromptNeeded, bindEarlyStart, mayRequestFullscreen } from '../../src/game/onboarding/startFlow.js';
 import { rebind, sanitiseBindings, findConflict, strafeDirection, DEFAULT_BINDINGS } from '../../src/game/input/bindings.js';
 
 test('fullscreen is requested synchronously from the gesture handler', () => {
@@ -52,4 +52,27 @@ test('a tutorial chart that runs out restarts the current stage, not the run', (
     p.skip();
     assert.equal(tutorialNeedsRestart(p), false);
     assert.equal(tutorialNeedsRestart(null), false);
+});
+
+test('early Play click: fullscreen requested once, inside that click only', () => {
+    let handler = null;
+    let requests = 0;
+    const button = { textContent: 'Click to play', addEventListener: (_t, fn) => { handler = fn; } };
+    const stage = { requestFullscreen: () => { requests += 1; return Promise.resolve(); } };
+    const early = { clicked: false };
+    bindEarlyStart(button, stage, {}, early);
+    assert.equal(requests, 0, 'nothing is requested before a gesture');
+    handler();
+    handler();
+    assert.equal(requests, 1);
+    assert.equal(early.clicked, true);
+    assert.equal(early.fullscreen, true);
+    assert.match(button.textContent, /Loading/);
+});
+
+test('GameApp never requests fullscreen for an already-handled early click', () => {
+    assert.equal(mayRequestFullscreen({ clicked: true }, false), false, 'replayed early click: just show the menu');
+    assert.equal(mayRequestFullscreen({ clicked: true }, true), false, 'page handler already did it');
+    assert.equal(mayRequestFullscreen({ clicked: false }, true), true, 'a real click after the game loaded');
+    assert.equal(mayRequestFullscreen({ clicked: false }, false), false, 'never outside a gesture');
 });

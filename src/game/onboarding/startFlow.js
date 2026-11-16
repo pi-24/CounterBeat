@@ -22,6 +22,37 @@ export function requestFullscreenFromGesture(stage, doc) {
 }
 
 /**
+ * The Play splash is shown by the page before the game chunk loads, so its click can arrive
+ * before GameApp exists.  Fullscreen (and any pointer lock) may only be requested inside a
+ * user gesture, so that early click requests fullscreen itself and records it in `early`.
+ * GameApp later only shows the menu for an early click: it never requests fullscreen or
+ * pointer lock again outside a gesture.
+ * @param {{addEventListener:Function, textContent:string}} button
+ * @param {{requestFullscreen?:Function}} stage
+ * @param {{fullscreenElement?:unknown}} doc
+ * @param {{clicked:boolean, fullscreen?:boolean}} early shared with GameApp
+ */
+export function bindEarlyStart(button, stage, doc, early) {
+    button.addEventListener('click', () => {
+        if (early.clicked) {
+            return;
+        }
+        early.clicked = true;
+        button.textContent = 'Loading…';
+        early.fullscreen = requestFullscreenFromGesture(stage, doc);
+    });
+}
+
+/**
+ * Whether GameApp's start handler may request fullscreen: only when it is running inside
+ * the click itself, never when replaying an early click that was already handled.
+ * @param {{clicked:boolean}} early @param {boolean} insideGesture
+ */
+export function mayRequestFullscreen(early, insideGesture) {
+    return insideGesture && !early.clicked;
+}
+
+/**
  * Whether the in-game "click to capture the mouse" prompt shows.  It shows
  * while a live run (or the atlas tutorial still) has no pointer lock.
  * @param {{paused?:boolean, finished?:boolean, replay?:unknown, atlas?:unknown,

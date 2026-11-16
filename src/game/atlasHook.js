@@ -10,29 +10,9 @@
 import { resolveChart, TRACKS } from './rules/charts.js';
 import { BeatMap } from './rules/BeatMap.js';
 import { ProgressStore } from './progress/store.js';
+import { ATLAS_SCENES, parseAtlasParams } from './atlasParams.js';
 
-export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'practice', 'calibration', 'tutorial', 'settings']);
-
-/**
- * @param {string} search a location.search string
- * @returns {{scene:string, seed:number, t:number}|null} null for no or unknown scene
- */
-export function parseAtlasParams(search) {
-    const params = new URLSearchParams(search);
-    const scene = params.get('atlas_scene');
-    if (!ATLAS_SCENES.includes(scene)) {
-        return null;
-    }
-    const num = (key, fallback) => {
-        const value = Number(params.get(key));
-        return params.get(key) !== null && Number.isFinite(value) ? value : fallback;
-    };
-    return {
-        scene,
-        seed: Math.abs(Math.trunc(num('atlas_seed', 1))),
-        t: Math.min(30, Math.max(0, num('atlas_t', 8))),
-    };
-}
+export { ATLAS_SCENES, parseAtlasParams };
 
 /** @returns {{write:Function, read:Function, remove:Function, writes:number}} storage that keeps nothing */
 export function memoryStorage() {
@@ -154,5 +134,23 @@ export async function showAtlasScene(app, params) {
     } else {
         await app.showMenu();
     }
+    await markAtlasReady(app);
+}
+
+/**
+ * Sets `window.__atlasReady` once the page has stopped fetching: the lazily imported chunks
+ * (3D engine, screens), Babylon's own shader modules and the streamed audio are all in.  A
+ * screenshot harness may stop serving the build as soon as the flag is set, so a chunk request
+ * after it would fail; the flag is only a boolean and changes no game state.
+ * @param {import('./GameApp.js').GameApp} app
+ */
+export async function markAtlasReady(app) {
+    const after = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    // Nothing here may stall the flag: a failure or a scene that never reports ready still resolves.
+    const quiet = (promise, limit = 15000) => Promise.race([Promise.resolve(promise).catch(() => {}), after(limit)]);
+    await quiet(app.ready3d);
+    await quiet(app.scene?.whenReadyAsync?.()); // waits for the shader chunks of what is on screen
+    await quiet(app.audioStreaming);
+    await after(400);
     window.__atlasReady = true;
 }

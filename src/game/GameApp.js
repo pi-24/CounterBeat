@@ -8,16 +8,13 @@
  * those in local storage.
  */
 import { practiceKeyFree } from './modes/practice.js';
-import { requestFullscreenFromGesture, lockPromptNeeded } from './onboarding/startFlow.js';
-import { Engine, Scene } from './engine.js';
-import { FpsCamera } from './fps/FpsCamera.js';
+import { requestFullscreenFromGesture, lockPromptNeeded, mayRequestFullscreen } from './onboarding/startFlow.js';
 import { Hud } from './fps/Hud.js';
 import { Input } from './Input.js';
+import { loadStreamed } from '../audio/streamLoader.js';
 import { audio as sharedAudio } from './audio/AudioEngine.js';
 import { settings as sharedSettings } from './Settings.js';
 import { MenuScreen } from './screens/MenuScreen.js';
-import { PlayScreen } from './screens/PlayScreen.js';
-import { ResultScreen } from './screens/ResultScreen.js';
 import { SettingsPanel } from './screens/SettingsPanel.js';
 import { Calibration } from './screens/Calibration.js';
 import { SongLibrary } from './library/SongLibrary.js';
@@ -55,7 +52,7 @@ export class GameApp {
      * @param {HTMLElement} options.settingsForm
      * @param {GameServices} options.services
      * @param {{chartId:string, log:object}} [options.replay] open this replay first
-     * @param {(done:number,total:number) => void} [options.onProgress]
+     * @param {{clicked:boolean}} [options.early] the page's early Play splash state
      * @param {boolean} [options.skipStart] no Play splash (screenshot hook and replay links)
      * @param {{read:Function, write:Function}} [options.storage] holds the first-run flag
      */
@@ -67,7 +64,8 @@ export class GameApp {
         this.pauseOverlay = options.overlays.pause;
         this.resultOverlay = options.overlays.result;
         this.loadingOverlay = options.overlays.loading;
-        this.onProgress = options.onProgress ?? (() => {});
+        /** Set by the page when the Play splash was clicked before this module finished loading. */
+        this.early = options.early ?? { clicked: false };
         this.skipStart = Boolean(options.skipStart);
         this.storage = options.storage ?? store;
         this.startOverlay = document.getElementById('startOverlay');
@@ -118,7 +116,54 @@ export class GameApp {
         this.switchId = 0;
     }
 
+    /**
+     * The menu is DOM, so it comes up as soon as this module has loaded.  The 3D engine (the bulk
+     * of the download) and the play/result screens are imported behind it by `init3d`, and every
+     * 3D-dependent step waits on `ready3d`.
+     */
     async boot() {
+        this.ready3d = this.init3d();
+        this.ready3d.catch(() => {}); // surfaced below; no unhandled-rejection noise while the menu shows
+        this.settingsPanel.init();
+        this.mainMenu.mount();
+        this.bindControls();
+
+        this.loadingOverlay.hidden = true;
+        this.bindStart();
+        if (this.pendingReplay) {
+            const { chartId, log } = this.pendingReplay;
+            this.pendingReplay = null;
+            this.startAudioStreaming();
+            await this.showReplay(chartId, log);
+            return;
+        }
+        await this.showMenu();
+        // No sound blocks start-up: music and effects stream in behind the menu.
+        this.startAudioStreaming();
+        await this.ready3d;
+    }
+
+    startAudioStreaming() {
+        // `audioStreaming` settles when every background sound has arrived.  Nothing waits on it
+        // to play; it exists so tooling can tell when the page has stopped fetching.
+        this.audioStreaming = loadStreamed(this.audio, assets.audioManifest(),
+            (key) => { if (key === 'music-menu') this.playMenuMusicWhenReady(); })
+            .then((streamed) => streamed.background)
+            .catch(() => {});
+    }
+
+    /** Imports and creates the 3D engine, camera and the screens that need them. */
+    async init3d() {
+        const [{ Engine, Scene }, { FpsCamera }, { PlayScreen }, { ResultScreen }, { Showcase }] = await Promise.all([
+            import('./engine.js'),
+            import('./fps/FpsCamera.js'),
+            import('./screens/PlayScreen.js'),
+            import('./screens/ResultScreen.js'),
+            import('./fps/Showcase.js'),
+        ]);
+        this.PlayScreen = PlayScreen;
+        this.ResultScreen = ResultScreen;
+        this.Showcase = Showcase;
         this.engine = new Engine(this.canvas, true, {
             antialias: true,
             adaptToDeviceRatio: true,
@@ -135,12 +180,6 @@ export class GameApp {
         this.scene.skipPointerUpPicking = true;
         this.camera = new FpsCamera(this.scene, this.canvas, this.settings);
 
-        this.settingsPanel.init();
-        this.mainMenu.mount();
-        this.bindControls();
-
-        await this.audio.load(assets.audioManifest(), this.onProgress);
-
         this.engine.runRenderLoop(() => {
             const dt = Math.min(0.05, this.engine.getDeltaTime() / 1000);
             if (this.current && !this.switching) {
@@ -150,16 +189,6 @@ export class GameApp {
             this.scene.render();
         });
         window.addEventListener('resize', () => this.engine.resize());
-
-        this.loadingOverlay.hidden = true;
-        this.bindStart();
-        if (this.pendingReplay) {
-            const { chartId, log } = this.pendingReplay;
-            this.pendingReplay = null;
-            await this.showReplay(chartId, log);
-            return;
-        }
-        await this.showMenu();
     }
 
     // --------------------------------------------------------- onboarding ----
@@ -179,13 +208,17 @@ export class GameApp {
         this.startOverlay.hidden = false;
         const button = this.startOverlay.querySelector('[data-action="start-play"]');
         let busy = false;
-        button.addEventListener('click', async () => {
+        const go = async (insideGesture) => {
             if (busy) {
                 return;
             }
             busy = true;
-            // Fullscreen must be requested synchronously inside this click.
-            this.enterFullscreen();
+            // Fullscreen must be requested synchronously inside a click.  An early click was
+            // already handled by the page (it requested fullscreen in its own handler), so
+            // this only shows the menu: no second fullscreen or pointer-lock attempt.
+            if (mayRequestFullscreen(this.early, insideGesture)) {
+                this.enterFullscreen();
+            }
             try {
                 await this.audio.unlock();
             } catch {
@@ -194,15 +227,31 @@ export class GameApp {
             this.startOverlay.hidden = true;
             if (shouldAutoStart(this.storage)) {
                 this.runFirstRun();
-            } else if (this.current instanceof MenuScreen) {
-                this.audio.resetMusicVolume();
-                this.audio.playMusic('music-menu', true);
+            } else {
+                this.playMenuMusicWhenReady();
             }
-        });
+        };
+        button.addEventListener('click', () => go(true));
+        button.textContent = 'Click to play';
+        // The page shows this splash before the engine loads; a click that came early is honoured now.
+        // Focus the button before the overlay can be hidden, never after.
         button.focus();
+        if (this.early.clicked) {
+            go(false);
+        }
     }
 
     /** First launch: short calibration (skippable), then the tutorial (skippable). */
+    /** Menu music streams in after the menu is up; start it if the player is already there. */
+    playMenuMusicWhenReady() {
+        const ready = this.audio.ready && this.audio.context.state === 'running';
+        if (ready && this.startOverlay?.hidden && this.current instanceof MenuScreen
+            && !this.audio.musicKey && this.audio.has('music-menu')) {
+            this.audio.resetMusicVolume();
+            this.audio.playMusic('music-menu', true);
+        }
+    }
+
     runFirstRun() {
         this.calibration.open({
             auto: true,
@@ -224,7 +273,7 @@ export class GameApp {
     skipTutorial() {
         this.play?.tutorialProgress?.skip();
         this.completeOnboarding('skipped');
-        this.camera.unlock();
+        this.camera?.unlock();
         this.showMenu();
     }
 
@@ -261,13 +310,15 @@ export class GameApp {
         }
     }
 
-    showMenu() {
-        return this.switchTo(new MenuScreen(this));
+    async showMenu() {
+        await this.switchTo(new MenuScreen(this));
+        this.playMenuMusicWhenReady();
     }
 
     /** @param {string} chartId @param {string} [mode] campaign | quickPlay | daily | ranked */
-    showPlay(chartId, mode, extra = {}) {
-        return this.switchTo(new PlayScreen(this, chartId, { mode, ...extra }));
+    async showPlay(chartId, mode, extra = {}) {
+        await this.ready3d;
+        return this.switchTo(new this.PlayScreen(this, chartId, { mode, ...extra }));
     }
 
     /** Atlas screenshot hook: the first-run calibration screen, nothing saved. */
@@ -282,26 +333,30 @@ export class GameApp {
     }
 
     /** Atlas screenshot hook: a play screen on a frozen, caller-driven clock. No audio, no results. */
-    switchToAtlasPlay(chartId, clock) {
-        return this.switchTo(new PlayScreen(this, chartId, { mode: 'quickPlay', atlas: clock }));
+    async switchToAtlasPlay(chartId, clock) {
+        await this.ready3d;
+        return this.switchTo(new this.PlayScreen(this, chartId, { mode: 'quickPlay', atlas: clock }));
     }
 
     /** Atlas screenshot hook: a practice play screen on a caller-driven clock (loop set, no audio, nothing saved). */
-    switchToAtlasPractice(chartId, clock, section) {
-        return this.switchTo(new PlayScreen(this, chartId, { mode: 'practice', atlas: clock, atlasPractice: true, section }));
+    async switchToAtlasPractice(chartId, clock, section) {
+        await this.ready3d;
+        return this.switchTo(new this.PlayScreen(this, chartId, { mode: 'practice', atlas: clock, atlasPractice: true, section }));
     }
 
     /** @param {string} chartId @param {object} log a RunRecorder log */
-    showReplay(chartId, log) {
-        return this.switchTo(new PlayScreen(this, chartId, { replay: log }));
+    async showReplay(chartId, log) {
+        await this.ready3d;
+        return this.switchTo(new this.PlayScreen(this, chartId, { replay: log }));
     }
 
     /**
      * @param {object} record @param {string} chartId @param {object} log
      * @param {{replay?: boolean}} [options]
      */
-    showResults(record, chartId, log, options) {
-        return this.switchTo(new ResultScreen(this, record, chartId, log, options));
+    async showResults(record, chartId, log, options) {
+        await this.ready3d;
+        return this.switchTo(new this.ResultScreen(this, record, chartId, log, options));
     }
 
     /**
@@ -314,9 +369,9 @@ export class GameApp {
         window.setTimeout(() => this.showMenu(), 0);
     }
 
-    /** @returns {PlayScreen|null} the play screen, when one is active. */
+    /** @returns {object|null} the play screen, when one is active. */
     get play() {
-        return this.current instanceof PlayScreen ? this.current : null;
+        return this.PlayScreen && this.current instanceof this.PlayScreen ? this.current : null;
     }
 
     // --------------------------------------------------------- controls ----
@@ -341,13 +396,13 @@ export class GameApp {
                 }
                 return;
             }
-            if (this.camera.locked) {
+            if (this.camera?.locked) {
                 if (event.button === 0 || event.button === 2) {
                     event.preventDefault();
                     play.fire(undefined, event.timeStamp);
                 }
             } else if (onStage && event.button === 0) {
-                this.camera.lock();
+                this.camera?.lock();
             }
         });
         this.stage.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -385,7 +440,7 @@ export class GameApp {
             } else if (code === 'KeyQ' && play && play.replay) {
                 play.quit();
             } else if (code === 'KeyP' && play && !play.paused) {
-                this.camera.unlock();
+                this.camera?.unlock();
                 play.pause();
             }
         });
@@ -410,7 +465,7 @@ export class GameApp {
         for (const button of this.resultOverlay.querySelectorAll('[data-action]')) {
             button.addEventListener('click', () => {
                 const screen = this.current;
-                if (!(screen instanceof ResultScreen)) {
+                if (!(this.ResultScreen && screen instanceof this.ResultScreen)) {
                     return;
                 }
                 const action = button.dataset.action;
@@ -429,7 +484,7 @@ export class GameApp {
             fullscreenButton.addEventListener('click', () => this.toggleFullscreen());
         }
         document.addEventListener('fullscreenchange', () => {
-            window.setTimeout(() => this.engine.resize(), 50);
+            window.setTimeout(() => this.engine?.resize(), 50);
         });
     }
 

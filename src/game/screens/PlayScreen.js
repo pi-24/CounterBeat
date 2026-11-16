@@ -180,7 +180,9 @@ export class PlayScreen {
         camera.update(Arena.toWorldX(this.body.x), 0, 0);
 
         hud.show();
-        hud.setLevel(this.replay ? `REPLAY · ${this.level.name}` : this.level.name, this.level.bpm);
+        const placeholderTag = this.level.trackId && !this.level.custom && trackProvider.isPlaceholder(this.level.trackId)
+            ? ' · placeholder music' : '';
+        hud.setLevel(`${this.replay ? `REPLAY · ${this.level.name}` : this.level.name}${placeholderTag}`, this.level.bpm);
         hud.buildLanes(this.lanes.count);
         hud.applyCrosshair(settings);
         hud.applyVisibility(settings);

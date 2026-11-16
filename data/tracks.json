@@ -59,6 +59,7 @@
       "placeholder": true,
       "chartVersion": 2,
       "bars": 24,
+      "tailSeconds": 0,
       "firstNoteBar": 2,
       "arena": "range",
       "seed": 1101
@@ -81,6 +82,7 @@
       "placeholder": true,
       "chartVersion": 2,
       "bars": 28,
+      "tailSeconds": 2,
       "firstNoteBar": 2,
       "arena": "range",
       "seed": 1707
@@ -102,6 +104,7 @@
       "placeholder": true,
       "chartVersion": 2,
       "bars": 32,
+      "tailSeconds": 0,
       "firstNoteBar": 3,
       "arena": "neon",
       "seed": 2202
@@ -123,6 +126,7 @@
       "placeholder": true,
       "chartVersion": 2,
       "bars": 36,
+      "tailSeconds": 0.1,
       "firstNoteBar": 3,
       "arena": "neon",
       "seed": 2909
@@ -144,6 +148,7 @@
       "placeholder": true,
       "chartVersion": 2,
       "bars": 40,
+      "tailSeconds": 0.1,
       "firstNoteBar": 4,
       "arena": "vault",
       "seed": 3303
@@ -165,6 +170,7 @@
       "placeholder": true,
       "chartVersion": 2,
       "bars": 44,
+      "tailSeconds": 0,
       "firstNoteBar": 4,
       "arena": "vault",
       "seed": 4404
