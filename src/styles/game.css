@@ -1858,7 +1858,11 @@
 
 .is-embedded .site-header,
 .is-embedded .site-footer,
-.is-embedded .notice {
+.is-embedded .notice,
+.is-desktop .site-header,
+.is-desktop .site-footer,
+.is-desktop .notice,
+.is-desktop .stage-bar {
     display: none;
 }
 
@@ -1940,3 +1944,6 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
+
+.desktop-quit { position: absolute; top: 16px; right: 16px; z-index: 5; }
+.desktop-quit[hidden] { display: none; }

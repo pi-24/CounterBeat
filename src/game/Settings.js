@@ -167,6 +167,9 @@ export class Settings {
         if ('reducedEffects' in changes) {
             out.reducedEffects = Boolean(changes.reducedEffects);
         }
+        if ('windowed' in changes) {
+            out.windowed = Boolean(changes.windowed);
+        }
         if ('plainHitSounds' in changes) {
             out.plainHitSounds = Boolean(changes.plainHitSounds);
         }

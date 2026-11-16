@@ -45,7 +45,7 @@ export class SettingsPanel {
                 this.refresh();
             });
         }
-        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway', 'reducedEffects', 'plainHitSounds']) {
+        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway', 'reducedEffects', 'plainHitSounds', 'windowed']) {
             const control = this.field(name);
             if (control) {
                 control.addEventListener('change', () => {
@@ -86,7 +86,7 @@ export class SettingsPanel {
                 control.value = String(s.get(name));
             }
         }
-        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway', 'reducedEffects', 'plainHitSounds']) {
+        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway', 'reducedEffects', 'plainHitSounds', 'windowed']) {
             const control = this.field(name);
             if (control) {
                 control.checked = Boolean(s.get(name));

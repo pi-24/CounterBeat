@@ -163,6 +163,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     audioOffset: 0,         // seconds; measured by the calibration screen
     reducedEffects: false,  // no pulse, camera kick or hit-stop; flashes stay capped
     hitVolume: 0.8,         // 0..1, the in-key hit sound
+    windowed: false,        // desktop shell only: true = windowed instead of fullscreen
     plainHitSounds: false,  // true = the original unpitched hit samples
     musicVolume: 0.55,      // 0..1
     sfxVolume: 0.8,         // 0..1

@@ -1,0 +1,11 @@
+{
+  "appId": "com.counterbeat.game",
+  "productName": "CounterBeat",
+  "directories": { "output": "release" },
+  "files": ["electron/**/*", "dist/**/*", "package.json"],
+  "win": {
+    "target": [{ "target": "dir", "arch": ["x64"] }],
+    "signAndEditExecutable": false
+  },
+  "forceCodeSigning": false
+}

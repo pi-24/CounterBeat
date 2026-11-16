@@ -5,10 +5,16 @@
  * the same leaderboard data the rankings page uses.  Scores are only
  * comparable on the same chart, so the panel shows one chart at a time.
  */
+import { isDesktop } from '../platform/platform.js';
 import { initNavigation } from '../ui/Navigation.js';
 import { bindPlayLinks } from './playLauncher.js';
 import { TRACKS, DIFFICULTIES, dailyChartId } from '../game/rules/charts.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
+
+// The desktop app has no home page: go straight into the game.
+if (isDesktop()) {
+    window.location.replace('game.html');
+}
 
 bindPlayLinks();
 const backend = await initNavigation('index');

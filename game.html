@@ -142,6 +142,7 @@
                         <!-- Menu ------------------------------------------------------>
                         <div class="overlay overlay--menu" id="menuOverlay" hidden>
                             <button class="btn btn--ghost embed-exit" type="button" id="embedExit" hidden>‹ Website</button>
+                            <button class="btn btn--ghost desktop-quit" type="button" data-desktop-quit data-desktop-only hidden>Quit</button>
                             <div class="menu">
                                 <div class="menu__head">
                                     <h2 class="menu__title">COUNTER<span>BEAT</span></h2>
@@ -214,6 +215,9 @@
                                             </label>
                                             <label class="settings__check">
                                                 <input type="checkbox" name="reducedEffects"> Reduced effects (no pulse, camera kick or hit-stop)
+                                            </label>
+                                            <label class="settings__check" data-desktop-only hidden>
+                                                <input type="checkbox" name="windowed"> Windowed mode (Alt+Enter)
                                             </label>
                                             <label class="settings__check">
                                                 <input type="checkbox" name="plainHitSounds"> Plain hit sounds (no in-key pitch)
@@ -322,6 +326,7 @@
                                     <kbd>R</kbd></button>
                                 <button class="btn btn--ghost" type="button" data-action="quit">Song select
                                     <kbd>Q</kbd></button>
+                                <button class="btn btn--ghost" type="button" data-desktop-quit data-desktop-only hidden>Quit game</button>
                             </div>
                         </div>
 

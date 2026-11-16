@@ -9,6 +9,7 @@
 import { canSubmitRankedRun } from '../net/submit.js';
 import { LocalBestStore } from '../net/localBest.js';
 import { store } from '../core/Storage.js';
+import { applyPlatform, setDesktopWindowed } from '../platform/platform.js';
 import { initNavigation } from '../ui/Navigation.js';
 import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
@@ -22,8 +23,28 @@ import { parseAtlasParams, atlasServices, memoryStorage, showAtlasScene, markAtl
 
 
 
+const platform = applyPlatform();
 const backend = await initNavigation('game');
 await settings.sync(backend);
+
+if (platform === 'desktop') {
+    for (const node of document.querySelectorAll('[data-desktop-only]')) {
+        node.hidden = false;
+    }
+    for (const node of document.querySelectorAll('[data-desktop-quit]')) {
+        node.addEventListener('click', () => window.counterbeatDesktop.quit?.());
+    }
+    setDesktopWindowed(settings.get('windowed'));
+    let lastWindowed = settings.get('windowed');
+    settings.onChange((values) => {
+        if (values.windowed !== lastWindowed) {
+            lastWindowed = values.windowed;
+            setDesktopWindowed(values.windowed);
+        }
+    });
+    // Alt+Enter is handled by the main process; mirror it into the saved setting.
+    window.counterbeatDesktop.onWindowedChange?.((value) => settings.update({ windowed: value }));
+}
 
 const starProgress = new ProgressStore();
 // The screenshot hook (?atlas_scene=) never touches saved progress.
