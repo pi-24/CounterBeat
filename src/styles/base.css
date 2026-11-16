@@ -4,27 +4,6 @@
    ========================================================================== */
 
 :root {
-    /* Surfaces */
-    --c-bg: #0b0e15;
-    --c-bg-alt: #10141d;
-    --c-surface: #161c28;
-    --c-surface-2: #1e2533;
-    --c-line: #2a3444;
-
-    /* Text */
-    --c-text: #e8edf6;
-    --c-text-dim: #98a4b8;
-    --c-text-faint: #6b7789;
-
-    /* Accents */
-    --c-accent: #ff8a2a;
-    --c-accent-dk: #d96a12;
-    --c-mint: #7effba;
-    --c-cyan: #6ce2ff;
-    --c-pink: #ff5cb0;
-    --c-danger: #ff5f6d;
-    --c-warn: #ffd166;
-
     /* Spacing scale */
     --s-1: 0.25rem;
     --s-2: 0.5rem;
@@ -42,8 +21,8 @@
     --font-display: "Segoe UI Semibold", "Trebuchet MS", Verdana, sans-serif;
     --font-mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
 
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-    --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --shadow: 0 10px 30px var(--mix-shade-45);
+    --shadow-sm: 0 4px 14px var(--mix-shade-35);
 
     --transition: 160ms ease;
 }
@@ -72,8 +51,8 @@ body {
     flex-direction: column;
     background-color: var(--c-bg);
     background-image:
-        radial-gradient(circle at 15% -10%, rgba(255, 138, 42, 0.14), transparent 45%),
-        radial-gradient(circle at 85% 0%, rgba(108, 226, 255, 0.10), transparent 40%);
+        radial-gradient(circle at 15% -10%, color-mix(in srgb, var(--c-primary) 14%, transparent), transparent 45%),
+        radial-gradient(circle at 85% 0%, var(--mix-prim-10), transparent 40%);
     background-attachment: fixed;
     color: var(--c-text);
     font-family: var(--font-body);
@@ -116,7 +95,7 @@ a {
 
 a:hover,
 a:focus-visible {
-    color: #ffffff;
+    color: var(--c-text);
     text-decoration: underline;
 }
 
@@ -185,13 +164,13 @@ kbd {
 
 .btn--primary {
     background: linear-gradient(135deg, var(--c-accent), var(--c-accent-dk));
-    color: #17110a;
+    color: var(--c-bg);
 }
 
 .btn--primary:hover,
 .btn--primary:focus-visible {
-    background: linear-gradient(135deg, #ffa257, var(--c-accent));
-    color: #17110a;
+    background: color-mix(in srgb, var(--c-primary) 82%, var(--c-text));
+    color: var(--c-bg);
 }
 
 .btn--ghost {
@@ -208,7 +187,7 @@ kbd {
 
 .btn--danger {
     background: transparent;
-    border-color: rgba(255, 95, 109, 0.5);
+    border-color: var(--mix-sec-50);
     color: var(--c-danger);
 }
 
@@ -260,7 +239,7 @@ kbd {
 
 .field__control:focus {
     border-color: var(--c-mint);
-    box-shadow: 0 0 0 3px rgba(126, 255, 186, 0.15);
+    box-shadow: 0 0 0 3px var(--mix-prim-15);
     outline: none;
 }
 
@@ -274,11 +253,11 @@ kbd {
 
 .field--invalid .field__control {
     border-color: var(--c-danger);
-    box-shadow: 0 0 0 3px rgba(255, 95, 109, 0.12);
+    box-shadow: 0 0 0 3px var(--mix-sec-12);
 }
 
 .field--valid .field__control {
-    border-color: rgba(126, 255, 186, 0.55);
+    border-color: var(--mix-prim-55);
 }
 
 select.field__control {

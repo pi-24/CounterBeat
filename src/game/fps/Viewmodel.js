@@ -8,6 +8,7 @@
  * never clips through the wall when the player stands close to a window.
  */
 import { Scene, Vector3, Color3, Camera, Mesh, TransformNode, StandardMaterial, Texture, PointLight, MeshBuilder } from '../engine.js';
+import { PALETTE, hexToRgb01 } from '../../ui/palette.js';
 import { assets } from '../providers/index.js';
 
 const REST = { x: 0.34, y: -0.30, z: 0.98 };
@@ -68,8 +69,8 @@ export class Viewmodel {
         mid.fogEnabled = false;
 
         const accent = new StandardMaterial('rifle-accent', this.scene);
-        accent.diffuseColor = new Color3(1, 0.54, 0.16);
-        accent.emissiveColor = new Color3(0.5, 0.25, 0.05);
+        accent.diffuseColor = new Color3(...hexToRgb01(PALETTE.primary));
+        accent.emissiveColor = new Color3(...hexToRgb01(PALETTE.primary).map((c) => c * 0.5));
         accent.specularColor = Color3.Black();
         accent.fogEnabled = false;
 

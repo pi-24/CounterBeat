@@ -14,7 +14,7 @@
     border: 1px solid var(--c-line);
     border-radius: var(--radius-lg);
     background:
-        linear-gradient(180deg, rgba(22, 28, 40, 0.92), rgba(16, 20, 29, 0.92));
+        linear-gradient(180deg, var(--mix-surf-92), var(--mix-bgalt-92));
     box-shadow: var(--shadow);
     overflow: hidden;
     position: relative;
@@ -27,7 +27,7 @@
     width: 420px;
     height: 420px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 138, 42, 0.22), transparent 62%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--c-primary) 22%, transparent), transparent 62%);
     pointer-events: none;
 }
 
@@ -58,7 +58,7 @@
     width: 100%;
     max-width: 340px;
     height: auto;
-    filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.5));
+    filter: drop-shadow(0 12px 26px var(--mix-shade-50));
 }
 
 @media (max-width: 860px) {
@@ -92,7 +92,7 @@
     height: 44px;
     margin-bottom: var(--s-3);
     border-radius: 12px;
-    background: rgba(255, 138, 42, 0.14);
+    background: color-mix(in srgb, var(--c-primary) 14%, transparent);
     color: var(--c-accent);
     font-size: 1.2rem;
     font-weight: 700;
@@ -132,22 +132,22 @@
 }
 
 .badge--accent {
-    background: rgba(255, 138, 42, 0.16);
+    background: color-mix(in srgb, var(--c-primary) 16%, transparent);
     color: var(--c-accent);
 }
 
 .badge--mint {
-    background: rgba(126, 255, 186, 0.14);
+    background: var(--mix-prim-14);
     color: var(--c-mint);
 }
 
 .badge--cyan {
-    background: rgba(108, 226, 255, 0.14);
+    background: var(--mix-prim-14);
     color: var(--c-cyan);
 }
 
 .badge--pink {
-    background: rgba(255, 92, 176, 0.14);
+    background: var(--mix-sec-14);
     color: var(--c-pink);
 }
 
@@ -225,11 +225,11 @@
 }
 
 .table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--mix-ink-3);
 }
 
 .table tbody tr.is-you {
-    background: rgba(126, 255, 186, 0.08);
+    background: var(--mix-prim-8);
 }
 
 .table__num {
@@ -245,15 +245,15 @@
 }
 
 .table__rank--1 {
-    color: #ffd166;
+    color: var(--c-warn);
 }
 
 .table__rank--2 {
-    color: #d8dee9;
+    color: var(--c-text);
 }
 
 .table__rank--3 {
-    color: #e0a06a;
+    color: var(--c-warn);
 }
 
 .table__empty {
@@ -345,17 +345,17 @@
 
 .notice--error {
     border-left-color: var(--c-danger);
-    color: #ffc3c8;
+    color: var(--c-text);
 }
 
 .notice--success {
     border-left-color: var(--c-mint);
-    color: #c8ffe3;
+    color: var(--j-perfect);
 }
 
 .notice--info {
     border-left-color: var(--c-cyan);
-    color: #c6eeff;
+    color: var(--c-text);
 }
 
 .notice[hidden] {
@@ -435,7 +435,7 @@
     width: 2rem;
     height: 2rem;
     border-radius: 50%;
-    background: rgba(255, 138, 42, 0.16);
+    background: color-mix(in srgb, var(--c-primary) 16%, transparent);
     color: var(--c-accent);
     font-family: var(--font-mono);
     font-weight: 700;
@@ -501,7 +501,7 @@
 
 .scope-toggle__btn.is-active {
     border-color: var(--c-accent);
-    background: rgba(255, 138, 42, 0.14);
+    background: color-mix(in srgb, var(--c-primary) 14%, transparent);
     color: var(--c-accent);
 }
 
@@ -525,14 +525,14 @@
 }
 
 .btn--discord {
-    border-color: rgba(88, 101, 242, 0.6);
-    color: #c7ccff;
+    border-color: var(--mix-line-60);
+    color: var(--c-text);
 }
 
 .btn--discord:hover,
 .btn--discord:focus-visible {
-    border-color: #5865f2;
-    color: #ffffff;
+    border-color: var(--c-surface-2);
+    color: var(--c-text);
 }
 
 /* --------------------------------------------------------- timing chart */

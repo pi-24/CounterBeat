@@ -7,6 +7,7 @@
  * who is playing and hand it finished runs, and it is the page's job to put
  * those in local storage.
  */
+import { applyLook } from '../ui/look.js';
 import { practiceKeyFree } from './modes/practice.js';
 import { requestFullscreenFromGesture, lockPromptNeeded, mayRequestFullscreen } from './onboarding/startFlow.js';
 import { Hud } from './fps/Hud.js';
@@ -292,7 +293,8 @@ export class GameApp {
     // ---------------------------------------------------------- screens ----
 
     /** @param {{enter:Function, exit:Function, update:Function}} screen */
-    async switchTo(screen) {
+    async switchTo(screen, look = null) {
+        applyLook(look);
         const id = ++this.switchId;
         this.switching = true;
         if (this.current) {
@@ -318,7 +320,8 @@ export class GameApp {
     /** @param {string} chartId @param {string} [mode] campaign | quickPlay | daily | ranked */
     async showPlay(chartId, mode, extra = {}) {
         await this.ready3d;
-        return this.switchTo(new this.PlayScreen(this, chartId, { mode, ...extra }));
+        // Tutorial scenes use the tactical-range look (same tokens, overridden).
+        return this.switchTo(new this.PlayScreen(this, chartId, { mode, ...extra }), mode === 'tutorial' ? 'tactical' : null);
     }
 
     /** Atlas screenshot hook: the first-run calibration screen, nothing saved. */

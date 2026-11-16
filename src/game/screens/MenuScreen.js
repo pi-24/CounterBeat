@@ -15,6 +15,7 @@ import {
 } from '../rules/charts.js';
 import { themeProvider, trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
+import { CUSTOM_LABEL, CUSTOM_NOTE } from '../../ui/CustomSongs.js';
 import { STAR_DIFFICULTIES, STARS_PER_CHART, CAMPAIGN_TRACK_IDS } from '../progress/stars.js';
 import { chartPlayable } from '../modes/practice.js';
 import { trackStates } from '../progress/unlocks.js';
@@ -302,6 +303,7 @@ export class MenuScreen {
             host.append(el('p', 'song-list__empty', 'No songs yet. Add an MP3, OGG, WAV or FLAC and it will appear here with a chart at every difficulty.'));
             return;
         }
+        host.append(el('p', 'song-list__note', CUSTOM_NOTE));
         for (const song of songs) {
             host.append(this.songCard(song));
         }
@@ -315,6 +317,7 @@ export class MenuScreen {
         const seconds = String(Math.round(song.duration % 60)).padStart(2, '0');
         head.append(
             el('span', 'song__name', song.name),
+            el('span', 'beta-tag', CUSTOM_LABEL),
             el('span', 'song__meta mono', `${song.bpm} BPM  •  ${minutes}:${seconds}  •  first beat ${song.gridOffset.toFixed(2)} s`),
         );
 

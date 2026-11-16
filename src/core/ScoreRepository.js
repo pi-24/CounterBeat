@@ -19,6 +19,7 @@
  * }
  */
 import { store } from './Storage.js';
+import { canSubmitRanked } from './customGate.js';
 
 const KEY = 'scores';
 const LOG_KEY = 'logs';
@@ -279,7 +280,7 @@ export class ScoreRepository {
 
     /** @param {object} run @returns {boolean} whether it belongs on the rankings. */
     static isRanked(run) {
-        return run.verified !== false && run.kind !== 'custom' && run.kind !== 'tutorial' && run.levelId > 0;
+        return run.verified !== false && canSubmitRanked(run).ok && run.kind !== 'tutorial' && run.levelId > 0;
     }
 }
 
