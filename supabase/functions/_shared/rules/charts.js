@@ -219,13 +219,13 @@ const TUTORIAL = Object.freeze({
     difficulty: { id: 'tutorial', name: 'Tutorial' },
     musicKey: 'music-range',
     bpm: 90,
-    bars: 18,
-    firstNoteBar: 5,
+    bars: 24,        // the Range track's length
+    firstNoteBar: 3,
     gridOffset: 0,
     lanes: 3,
     trackScale: 1,
     laneInset: 0.70,
-    patterns: [[0]],
+    patterns: [[0, 2]],  // two bots a bar: enough for 3 stages x 5 actions with room to fail
     timing: { perfect: 0.080, good: 0.140, ok: 0.220 },
     movement: MOVEMENT,
     passAccuracy: 0,

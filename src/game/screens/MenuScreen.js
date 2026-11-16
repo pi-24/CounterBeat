@@ -34,6 +34,7 @@ export class MenuScreen {
         const daily = resolveChart(dailyChartId());
         this.showcase = new Showcase(this.app.scene, this.app.camera, daily ?? resolveChart('t:range:normal'));
 
+        this.app.mainMenu?.showRoot();
         this.renderHeader();
         this.renderDaily(daily);
         this.renderTracks();
@@ -381,8 +382,8 @@ export class MenuScreen {
             return;
         }
         this.app.audio.play('sfx-ui', { volume: 0.5 });
-        // Menu runs are Quick Play (or the daily); ranked and campaign get their own entries later.
-        this.app.showPlay(chartId, chart.kind === 'daily' ? 'daily' : 'quickPlay');
+        // The mode comes from the main menu entry (Campaign / Quick Play / Practice); the daily is its own mode.
+        this.app.showPlay(chartId, chart.kind === 'daily' ? 'daily' : (this.app.playMode ?? 'quickPlay'));
     }
 
     /** Keyboard shortcut target: the tutorial. */

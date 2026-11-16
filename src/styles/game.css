@@ -172,32 +172,6 @@
     color: var(--c-warn);
 }
 
-.menu__tabs {
-    display: inline-flex;
-    gap: var(--s-1);
-    padding: 4px;
-    margin-bottom: var(--s-4);
-    border: 1px solid var(--c-line);
-    border-radius: 999px;
-    background: rgba(22, 28, 40, 0.85);
-}
-
-.menu__tab {
-    padding: 0.45rem 1.2rem;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--c-text-dim);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.menu__tab.is-active {
-    background: var(--c-accent);
-    color: #17110a;
-}
-
 .menu__panel {
     display: none;
 }
@@ -635,7 +609,7 @@
 
 .hud__sub {
     display: block;
-    color: rgba(232, 237, 246, 0.7);
+    color: rgba(232, 237, 246, 0.92);
     font-family: var(--font-mono);
     font-size: 0.68rem;
     letter-spacing: 0.1em;
@@ -681,7 +655,12 @@
 .hud__block {
     display: grid;
     gap: 1px;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    align-self: start;
+    padding: 6px 12px;
+    color: var(--c-text);
+    background: rgba(5, 8, 16, 0.72);        /* legible on the bright Range and on neon alike */
+    border-radius: 4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.8);
 }
 
 .hud__block--centre {
@@ -714,7 +693,7 @@
 }
 
 .hud__accuracy {
-    color: var(--c-mint);
+    color: #8affc6;
     font-family: var(--font-mono);
     font-size: 1.3rem;
     font-weight: 700;
@@ -784,6 +763,18 @@
 
 .hud__hitmarker.is-head line {
     stroke: var(--c-accent);
+}
+
+/* Reduced flash: a small, steady marker that only fades out (no scale pop, no bright burst). */
+.hud__hitmarker.is-soft.is-hit,
+.hud__hitmarker.is-soft.is-head {
+    animation: hitmarker-soft 450ms linear forwards;
+    transform: translate(-50%, -50%) scale(0.7);
+}
+
+@keyframes hitmarker-soft {
+    from { opacity: 0.75; }
+    to { opacity: 0; }
 }
 
 @keyframes hitmarker {
@@ -1160,7 +1151,8 @@
 
 /* ----------------------------------------------------------- calibration */
 .overlay--calibration {
-    z-index: 6;
+    z-index: 19;
+    background: radial-gradient(ellipse at center, #0a1022, #03050a);
 }
 
 .cal__ring-svg {
@@ -1612,4 +1604,267 @@
 @keyframes beat-flash {
     0% { opacity: 0.8; }
     100% { opacity: 0.3; }
+}
+
+/* ------------------------------------------------- main menu (root list) */
+/* The root list replaces the panels until one is opened. */
+.menu--root .menu__panel {
+    display: none;
+}
+
+.menu:not(.menu--root) .mainmenu {
+    display: none;
+}
+
+.menu--root .mainmenu__back {
+    display: none;
+}
+
+.mainmenu {
+    display: grid;
+    gap: var(--s-2);
+    width: min(420px, 100%);
+    margin: var(--s-4) auto;
+}
+
+.mainmenu__item {
+    display: grid;
+    gap: 2px;
+    padding: var(--s-3) var(--s-4);
+    text-align: left;
+    color: var(--c-text);
+    background: rgba(10, 16, 28, 0.85);
+    border: 1px solid var(--c-line);
+    border-left: 3px solid var(--c-cyan);
+    cursor: pointer;
+}
+
+.mainmenu__item:hover,
+.mainmenu__item:focus-visible {
+    border-color: var(--c-cyan);
+    outline: none;
+}
+
+.mainmenu__item--minor {
+    border-left-color: var(--c-line);
+    opacity: 0.8;
+}
+
+.mainmenu__label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.mainmenu__blurb {
+    color: var(--c-text-faint);
+    font-size: 0.8rem;
+}
+
+/* ----------------------------------------------- play splash, lock prompt */
+.overlay--start {
+    z-index: 20;
+    background: radial-gradient(ellipse at center, #0a1022, #03050a);
+}
+
+.start__title {
+    margin: 0;
+    font-size: clamp(2.4rem, 8vw, 5rem);
+    letter-spacing: 0.1em;
+}
+
+.start__title span {
+    color: var(--c-cyan);
+}
+
+.start__tag,
+.start__hint {
+    margin: 0;
+    color: var(--c-text-faint);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.start__play {
+    justify-self: center;
+    min-width: 200px;
+    font-size: 1.2rem;
+}
+
+.lockprompt {
+    position: absolute;
+    right: var(--s-4);
+    top: 90px;                  /* top-right: clear of the crosshair, the bots and the tutorial panel (top-left) */
+    width: max-content;
+    max-width: 340px;
+    z-index: 4;
+    padding: var(--s-3) var(--s-5);
+    text-align: center;
+    background: rgba(5, 7, 11, 0.8);
+    border: 1px solid var(--c-cyan);
+    pointer-events: none;
+}
+
+.lockprompt__title {
+    margin: 0;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.lockprompt__sub {
+    margin: 6px 0 0;
+    line-height: 1.8;              /* room for the kbd chip so it never overlaps the text */
+    white-space: nowrap;
+    color: var(--c-text-faint);
+    font-size: 0.8rem;
+}
+
+/* -------------------------------------------------------------- beat cue */
+.hud__beat-cue {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 120px;
+    height: 120px;
+    margin: -60px 0 0 -60px;
+    border: 2px solid var(--c-cyan);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    animation: beat-cue 0.28s ease-out;
+}
+
+.hud__beat-cue.is-strong {
+    border-width: 4px;
+}
+
+.hud__beat-cue.is-soft {
+    animation-name: beat-cue-soft;
+}
+
+@keyframes beat-cue {
+    from { opacity: 0.7; transform: scale(1.25); }
+    to { opacity: 0; transform: scale(0.8); }
+}
+
+@keyframes beat-cue-soft {
+    from { opacity: 0.35; }
+    to { opacity: 0; }
+}
+
+/* -------------------------------------------------------------- tutorial */
+.tutorial {
+    position: absolute;
+    left: var(--s-4);
+    top: 90px;
+    z-index: 4;
+    display: grid;
+    gap: var(--s-2);
+    width: min(340px, 40%);
+    padding: var(--s-3) var(--s-4);
+    background: rgba(18, 18, 20, 0.94);
+    border: 1px solid #f08a24;
+    border-left-width: 4px;
+}
+
+.tutorial__title {
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #f08a24;
+}
+
+.tutorial__pips {
+    display: flex;
+    gap: 6px;
+}
+
+.tutorial__pip {
+    width: 18px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.tutorial__pip.is-on {
+    background: #f08a24;
+}
+
+.tutorial__text {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.tutorial__text.is-fail {
+    color: var(--c-warn);
+}
+
+.tutorial__thresholds {
+    margin: 0;
+    color: var(--c-text-faint);
+    font-size: 0.72rem;
+}
+
+.tutorial__actions {
+    display: flex;
+    gap: var(--s-2);
+    justify-content: flex-end;
+}
+
+.palette-legend {
+    display: inline-flex;
+    gap: var(--s-3);
+    font-weight: 600;
+}
+
+.settings__extra {
+    display: contents;
+}
+
+/* ---------------------------------------------- embedded (Play from the site) */
+.play-frame {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #05070b;
+}
+
+.is-embedded {
+    overflow: hidden;
+}
+
+.is-embedded .stage {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+}
+
+.embed-exit {
+    position: absolute;
+    top: var(--s-3);
+    left: var(--s-3);
+    z-index: 5;
+}
+
+.is-embedded .site-header,
+.is-embedded .site-footer,
+.is-embedded .notice {
+    display: none;
+}
+
+.lockprompt__sub kbd {
+    display: inline-block;
+    margin-right: 4px;
+    line-height: 1.2;
+    vertical-align: baseline;
 }

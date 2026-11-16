@@ -7,6 +7,7 @@
  * who is playing and hand it finished runs, and it is the page's job to put
  * those in local storage.
  */
+import { requestFullscreenFromGesture, lockPromptNeeded } from './onboarding/startFlow.js';
 import { Engine, Scene } from './engine.js';
 import { FpsCamera } from './fps/FpsCamera.js';
 import { Hud } from './fps/Hud.js';
@@ -22,6 +23,12 @@ import { SongLibrary } from './library/SongLibrary.js';
 import { assets, themeProvider } from './providers/index.js';
 import { CosmeticsPanel } from './screens/CosmeticsPanel.js';
 import { toast } from '../ui/Toast.js';
+import { store } from '../core/Storage.js';
+import { MainMenu } from '../ui/MainMenu.js';
+import { TutorialPanel } from '../ui/Tutorial.js';
+import { mountGameSettings } from '../ui/Settings.js';
+import { shouldAutoStart, markOnboardingDone } from './onboarding/firstRun.js';
+import { dailyChartId } from './rules/charts.js';
 
 /**
  * @typedef {object} GameServices
@@ -48,6 +55,8 @@ export class GameApp {
      * @param {GameServices} options.services
      * @param {{chartId:string, log:object}} [options.replay] open this replay first
      * @param {(done:number,total:number) => void} [options.onProgress]
+     * @param {boolean} [options.skipStart] no Play splash (screenshot hook and replay links)
+     * @param {{read:Function, write:Function}} [options.storage] holds the first-run flag
      */
     constructor(options) {
         this.canvas = options.canvas;
@@ -58,6 +67,10 @@ export class GameApp {
         this.resultOverlay = options.overlays.result;
         this.loadingOverlay = options.overlays.loading;
         this.onProgress = options.onProgress ?? (() => {});
+        this.skipStart = Boolean(options.skipStart);
+        this.storage = options.storage ?? store;
+        this.startOverlay = document.getElementById('startOverlay');
+        this.lockPrompt = document.getElementById('lockPrompt');
 
         this.audio = sharedAudio;
         this.settings = sharedSettings;
@@ -73,6 +86,23 @@ export class GameApp {
             options.settingsForm.querySelector('#cosmetics'), this.services.progress, themeProvider, this.settings,
         );
         this.settingsPanel.onCalibrate = () => this.calibration.open();
+        this.tutorialPanel = new TutorialPanel(this.stage, {
+            onSkip: () => this.skipTutorial(),
+            onRepeat: () => this.play?.tutorialProgress?.repeatStage(),
+        });
+        /** Mode chosen on the main menu: campaign | quickPlay | practice. */
+        this.playMode = 'quickPlay';
+        this.mainMenu = new MainMenu(this.menuOverlay, {
+            onMode: (mode) => { this.playMode = mode; },
+            onDaily: () => this.current?.start?.(dailyChartId()),
+            onTutorial: () => this.startTutorial(),
+        });
+        mountGameSettings(options.settingsForm.querySelector('#gameSettings'), this.settings, {
+            onCalibrate: () => this.calibration.open({ auto: false }),
+            onTutorial: () => this.startTutorial(),
+        });
+        this.applyAudioSettings();
+        this.settings.onChange(() => this.applyAudioSettings());
         this.library = SongLibrary.available ? new SongLibrary(this.audio) : null;
         /** A replay to open as soon as the menu would otherwise show. */
         this.pendingReplay = options.replay ?? null;
@@ -102,6 +132,7 @@ export class GameApp {
         this.camera = new FpsCamera(this.scene, this.canvas, this.settings);
 
         this.settingsPanel.init();
+        this.mainMenu.mount();
         this.bindControls();
 
         await this.audio.load(assets.audioManifest(), this.onProgress);
@@ -111,11 +142,13 @@ export class GameApp {
             if (this.current && !this.switching) {
                 this.current.update(dt);
             }
+            this.updateLockPrompt();
             this.scene.render();
         });
         window.addEventListener('resize', () => this.engine.resize());
 
         this.loadingOverlay.hidden = true;
+        this.bindStart();
         if (this.pendingReplay) {
             const { chartId, log } = this.pendingReplay;
             this.pendingReplay = null;
@@ -123,6 +156,84 @@ export class GameApp {
             return;
         }
         await this.showMenu();
+    }
+
+    // --------------------------------------------------------- onboarding ----
+
+    applyAudioSettings() {
+        this.audio.setVolumes(this.settings.get('musicVolume'), this.settings.get('sfxVolume'));
+    }
+
+    /** The in-game Play splash: one click goes fullscreen, then first-run setup or the menu. */
+    bindStart() {
+        if (!this.startOverlay || this.skipStart || this.pendingReplay) {
+            if (this.startOverlay) {
+                this.startOverlay.hidden = true;
+            }
+            return;
+        }
+        this.startOverlay.hidden = false;
+        const button = this.startOverlay.querySelector('[data-action="start-play"]');
+        let busy = false;
+        button.addEventListener('click', async () => {
+            if (busy) {
+                return;
+            }
+            busy = true;
+            // Fullscreen must be requested synchronously inside this click.
+            this.enterFullscreen();
+            try {
+                await this.audio.unlock();
+            } catch {
+                // No audio is not a reason to trap the player on the splash.
+            }
+            this.startOverlay.hidden = true;
+            if (shouldAutoStart(this.storage)) {
+                this.runFirstRun();
+            } else if (this.current instanceof MenuScreen) {
+                this.audio.resetMusicVolume();
+                this.audio.playMusic('music-menu', true);
+            }
+        });
+        button.focus();
+    }
+
+    /** First launch: short calibration (skippable), then the tutorial (skippable). */
+    runFirstRun() {
+        this.calibration.open({
+            auto: true,
+            onDone: () => this.startTutorial(),
+        });
+    }
+
+    startTutorial() {
+        this.calibration.cancel();
+        return this.showPlay('tutorial', 'tutorial');
+    }
+
+    /** @param {'completed'|'skipped'} how */
+    completeOnboarding(how) {
+        markOnboardingDone(this.storage, how);
+    }
+
+    /** Skip button: sets the first-run flag and returns to the menu. */
+    skipTutorial() {
+        this.play?.tutorialProgress?.skip();
+        this.completeOnboarding('skipped');
+        this.camera.unlock();
+        this.showMenu();
+    }
+
+    /** The in-game pointer-lock prompt: shown while a live run has no mouse capture. */
+    updateLockPrompt() {
+        if (!this.lockPrompt) {
+            return;
+        }
+        const play = this.play;
+        const need = lockPromptNeeded(play, this.camera.locked);
+        if (this.lockPrompt.hidden === need) {
+            this.lockPrompt.hidden = !need;
+        }
     }
 
     // ---------------------------------------------------------- screens ----
@@ -151,8 +262,19 @@ export class GameApp {
     }
 
     /** @param {string} chartId @param {string} [mode] campaign | quickPlay | daily | ranked */
-    showPlay(chartId, mode) {
-        return this.switchTo(new PlayScreen(this, chartId, { mode }));
+    showPlay(chartId, mode, extra = {}) {
+        return this.switchTo(new PlayScreen(this, chartId, { mode, ...extra }));
+    }
+
+    /** Atlas screenshot hook: the first-run calibration screen, nothing saved. */
+    showAtlasCalibration() {
+        this.calibration.open({ auto: true });
+    }
+
+    /** Atlas screenshot hook: the settings panel (with rebinding) over the menu. */
+    async showAtlasSettings() {
+        await this.showMenu();
+        this.mainMenu.openPanel('settings');
     }
 
     /** Atlas screenshot hook: a play screen on a frozen, caller-driven clock. No audio, no results. */
@@ -238,7 +360,7 @@ export class GameApp {
                     return;
                 }
             }
-            if (code === 'Space' && play && !play.paused) {
+            if (code === this.settings.get('bindings').fire && play && !play.paused) {
                 play.fire(undefined, event.timeStamp);
             } else if (code === 'KeyR' && play) {
                 play.restart();
@@ -290,20 +412,6 @@ export class GameApp {
             });
         }
 
-        const tabs = this.menuOverlay.querySelectorAll('.menu__tab');
-        for (const tab of tabs) {
-            tab.addEventListener('click', () => {
-                for (const other of tabs) {
-                    const active = other === tab;
-                    other.classList.toggle('is-active', active);
-                    other.setAttribute('aria-selected', String(active));
-                }
-                for (const panel of this.menuOverlay.querySelectorAll('.menu__panel')) {
-                    panel.classList.toggle('is-active', panel.dataset.panel === tab.dataset.tab);
-                }
-            });
-        }
-
         const fullscreenButton = document.getElementById('fullscreenBtn');
         if (fullscreenButton) {
             fullscreenButton.addEventListener('click', () => this.toggleFullscreen());
@@ -311,6 +419,10 @@ export class GameApp {
         document.addEventListener('fullscreenchange', () => {
             window.setTimeout(() => this.engine.resize(), 50);
         });
+    }
+
+    enterFullscreen() {
+        requestFullscreenFromGesture(this.stage, document);
     }
 
     toggleFullscreen() {

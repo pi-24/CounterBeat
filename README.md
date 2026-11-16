@@ -285,6 +285,23 @@ is only bundled when the variable is present at build time and loads as a
 separate chunk, so builds without it ship nothing extra. Errors are tagged
 with the page and backend kind; no personal data is sent.
 
+## Fullscreen and pointer lock
+
+Browsers leave fullscreen whenever the document navigates, so a plain link to
+`game.html` cannot arrive fullscreen. Play on the web pages therefore does not
+navigate: `src/pages/playLauncher.js` embeds the game (same origin, `?embed=1`,
+no site chrome) in a full-viewport frame on the same document and calls
+`requestFullscreen()` on that frame inside the Play click, so the game opens
+fullscreen from that one click. Ctrl/Cmd/middle clicks still open `game.html`
+normally. Leaving fullscreen (Esc) closes the frame and returns to the page. This is a browser limit (fullscreen cannot survive navigation), not an accepted deviation from AC1; where the embed is unavailable the splash's single "Click to play" enters fullscreen. The in-game splash then only unlocks audio. The "‹ Website" button on
+the menu returns to the page. In the Steam desktop shell
+(`creator_decisions_steam.md`) the game is fullscreen from launch.
+The mouse is captured when a run starts; if the
+lock is lost, an in-game "click to capture the mouse" prompt appears (no web-page
+hint). The menus need a free cursor, so the lock is not taken on the splash click.
+Screenshot hook scenes: `?atlas_scene=title|play|results|calibration|tutorial|settings`
+(in-memory only, nothing saved or submitted).
+
 ## Audio-offset calibration
 
 Settings also has toggles for the beat ring around the crosshair and the

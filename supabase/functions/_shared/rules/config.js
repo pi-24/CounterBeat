@@ -164,4 +164,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
     reducedEffects: false,  // no pulse, camera kick or hit-stop; flashes stay capped
     hitVolume: 0.8,         // 0..1, the in-key hit sound
     plainHitSounds: false,  // true = the original unpitched hit samples
+    musicVolume: 0.55,      // 0..1
+    sfxVolume: 0.8,         // 0..1
+    judgementPalette: 'neon', // 'neon' | 'safe' (colour-blind-safe)
+    reducedFlash: false,    // cap flashes at 3 per second without the other reduced effects
+    beatCue: false,         // on-screen beat cue (a pulse at screen centre on every beat)
+    bindings: { strafeLeft: 'KeyA', strafeRight: 'KeyD', fire: 'Space' },
 });

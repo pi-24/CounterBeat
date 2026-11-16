@@ -14,6 +14,8 @@
  * attribute or class still costs a style recalculation if it is written.
  */
 import { APPROACH_BEATS, GRADE_LABEL } from '../rules/config.js';
+import { paletteFor, GRADE_ICONS } from '../feel/judgementPalette.js';
+import { progressLabel } from './hudText.js';
 import { arcColour, arcFill, arcTickSpeeds } from '../feel/speedArc.js';
 
 const ARC_RADIUS = 40;
@@ -72,6 +74,10 @@ export class Hud {
         this.accuracyText = this.find('hudAccuracy');
         this.focusFill = this.find('focusFill');
         this.beatRing = this.find('beatRing');
+        this.beatCueEl = this.find('beatCue');
+        this.beatCueOn = false;
+        this.softCue = false;
+        this.palette = paletteFor('neon');
         this.judgeBox = this.find('judgement');
         this.judgeText = this.find('judgeText');
         this.judgeReason = this.find('judgeReason');
@@ -236,7 +242,7 @@ export class Hud {
 
     /** @param {number} judged @param {number} total */
     setProgress(judged, total) {
-        write(this.progressText, 'text', `Bot ${judged}/${total}  •  ${this.bpm} BPM`);
+        write(this.progressText, 'text', progressLabel(judged, total, this.bpm));
     }
 
     /** @param {number} score @param {number} combo @param {number} multiplier */
@@ -294,6 +300,13 @@ export class Hud {
      * @param {import('../Settings.js').Settings} settings
      */
     applyVisibility(settings) {
+        this.palette = paletteFor(settings.get('judgementPalette'));
+        this.beatCueOn = Boolean(settings.get('beatCue'));
+        this.softCue = Boolean(settings.get('reducedFlash') || settings.get('reducedEffects'));
+        if (this.beatCueEl) {
+            this.beatCueEl.hidden = !this.beatCueOn;
+            this.beatCueEl.classList.toggle('is-soft', this.softCue);
+        }
         this.beatRing.setAttribute('visibility', settings.get('beatRing') ? 'visible' : 'hidden');
         const highway = this.find('noteHighway');
         if (highway) {
@@ -405,7 +418,8 @@ export class Hud {
      * @param {boolean} bonus counter-strafe bonus earned
      */
     showJudgement(grade, reason, points, bonus) {
-        const label = bonus ? `${GRADE_LABEL[grade]}  +CS` : GRADE_LABEL[grade];
+        const name = bonus ? `${GRADE_LABEL[grade]}  +CS` : GRADE_LABEL[grade];
+        const label = GRADE_ICONS[grade] ? `${GRADE_ICONS[grade]} ${name}` : name;
         this.flashJudgement(label, reason || (points ? `+${points}` : ''), grade);
     }
 
@@ -418,6 +432,7 @@ export class Hud {
         this.judgeText.textContent = label;
         this.judgeReason.textContent = detail;
         this.judgeBox.className = `hud__judgement hud__judgement--${tone} is-live`;
+        this.judgeText.style.color = this.palette[tone] ?? '';
         replayAnimations(this.judgeBox);
     }
 
@@ -429,10 +444,24 @@ export class Hud {
         replayAnimations(this.beatRing);
     }
 
-    /** @param {boolean} headshot */
-    showHitmarker(headshot) {
+    /** On-screen beat cue (an optional ring at the crosshair; soft, never a flash, under reduced flash). */
+    pulseBeatCue(strong) {
+        if (!this.beatCueOn || !this.beatCueEl) {
+            return;
+        }
+        this.beatCueEl.classList.toggle('is-strong', strong);
+        replayAnimations(this.beatCueEl);
+    }
+
+    /** @param {boolean} headshot @param {boolean} [soft] a static marker with no animation (reduced flash) */
+    showHitmarker(headshot, soft = false) {
         // SVG elements expose className as a read-only animated string, so
         // the class is written as an attribute.
+        if (soft) {
+            this.hitmarker.setAttribute('class', `hud__hitmarker is-soft ${headshot ? 'is-head' : 'is-hit'}`);
+            replayAnimations(this.hitmarker); // a non-flashing fade, replayed on every hit
+            return;
+        }
         this.hitmarker.setAttribute('class', `hud__hitmarker ${headshot ? 'is-head' : 'is-hit'}`);
         replayAnimations(this.hitmarker);
     }

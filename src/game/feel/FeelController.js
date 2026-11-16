@@ -45,12 +45,13 @@ export class FeelController {
 
     onBeat({ strength = 1 } = {}) {
         if (this.policy.pulse) this.targets.arena?.pulse(0.35 * strength);
-        if (this.canFlash(BEAT_RESERVE)) this.targets.hud?.flashBeat?.();
+        if (this.policy.flash && this.canFlash(BEAT_RESERVE)) this.targets.hud?.flashBeat?.();
     }
 
     onHit({ perfect = false, headshot = false } = {}) {
         const policy = this.policy;
-        if (this.canFlash()) this.targets.hud?.showHitmarker?.(headshot);
+        if (policy.softHitmarker) this.targets.hud?.showHitmarker?.(headshot, true);
+        else if (this.canFlash()) this.targets.hud?.showHitmarker?.(headshot);
         if (policy.cameraKick && typeof this.targets.camera?.kick === 'function') this.targets.camera.kick(perfect ? 0.45 : 0.25);
         if (policy.hitStop) this.hitStopUntil = this.clock() + (headshot ? HIT_STOP_MS : HIT_STOP_MS * 0.75) / 1000;
     }
@@ -61,7 +62,7 @@ export class FeelController {
     }
 
     onPerfectStop() {
-        if (this.canFlash()) this.targets.hud?.flashPerfect();
+        if (this.policy.flash && this.canFlash()) this.targets.hud?.flashPerfect();
     }
 
     dispose() { for (const off of this.offs) off(); this.offs = []; }

@@ -50,8 +50,6 @@
             <div class="game-layout">
                 <div class="game-column">
                     <div class="stage-bar">
-                        <span class="stage-bar__hint">Click the arena to capture the mouse &middot; <kbd>Esc</kbd>
-                            releases it and pauses</span>
                         <button class="btn btn--ghost" type="button" id="fullscreenBtn">Fullscreen
                             <kbd>F</kbd></button>
                     </div>
@@ -95,6 +93,7 @@
                                     <line data-part="tickGood" class="hud__arc-tick"></line>
                                     <line data-part="tickLoose" class="hud__arc-tick"></line>
                                 </svg>
+                                <div id="beatCue" class="hud__beat-cue" hidden></div>
                                 <div id="perfectFlash" class="hud__perfect-flash"></div>
                                 <svg id="crosshair" class="hud__crosshair" viewBox="-40 -40 80 80">
                                     <line x1="-4" y1="0" x2="-11" y2="0" stroke="#7effba" stroke-width="2"></line>
@@ -141,21 +140,13 @@
 
                         <!-- Menu ------------------------------------------------------>
                         <div class="overlay overlay--menu" id="menuOverlay" hidden>
+                            <button class="btn btn--ghost embed-exit" type="button" id="embedExit" hidden>‹ Website</button>
                             <div class="menu">
                                 <div class="menu__head">
                                     <h2 class="menu__title">COUNTER<span>BEAT</span></h2>
                                     <p class="menu__tag">Strafe in &bull; counter-strafe to a dead stop &bull; fire on the beat</p>
                                     <p class="menu__status" id="menuStatus"></p>
                                     <p class="menu__stars mono" id="menuStars"></p>
-                                </div>
-
-                                <div class="menu__tabs" role="tablist">
-                                    <button class="menu__tab is-active" type="button" data-tab="play" role="tab"
-                                        aria-selected="true">Play</button>
-                                    <button class="menu__tab" type="button" data-tab="library" role="tab"
-                                        aria-selected="false">Your songs</button>
-                                    <button class="menu__tab" type="button" data-tab="settings" role="tab"
-                                        aria-selected="false">Settings</button>
                                 </div>
 
                                 <div class="menu__panel is-active" data-panel="play">
@@ -223,15 +214,12 @@
                                             <label class="settings__check">
                                                 <input type="checkbox" name="reducedEffects"> Reduced effects (no pulse, camera kick or hit-stop)
                                             </label>
-                                            <div class="settings__row">
-                                                <label class="settings__label" for="setHitVol">Hit-sound volume</label>
-                                                <input class="settings__range" type="range" id="setHitVol" name="hitVolume"
-                                                    min="0" max="1" step="0.05">
-                                            </div>
                                             <label class="settings__check">
                                                 <input type="checkbox" name="plainHitSounds"> Plain hit sounds (no in-key pitch)
                                             </label>
                                         </fieldset>
+
+                                        <div class="settings__extra" id="gameSettings"></div>
 
                                         <fieldset class="settings__group settings__group--wide">
                                             <legend class="settings__legend">Movement</legend>
@@ -376,6 +364,20 @@
                                 <button class="btn btn--primary" type="button" data-action="cal-apply" hidden>Apply offset</button>
                                 <button class="btn btn--ghost" type="button" data-action="cal-close">Close</button>
                             </div>
+                        </div>
+
+                        <!-- Pointer-lock prompt, inside the game UI ---------------->
+                        <div class="lockprompt" id="lockPrompt" hidden>
+                            <p class="lockprompt__title">CLICK TO CAPTURE MOUSE</p>
+                            <p class="lockprompt__sub"><kbd>Esc</kbd> releases it and pauses</p>
+                        </div>
+
+                        <!-- Play splash: the first click goes fullscreen ---------------->
+                        <div class="overlay overlay--start" id="startOverlay" hidden>
+                            <h1 class="start__title">COUNTER<span>BEAT</span></h1>
+                            <p class="start__tag">Stop. Time. Aim.</p>
+                            <button class="btn btn--primary start__play" type="button" data-action="start-play">Click to play</button>
+                            <p class="start__hint">Enters fullscreen</p>
                         </div>
 
                         <!-- Loading / error ------------------------------------------->

@@ -12,10 +12,10 @@
  * so one wild tap does not skew it.
  */
 import { AudioEngine } from '../audio/AudioEngine.js';
+import { SHORT_CALIBRATION_TAPS, FULL_CALIBRATION_TAPS, calibrationOutcome } from '../onboarding/firstRun.js';
 
 const BPM = 120;
 const COUNT_IN = 4;
-const MEASURED = 16;
 const SECONDS_PER_BEAT = 60 / BPM;
 const MAX_DELTA = 0.25;
 
@@ -38,6 +38,9 @@ export class Calibration {
         this.applyButton = overlay.querySelector('[data-action="cal-apply"]');
         this.closeButton = overlay.querySelector('[data-action="cal-close"]');
 
+        this.measured = FULL_CALIBRATION_TAPS;
+        /** @type {((how:'applied'|'skipped'|'closed') => void)|null} */
+        this.onDone = null;
         this.active = false;
         this.deltas = [];
         this.offset = null;
@@ -46,21 +49,39 @@ export class Calibration {
         this.handleTap = (event) => this.onTap(event);
         this.startButton.addEventListener('click', () => this.start());
         this.applyButton.addEventListener('click', () => this.apply());
-        this.closeButton.addEventListener('click', () => this.close());
+        this.closeButton.addEventListener('click', () => this.close(this.onDone ? 'skipped' : 'closed'));
     }
 
-    open() {
+    /**
+     * @param {{auto?:boolean, onDone?:(how:string) => void}} [options] auto = the short
+     *   first-run version: starts by itself, and the button says Skip.
+     */
+    open(options = {}) {
+        this.measured = options.auto ? SHORT_CALIBRATION_TAPS : FULL_CALIBRATION_TAPS;
+        this.onDone = options.onDone ?? null;
+        this.auto = Boolean(options.auto);
+        this.closeButton.textContent = options.auto ? 'Skip calibration' : 'Close';
         this.overlay.hidden = false;
         this.result.hidden = true;
         this.applyButton.hidden = true;
         this.startButton.hidden = false;
-        this.status.textContent = `Current offset: ${Calibration.format(this.settings.get('audioOffset'))}. `
-            + 'Press Start, then tap SPACE or click on every click. Four count-in beats, then sixteen that count.';
+        this.status.textContent = options.auto
+            ? `Quick calibration: tap SPACE or click on every click. ${COUNT_IN} count-in beats, then ${this.measured} that count.`
+            : `Current offset: ${Calibration.format(this.settings.get('audioOffset'))}. `
+                + `Press Start, then tap SPACE or click on every click. Four count-in beats, then ${this.measured} that count.`;
+        if (options.auto) {
+            this.start();
+        }
     }
 
-    close() {
+    close(how = 'closed') {
         this.stop();
         this.overlay.hidden = true;
+        const done = this.onDone;
+        this.onDone = null;
+        if (done) {
+            done(how);
+        }
     }
 
     async start() {
@@ -73,7 +94,7 @@ export class Calibration {
         this.startButton.hidden = true;
 
         this.t0 = this.audio.context.currentTime + 0.6;
-        for (let i = 0; i < COUNT_IN + MEASURED; i += 1) {
+        for (let i = 0; i < COUNT_IN + this.measured; i += 1) {
             this.audio.playAt('sfx-ui', this.t0 + i * SECONDS_PER_BEAT, { volume: i < COUNT_IN ? 0.35 : 0.6 });
         }
         window.addEventListener('keydown', this.handleTap);
@@ -81,8 +102,16 @@ export class Calibration {
         this.tick();
     }
 
+    /** Tears everything down without firing onDone. */
+    cancel() {
+        this.onDone = null;
+        this.close('cancelled');
+    }
+
     stop() {
         this.active = false;
+        window.clearTimeout(this.keepTimer);
+        window.clearTimeout(this.applyTimer);
         window.removeEventListener('keydown', this.handleTap);
         window.removeEventListener('mousedown', this.handleTap);
         cancelAnimationFrame(this.frame);
@@ -98,15 +127,15 @@ export class Calibration {
         const index = Math.floor(beats);
         const progress = beats - index;
 
-        if (index >= 0 && index < COUNT_IN + MEASURED) {
+        if (index >= 0 && index < COUNT_IN + this.measured) {
             const radius = 44 - 30 * progress;
             this.ring.setAttribute('r', String(Math.max(14, radius)));
             this.ring.setAttribute('opacity', index < COUNT_IN ? '0.5' : '1');
             this.status.textContent = index < COUNT_IN
                 ? `Count-in ${index + 1} of ${COUNT_IN}…`
-                : `Tap on the click: ${index - COUNT_IN + 1} of ${MEASURED}   (${this.deltas.length} recorded)`;
+                : `Tap on the click: ${index - COUNT_IN + 1} of ${this.measured}   (${this.deltas.length} recorded)`;
         }
-        if (beats >= COUNT_IN + MEASURED + 0.75) {
+        if (beats >= COUNT_IN + this.measured + 0.75) {
             this.finish();
             return;
         }
@@ -132,7 +161,7 @@ export class Calibration {
         // clock, wound back to the moment the input actually happened.
         const now = this.audio.clockTime() - Calibration.inputLag(event);
         const nearest = Math.round((now - this.t0) / SECONDS_PER_BEAT);
-        if (nearest < COUNT_IN || nearest >= COUNT_IN + MEASURED) {
+        if (nearest < COUNT_IN || nearest >= COUNT_IN + this.measured) {
             return;
         }
         const delta = now - (this.t0 + nearest * SECONDS_PER_BEAT);
@@ -147,7 +176,19 @@ export class Calibration {
         this.startButton.hidden = false;
         this.startButton.textContent = 'Redo';
 
-        if (this.deltas.length < 6) {
+        const outcome = calibrationOutcome(this.deltas.length, this.measured, this.auto);
+        if (outcome === 'keep') {
+            // First run, too few taps: keep the default offset and carry on.
+            this.startButton.hidden = true;
+            this.result.textContent = 'No problem - keeping the default timing. You can calibrate later in Settings.';
+            this.keepTimer = window.setTimeout(() => {
+                if (!this.overlay.hidden) {
+                    this.close('skipped');
+                }
+            }, 2500);
+            return;
+        }
+        if (outcome === 'retry') {
             this.result.textContent = `Only ${this.deltas.length} taps landed near a click. Try again and tap on every one.`;
             return;
         }
@@ -161,6 +202,13 @@ export class Calibration {
             + (this.offset > 0 ? 'Your taps land after the click, so the game will judge that much earlier.'
                 : 'Your taps land before the click, so the game will judge that much later.');
         this.applyButton.hidden = false;
+        if (this.auto) {
+            this.applyTimer = window.setTimeout(() => {
+                if (!this.overlay.hidden && this.offset !== null) {
+                    this.apply();
+                }
+            }, 3500);
+        }
     }
 
     apply() {
@@ -168,7 +216,7 @@ export class Calibration {
             return;
         }
         this.settings.update({ audioOffset: this.offset });
-        this.close();
+        this.close('applied');
     }
 
     /**

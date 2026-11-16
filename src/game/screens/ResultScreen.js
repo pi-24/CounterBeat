@@ -9,6 +9,7 @@
 import { resolveChart, DIFFICULTIES, TRACKS } from '../rules/charts.js';
 import { Showcase } from '../fps/Showcase.js';
 import { el } from '../../ui/format.js';
+import { GRADE_ICONS } from '../feel/judgementPalette.js';
 import { themeProvider } from '../providers/index.js';
 import { awardsStars } from '../progress/stars.js';
 import { newlyUnlocked } from '../progress/unlocks.js';
@@ -205,7 +206,9 @@ export class ResultScreen {
         list.replaceChildren();
         for (const [label, value, tone] of rows) {
             const item = el('li', '');
-            item.append(el('span', '', label), el('span', `mono result__value${tone ? ` result__value--${tone}` : ''}`, value));
+            // Each grade row carries its distinct icon, so colour is never the only cue.
+            const icon = label === 'Accuracy' ? undefined : GRADE_ICONS[tone];
+            item.append(el('span', '', icon ? `${icon} ${label}` : label), el('span', `mono result__value${tone ? ` result__value--${tone}` : ''}`, value));
             list.append(item);
         }
 

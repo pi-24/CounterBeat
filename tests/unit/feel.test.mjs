@@ -48,7 +48,7 @@ function rig(reduced) {
     const bus = new FeedbackBus();
     const calls = { pulse: 0, kick: 0, flash: 0 };
     let t = 0;
-    const feel = new FeelController(bus, { get: () => reduced }, {
+    const feel = new FeelController(bus, { get: (k) => k === 'reducedEffects' && reduced }, {
         arena: { pulse: () => calls.pulse++ }, camera: { kick: () => calls.kick++ }, hud: { flashPerfect: () => calls.flash++ },
     }, () => t);
     return { bus, calls, feel, setT: (v) => { t = v; } };
@@ -122,7 +122,7 @@ test('hitmarker and beat ring share the flash limiter (<= 3 flashes/s total)', (
     const bus = new FeedbackBus();
     let n = 0;
     const hud = { flashPerfect: () => n++, flashBeat: () => n++, showHitmarker: () => n++ };
-    new FeelController(bus, { get: () => true }, { hud }, () => 0.5);
+    new FeelController(bus, { get: (k) => k === 'reducedEffects' }, { hud }, () => 0.5);
     for (let i = 0; i < 10; i++) { bus.emit('beat', {}); bus.emit('hit', {}); bus.emit('perfectStop', {}); }
     assert.equal(n, 3);
     n = 0;
@@ -136,7 +136,7 @@ test('under the flash cap a fast beat never crowds out hit confirmation', () => 
     const seen = { beat: 0, hit: 0 };
     let t = 0;
     const hud = { flashPerfect() {}, flashBeat: () => seen.beat++, showHitmarker: () => seen.hit++ };
-    new FeelController(bus, { get: () => true }, { hud }, () => t);
+    new FeelController(bus, { get: (k) => k === 'reducedEffects' }, { hud }, () => t);
     // 4 beats/s (fast chart) with a hit landing just after every beat, for 5 seconds.
     for (let i = 0; i < 20; i++) {
         t = i * 0.25; bus.emit('beat', {});
@@ -144,4 +144,19 @@ test('under the flash cap a fast beat never crowds out hit confirmation', () => 
     }
     assert.ok(seen.hit >= 10, `hits must keep a slot every second (got ${seen.hit})`);
     assert.ok(seen.beat + seen.hit <= 3 * 5 + 1, 'total flashes stay within the 3/s cap');
+});
+
+test('reduced flash: no perfect-stop or beat flashes at all, hitmarker only as a soft marker', () => {
+    const bus = new FeedbackBus();
+    const seen = { perfect: 0, beat: 0, hit: [] };
+    new FeelController(bus, { get: (k) => k === 'reducedFlash' }, {
+        hud: { flashPerfect: () => seen.perfect++, flashBeat: () => seen.beat++, showHitmarker: (h, soft) => seen.hit.push(!!soft) },
+    }, () => 0);
+    for (let i = 0; i < 10; i++) { bus.emit('perfectStop', {}); bus.emit('beat', {}); bus.emit('hit', { perfect: true }); }
+    assert.equal(seen.perfect, 0);
+    assert.equal(seen.beat, 0);
+    assert.equal(seen.hit.length, 10, 'hit confirmation is kept');
+    assert.ok(seen.hit.every(Boolean), 'and is always the non-flashing variant');
+    assert.equal(effectPolicy({ reducedFlash: true }).flash, false);
+    assert.equal(effectPolicy({ reducedFlash: false }).flash, true);
 });

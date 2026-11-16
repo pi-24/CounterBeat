@@ -6,9 +6,11 @@
  * comparable on the same chart, so the panel shows one chart at a time.
  */
 import { initNavigation } from '../ui/Navigation.js';
+import { bindPlayLinks } from './playLauncher.js';
 import { TRACKS, DIFFICULTIES, dailyChartId } from '../game/rules/charts.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
 
+bindPlayLinks();
 const backend = await initNavigation('index');
 
 const chartSelect = document.getElementById('homeChart');

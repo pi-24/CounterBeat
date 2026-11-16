@@ -23,6 +23,9 @@ import { replayCanFailOut, modeForLevel } from '../rules/failout.js';
 import { aimScalesForLevel, coneDegrees } from '../rules/aim.js';
 import { resolveChart } from '../rules/charts.js';
 import { themeProvider, trackProvider, feedbackBus } from '../providers/index.js';
+import { resolveRunMode, tutorialNeedsRestart } from '../onboarding/startFlow.js';
+import { TutorialProgress, STAGES, timeSuccess, aimSuccess } from '../onboarding/tutorialStages.js';
+import { strafeDirection } from '../input/bindings.js';
 import { FeelController } from '../feel/FeelController.js';
 import { hitPitch, SCALES } from '../audio/hitSounds.js';
 import { BeatMap } from '../rules/BeatMap.js';
@@ -65,6 +68,7 @@ export class PlayScreen {
         this.level = resolveChart(chartId);
         this.chartId = chartId;
         this.replay = options.replay ?? null;
+        this.initialTutorialProgress = options.tutorialProgress ?? null;
         /** {t:number} clock driven by the atlas screenshot hook (no audio, never finishes into results). */
         this.atlas = options.atlas ?? null;
         /** Seconds added to the atlas clock so captures start just before the first note (0 outside atlas). */
@@ -72,7 +76,7 @@ export class PlayScreen {
         /** 'campaign' | 'quickPlay' | 'daily' | 'ranked' - decides fail-out with the difficulty. */
         this.mode = options.mode ?? null;
         /** Mode the run is played (and logged) in. */
-        this.runMode = this.mode ?? (this.replay?.mode) ?? modeForLevel(this.level);
+        this.runMode = resolveRunMode(this.level, this.mode, this.replay?.mode ?? modeForLevel(this.level));
         /** hitbox and spread scales for this level, read once. */
         this.aim = aimScalesForLevel(this.level);
         /** Logs from before LOG_VERSION 4 replay with the rules they were recorded under. */
@@ -94,6 +98,8 @@ export class PlayScreen {
         this.unsubscribe = [];
         this.clearedAt = undefined;
         this.tutorialStage = 0;
+        /** Stop / Time / Aim progression (tutorial level only). */
+        this.tutorialProgress = null;
         this.resultsTimer = 0;
         /** Promise of the server's token for this run (ranked runs only). */
         this.runToken = null;
@@ -138,6 +144,10 @@ export class PlayScreen {
         );
 
         this.tutorialStartX = this.body.x;
+        if (this.level.tutorial && !this.replay) {
+            this.tutorialProgress = this.initialTutorialProgress ?? new TutorialProgress();
+            this.app.tutorialPanel.show(this.tutorialProgress);
+        }
         this.arena = new Arena(scene, this.level, this.lanes);
         this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, settings.get('targetSkin'), this.aim.hitboxScale);
         this.viewmodel = new Viewmodel(scene, camera.camera);
@@ -236,6 +246,12 @@ export class PlayScreen {
         audio.stopMusic();
         hud.hide();
         this.app.pauseOverlay.hidden = true;
+        if (this.tutorialProgress) {
+            this.app.tutorialPanel.hide();
+            if (!this.atlas) {
+                this.app.completeOnboarding(this.tutorialProgress.complete ? 'completed' : 'skipped');
+            }
+        }
 
         this.viewmodel.dispose();
         this.targets.dispose();
@@ -253,6 +269,7 @@ export class PlayScreen {
         const songTime = this.conductor.songPosition;
         if (this.conductor.update()) {
             feedbackBus.emit('beat', { strength: this.conductor.beatPosition % 4 < 1 ? 1 : 0.6 });
+            hud.pulseBeatCue(this.conductor.beatPosition % 4 < 1);
         }
         this.arena.updatePulse(dt);
 
@@ -290,6 +307,7 @@ export class PlayScreen {
         if (stopped && this.wasMoving && songTime - this.lastPerfectStopAt >= this.conductor.secondsPerBeat) {
             this.lastPerfectStopAt = songTime; // at most one flash per beat, independent of any shot
             feedbackBus.emit('perfectStop', { speed: this.body.speed });
+            this.tutorialAction('stop', true);
         }
         if (this.body.speed > SPEED_GRADE.tight) this.wasMoving = true;
         else if (stopped) this.wasMoving = false;
@@ -318,9 +336,7 @@ export class PlayScreen {
     /** @returns {number} -1, 0 or 1 from the strafe keys currently held. */
     readDirection() {
         const { input } = this.app;
-        const left = input.isDown('KeyA') || input.isDown('ArrowLeft');
-        const right = input.isDown('KeyD') || input.isDown('ArrowRight');
-        return (right ? 1 : 0) + (left ? -1 : 0);
+        return strafeDirection((code) => input.isDown(code), this.app.settings.get('bindings'));
     }
 
     /**
@@ -531,36 +547,36 @@ export class PlayScreen {
     }
 
     /**
-     * Coaching for the tutorial level: one instruction at a time, each one
-     * cleared by the player actually doing it.
+     * Feeds one tutorial action (Stop / Time / Aim) into the stage progression.
+     * @param {string|undefined} stageId @param {boolean} success
      */
-    updateTutorial() {
-        const hud = this.app.hud;
-        const stage = this.tutorialStage ?? 0;
-        if (stage === 0) {
-            hud.setHint('Hold  A  or  D  to strafe along the track');
-            if (Math.abs(this.body.x - this.tutorialStartX) > 30) {
-                this.tutorialStage = 1;
-            }
-        } else if (stage === 1) {
-            hud.setHint('While moving, TAP the opposite key and let go. That is a counter-strafe');
-            if (Number.isFinite(this.body.lastPlantedAt)) {
-                this.tutorialStage = 2;
-                this.app.audio.play('sfx-perfect', { volume: 0.5 });
-            }
-        } else if (stage === 2) {
-            hud.setHint('Dead stop. Bots will step out behind a lit window: stand in front of it, stop, and click when the ring closes');
-            if (this.scorer.judged > 0) {
-                this.tutorialStage = 3;
-            }
-        } else if (stage === 3) {
-            hud.setHint('The strip at the bottom shows which window is next and when. Shots spray while you move, so stop first');
-            if (this.scorer.judged >= 4) {
-                this.tutorialStage = 4;
-            }
-        } else {
-            hud.setHint('');
+    tutorialAction(stageId, success) {
+        const progress = this.tutorialProgress;
+        if (!progress || !stageId) {
+            return;
         }
+        const result = progress.record(stageId, success);
+        if (result === 'ignored') {
+            return;
+        }
+        this.tutorialFailed = result === 'fail';
+        if (result === 'advance' || result === 'complete') {
+            this.app.audio.play('sfx-perfect', { volume: 0.5 });
+        }
+        if (result === 'complete') {
+            this.clearedAt = this.conductor.songPosition; // wind the run down
+        }
+        this.app.tutorialPanel.update(progress, this.tutorialFailed);
+    }
+
+    /** Keeps the coach panel in step; the stage logic itself lives in tutorialStages.js. */
+    updateTutorial() {
+        const progress = this.tutorialProgress;
+        if (!progress) {
+            return;
+        }
+        this.app.hud.setHint('');
+        this.app.tutorialPanel.update(progress, Boolean(this.tutorialFailed));
     }
 
     /** @param {number} songTime */
@@ -643,6 +659,7 @@ export class PlayScreen {
         if (note && songTime < note.time - this.level.timing.ok) {
             this.scorer.registerWildShot();
             hud.flashJudgement('TOO EARLY', 'Wait for the ring to close', 'wild');
+            this.tutorialAction(this.tutorialProgress?.stage?.id, false);
             hud.setFocus(this.scorer.focus / 100);
             this.targets.flinch(entry);
             this.app.services.onJudgement({
@@ -666,6 +683,7 @@ export class PlayScreen {
             }
             this.scorer.registerWildShot();
             hud.flashJudgement('WILD SHOT', 'No bot on that beat', 'wild');
+            this.tutorialAction(this.tutorialProgress?.stage?.id, false);
             hud.setFocus(this.scorer.focus / 100);
             this.app.services.onJudgement({
                 grade: GRADE.MISS, reason: 'Wild shot', timingError: 0,
@@ -740,6 +758,18 @@ export class PlayScreen {
             this.stopQuality.add(judgement.speed);
         }
         const hit = judgement.grade !== GRADE.MISS;
+        if (this.tutorialProgress) {
+            const id = this.tutorialProgress.stage?.id;
+            if (id === 'stop') {
+                if (judgement.shotFired !== false && judgement.speed > SPEED_GRADE.tight) {
+                    this.tutorialAction('stop', false);
+                }
+            } else if (id === 'time') {
+                this.tutorialAction('time', timeSuccess(judgement));
+            } else if (id === 'aim') {
+                this.tutorialAction('aim', aimSuccess(judgement));
+            }
+        }
 
         hud.showJudgement(judgement.grade, judgement.reason, result.points, result.bonus);
         hud.setScore(this.scorer.score, this.scorer.combo, this.scorer.multiplier);
@@ -821,6 +851,12 @@ export class PlayScreen {
         }
         this.finished = true;
         if (this.atlas) {
+            return;
+        }
+        if (this.tutorialProgress && tutorialNeedsRestart(this.tutorialProgress)) {
+            // The chart ran out before the stages were done: go round again on the same stage.
+            this.conductor.stop();
+            this.app.showPlay(this.chartId, 'tutorial', { tutorialProgress: this.tutorialProgress });
             return;
         }
         this.conductor.stop();

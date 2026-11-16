@@ -15,7 +15,7 @@ import { settings } from '../game/Settings.js';
 import { ProgressStore } from '../game/progress/store.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
 import { toast } from '../ui/Toast.js';
-import { parseAtlasParams, atlasServices, showAtlasScene } from '../game/atlasHook.js';
+import { parseAtlasParams, atlasServices, memoryStorage, showAtlasScene } from '../game/atlasHook.js';
 
 const backend = await initNavigation('game');
 await settings.sync(backend);
@@ -214,6 +214,23 @@ function renderPersonalBests() {
 
 renderPersonalBests();
 
+/** Embedded launch (Play on the web pages): chrome hidden, a way back to the site. */
+function setupEmbedded() {
+    if (new URLSearchParams(window.location.search).get('embed') !== '1' || window.parent === window) {
+        return;
+    }
+    document.body.classList.add('is-embedded');
+    const exit = document.getElementById('embedExit');
+    if (exit) {
+        exit.hidden = false;
+        exit.addEventListener('click', () => {
+            window.parent.postMessage({ type: 'counterbeat-exit' }, window.location.origin);
+        });
+    }
+}
+
+setupEmbedded();
+
 /** Starts the game, or explains why it could not start. */
 async function boot() {
     const stage = document.getElementById('stage');
@@ -224,6 +241,8 @@ async function boot() {
         const replay = await pendingReplay();
         const app = new GameApp({
             replay,
+            skipStart: Boolean(atlasParams),
+            storage: atlasParams ? memoryStorage() : undefined,
             canvas,
             stage,
             hudRoot: document.getElementById('hud'),

@@ -11,6 +11,8 @@
  */
 export class AudioEngine {
     constructor() {
+        this.musicLevel = 0.55;
+        this.sfxLevel = 0.8;
         /** @type {AudioContext | null} */
         this.context = null;
         /** @type {Map<string, AudioBuffer>} */
@@ -80,12 +82,25 @@ export class AudioEngine {
         this.context = new Ctor({ latencyHint: 'interactive' });
 
         this.sfxGain = this.context.createGain();
-        this.sfxGain.gain.value = 0.8;
+        this.sfxGain.gain.value = this.sfxLevel;
         this.sfxGain.connect(this.context.destination);
 
         this.musicGain = this.context.createGain();
-        this.musicGain.gain.value = 0.55;
+        this.musicGain.gain.value = this.musicLevel;
         this.musicGain.connect(this.context.destination);
+    }
+
+    /**
+     * Applies the player's music and SFX volumes (0..1); works before init().
+     * @param {number} music @param {number} sfx
+     */
+    setVolumes(music, sfx) {
+        this.musicLevel = music;
+        this.sfxLevel = sfx;
+        if (this.context) {
+            this.musicGain.gain.setValueAtTime(music, this.context.currentTime);
+            this.sfxGain.gain.setValueAtTime(sfx, this.context.currentTime);
+        }
     }
 
     /** @returns {boolean} whether init() has run. */
@@ -340,7 +355,7 @@ export class AudioEngine {
         if (this.musicGain) {
             const now = this.context.currentTime;
             this.musicGain.gain.cancelScheduledValues(now);
-            this.musicGain.gain.setValueAtTime(0.55, now);
+            this.musicGain.gain.setValueAtTime(this.musicLevel, now);
         }
     }
 
