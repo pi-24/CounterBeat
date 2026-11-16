@@ -30,6 +30,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { resolveChart, dailyDate } from '../_shared/rules/charts.js';
 import { validateRun, logDuration } from '../_shared/rules/validateRun.js';
+import { canSubmitRankedRun } from '../_shared/net/submit.js';
 import { TIMING_BUCKETS } from '../_shared/rules/Scorer.js';
 
 /** A replay log is a few thousand numbers; anything far bigger is not one (60,000 ticks fit). */
@@ -157,9 +158,15 @@ Deno.serve(async (request) => {
         if (!level || level.tutorial || level.custom) {
             return json({ error: 'unknown or unranked chart' }, 400);
         }
+        const startGate = canSubmitRankedRun({ chartId: level.chartId, difficulty: level.difficulty?.id });
+        if (!startGate.ok) {
+            return json({ error: startGate.reason }, 400);
+        }
         if (level.kind === 'daily' && !dailyIsOpen(level.date as string)) {
             return json({ error: 'that daily challenge has closed' }, 400);
         }
+        // Active chart versions are seeded at deploy time (migration 0006 /
+        // tools/seed-chart-versions.mjs), not on the run-start hot path (AC14).
         // Housekeeping: this player's tokens from abandoned runs a day ago.
         await admin.from('run_tokens').delete()
             .eq('user_id', user.id)
@@ -238,6 +245,13 @@ Deno.serve(async (request) => {
     if (!level || level.tutorial) {
         return json({ error: 'unknown or unranked chart' }, 400);
     }
+    // Only full-speed Hard/Expert (and Daily) runs are ranked; Easy and Normal are refused.
+    const gate = canSubmitRankedRun({
+        chartId: level.chartId, kind: level.kind, difficulty: level.difficulty?.id, mode: log.mode as string, speed: log.speed as number | undefined,
+    });
+    if (!gate.ok) {
+        return json({ accepted: false, reason: gate.reason }, 200);
+    }
     if (level.kind === 'daily' && !dailyIsOpen(level.date as string)) {
         return json({ accepted: false, reason: 'that daily challenge has closed' }, 200);
     }
@@ -276,6 +290,7 @@ Deno.serve(async (request) => {
     const { data: inserted, error } = await admin.from('runs').insert({
         user_id: user.id,
         chart_id: level.chartId,
+        chart_version: level.chartVersion ?? 0,
         kind: level.kind,
         track_id: level.trackId,
         track_name: level.trackName,

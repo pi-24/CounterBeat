@@ -40,3 +40,7 @@ const chartsTo = resolve(root, 'supabase/functions/_shared/charts');
 rmSync(chartsTo, { recursive: true, force: true });
 cpSync(resolve(root, 'src/game/charts'), chartsTo, { recursive: true });
 console.log(`synced ${from} -> ${to}`);
+
+// The ranked submit gate is shared with the edge function too.
+mkdirSync(resolve(root, 'supabase/functions/_shared/net'), { recursive: true });
+cpSync(resolve(root, 'src/net/submit.js'), resolve(root, 'supabase/functions/_shared/net/submit.js'));

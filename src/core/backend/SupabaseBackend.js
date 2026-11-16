@@ -312,6 +312,7 @@ export class SupabaseBackend {
             displayName: row.display_name,
             mainGame: row.main_game || '-',
             chartId: row.chart_id,
+            chartVersion: row.chart_version ?? 0,
             levelId: row.level_id,
             levelName: row.level_name,
             score: row.score,

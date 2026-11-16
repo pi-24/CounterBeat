@@ -196,6 +196,11 @@ export class ResultScreen {
         if (typeof this.outcome.score === 'number' && this.outcome.score !== this.record.score) {
             o.querySelector('#resultScore').textContent = this.outcome.score.toLocaleString('en-GB');
         }
+        if (this.outcome.localOnly && this.record.kind !== 'custom') {
+            scoreLabel.textContent = this.outcome.personalBest ? 'NEW LOCAL BEST · NOT RANKED' : 'LOCAL BEST ONLY · HARD AND EXPERT ARE RANKED';
+            scoreLabel.className = `result__score-label${this.outcome.personalBest ? ' is-best' : ''}`;
+            return;
+        }
         scoreLabel.textContent = this.outcome.personalBest ? 'NEW PERSONAL BEST' : 'SCORE';
         scoreLabel.className = `result__score-label${this.outcome.personalBest ? ' is-best' : ''}`;
     }

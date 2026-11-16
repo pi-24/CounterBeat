@@ -6,6 +6,9 @@
  * stays a self-contained simulation and the website keeps ownership of the
  * player's data.
  */
+import { canSubmitRankedRun } from '../net/submit.js';
+import { LocalBestStore } from '../net/localBest.js';
+import { store } from '../core/Storage.js';
 import { initNavigation } from '../ui/Navigation.js';
 import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
@@ -45,8 +48,8 @@ if (!user) {
  */
 let progress = user ? await loadProgress() : new Map();
 
-/** Guest progress and scores only last as long as the page is open. */
-const guestState = { passed: new Set(), bestByChart: new Map() };
+/** Durable local bests and passes for runs that are never ranked (guests; Easy, Normal, Campaign). */
+const localBests = new LocalBestStore(store, user ? user.id : 'guest');
 
 /** @returns {Promise<Map<string, object>>} */
 async function loadProgress() {
@@ -97,13 +100,13 @@ const services = {
 
     hasPassed(chartId) {
         if (!user) {
-            return guestState.passed.has(chartId);
+            return localBests.hasPassed(chartId);
         }
-        return Boolean(progress.get(chartId)?.passed);
+        return Boolean(progress.get(chartId)?.passed) || localBests.hasPassed(chartId);
     },
 
     getPersonalBest(chartId) {
-        return user ? bestOf(chartId) : (guestState.bestByChart.get(chartId) ?? 0);
+        return user ? Math.max(bestOf(chartId), localBests.bestOf(chartId)) : localBests.bestOf(chartId);
     },
 
     startRun(chartId) {
@@ -113,16 +116,20 @@ const services = {
 
     async onRunComplete(record, log, runToken) {
         if (!user) {
-            const previous = guestState.bestByChart.get(record.chartId) ?? 0;
-            if (record.score > previous) {
-                guestState.bestByChart.set(record.chartId, record.score);
-            }
-            if (record.passed) {
-                guestState.passed.add(record.chartId);
-            }
+            const { personalBest } = localBests.record(record);
             renderPersonalBests();
             toast.info('Guest run finished. Log in before playing to save scores to the rankings.');
-            return { saved: false, personalBest: record.score > previous, score: record.score };
+            return { saved: false, localOnly: true, personalBest, score: record.score };
+        }
+
+        // Easy, Normal, Campaign and Practice never reach the ranked server:
+        // they keep a local personal best only (AC12).
+        const gate = canSubmitRankedRun({ chartId: record.chartId, kind: record.kind, difficulty: record.difficulty, mode: log?.mode, speed: log?.speed });
+        if (!gate.ok) {
+            runToken?.catch?.(() => {});
+            const { personalBest } = localBests.record(record);
+            renderPersonalBests();
+            return { saved: true, localOnly: true, reason: gate.reason, personalBest, score: record.score };
         }
 
         const token = runToken ? await runToken : null;
