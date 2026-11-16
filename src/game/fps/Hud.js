@@ -423,7 +423,9 @@ export class Hud {
 
     /** @param {boolean} headshot */
     flashBeat() {
-        this.beatRing.setAttribute('class', 'hud__beat is-flash');
+        if (this.beatRing.getAttribute('class') !== 'hud__beat is-flash') {
+            this.beatRing.setAttribute('class', 'hud__beat is-flash');   // write once; replays need no style recalc
+        }
         replayAnimations(this.beatRing);
     }
 

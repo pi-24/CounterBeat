@@ -130,3 +130,18 @@ test('hitmarker and beat ring share the flash limiter (<= 3 flashes/s total)', (
     bus.emit('hit', {}); bus.emit('hit', {}); bus.emit('hit', {}); bus.emit('hit', {}); bus.emit('perfectStop', {});
     assert.equal(n, 5 + 0, 'without Reduced Effects hit confirmation is never dropped');
 });
+
+test('under the flash cap a fast beat never crowds out hit confirmation', () => {
+    const bus = new FeedbackBus();
+    const seen = { beat: 0, hit: 0 };
+    let t = 0;
+    const hud = { flashPerfect() {}, flashBeat: () => seen.beat++, showHitmarker: () => seen.hit++ };
+    new FeelController(bus, { get: () => true }, { hud }, () => t);
+    // 4 beats/s (fast chart) with a hit landing just after every beat, for 5 seconds.
+    for (let i = 0; i < 20; i++) {
+        t = i * 0.25; bus.emit('beat', {});
+        t += 0.01; bus.emit('hit', {});
+    }
+    assert.ok(seen.hit >= 10, `hits must keep a slot every second (got ${seen.hit})`);
+    assert.ok(seen.beat + seen.hit <= 3 * 5 + 1, 'total flashes stay within the 3/s cap');
+});

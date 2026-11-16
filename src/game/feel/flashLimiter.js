@@ -14,11 +14,12 @@ export class FlashLimiter {
 
     /**
      * @param {number} nowSeconds monotonic time
+     * @param {number} [reserve] slots to leave free for higher-priority flashes (the cap itself never rises)
      * @returns {boolean} true when a flash may play now (and is recorded)
      */
-    tryFlash(nowSeconds) {
+    tryFlash(nowSeconds, reserve = 0) {
         this.times = this.times.filter((t) => nowSeconds - t < 1);
-        if (this.times.length >= this.max) return false;
+        if (this.times.length >= this.max - reserve) return false;
         this.times.push(nowSeconds);
         return true;
     }

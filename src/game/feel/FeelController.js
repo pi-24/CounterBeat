@@ -8,6 +8,9 @@
 import { effectPolicy, HIT_STOP_MS } from './reducedEffects.js';
 import { FlashLimiter } from './flashLimiter.js';
 
+/** Under the flash cap the ambient beat ring only flashes when two slots are free, so hits and perfect stops always get one. */
+const BEAT_RESERVE = 2;
+
 export class FeelController {
     /**
      * @param {import('../providers/FeedbackBus.js').FeedbackBus} bus
@@ -35,13 +38,14 @@ export class FeelController {
     get frozen() { return this.clock() < this.hitStopUntil; }
 
     /** Flashes are only rate-limited under Reduced Effects, so normal play never drops hit confirmation. */
-    canFlash() {
-        return this.policy.limitFlashes ? this.limiter.tryFlash(this.clock()) : true;
+    /** @param {number} [reserve] slots kept free for hit confirmation (the beat ring is ambient and yields) */
+    canFlash(reserve = 0) {
+        return this.policy.limitFlashes ? this.limiter.tryFlash(this.clock(), reserve) : true;
     }
 
     onBeat({ strength = 1 } = {}) {
         if (this.policy.pulse) this.targets.arena?.pulse(0.35 * strength);
-        if (this.canFlash()) this.targets.hud?.flashBeat?.();
+        if (this.canFlash(BEAT_RESERVE)) this.targets.hud?.flashBeat?.();
     }
 
     onHit({ perfect = false, headshot = false } = {}) {
