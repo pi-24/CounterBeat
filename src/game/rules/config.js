@@ -161,4 +161,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     noteHighway: true,      // the upcoming-beats strip at the bottom of the HUD
     targetSkin: 'bot',      // id in data/targets.json (cosmetic only)
     audioOffset: 0,         // seconds; measured by the calibration screen
+    reducedEffects: false,  // no pulse, camera kick or hit-stop; flashes stay capped
+    hitVolume: 0.8,         // 0..1, the in-key hit sound
+    plainHitSounds: false,  // true = the original unpitched hit samples
 });

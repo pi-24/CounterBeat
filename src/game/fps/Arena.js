@@ -170,6 +170,8 @@ export class Arena {
         const hemi = new HemisphericLight('hemi', new Vector3(0.2, 1, 0.3), scene);
         hemi.intensity = this.arena.ambient;
         hemi.groundColor = new Color3(0.25, 0.25, 0.3);
+        this.hemi = hemi;
+        this.pulseLevel = 0;
 
         const sun = new DirectionalLight('sun', new Vector3(-0.4, -1, 0.6), scene);
         sun.intensity = 0.55;
@@ -353,6 +355,20 @@ export class Arena {
      * Lights the window and pad for a lane, and dims the rest.
      * @param {number} laneIndex -1 for none.
      */
+    /** Beat-synced light pulse; `amount` is added to the ambient light and decays in update(). */
+    pulse(amount) {
+        this.pulseLevel = Math.max(this.pulseLevel, amount);
+    }
+
+    /** @param {number} dt seconds */
+    updatePulse(dt) {
+        if (!this.hemi) {
+            return;
+        }
+        this.pulseLevel = Math.max(0, this.pulseLevel - dt * 2.5);
+        this.hemi.intensity = this.arena.ambient + this.pulseLevel;
+    }
+
     setActiveLane(laneIndex) {
         if (this.activeLane === laneIndex) {
             return;

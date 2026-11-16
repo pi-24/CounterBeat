@@ -229,9 +229,7 @@ export class TargetField {
         entry.sprite.isPickable = false;
 
         if (hit) {
-            if (point) {
-                this.burst(point, headshot ? 26 : 14, headshot);
-            }
+            // The shatter itself is a feel effect: PlayScreen emits 'shatter' on the FeedbackBus.
             entry.sprite.playAnimation(FRAMES.hit[0], FRAMES.hit[1], false, 55, () => {
                 entry.sprite.playAnimation(FRAMES.death[0], FRAMES.death[1], false, 70, () => {
                     this.remove(entry);
@@ -243,6 +241,19 @@ export class TargetField {
                 this.remove(entry);
             });
         }
+    }
+
+    /**
+     * Target shatter: a burst of shards where the shot landed, bigger on a
+     * headshot or a perfect stop.  Purely cosmetic.
+     * @param {Vector3|null} point
+     * @param {{headshot?:boolean, perfect?:boolean}} [opts]
+     */
+    shatter(point, { headshot = false, perfect = false } = {}) {
+        if (!point) {
+            return;
+        }
+        this.burst(point, (headshot ? 26 : 14) + (perfect ? 6 : 0), headshot || perfect);
     }
 
     /**

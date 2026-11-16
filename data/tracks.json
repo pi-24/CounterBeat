@@ -73,6 +73,7 @@
       "offset": 0,
       "key": "D",
       "scale": "minor-pentatonic",
+      "pitchMode": "pattern",
       "audio": [
         "audio/music-drift.ogg",
         "audio/music-drift.mp3"

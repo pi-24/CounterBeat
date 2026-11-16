@@ -218,6 +218,29 @@ export class AudioEngine {
     }
 
     /**
+     * A short synthesised pluck at a pitch, used for in-key hit sounds.
+     * @param {number} hz
+     * @param {{volume?:number}} [options]
+     */
+    playTone(hz, options = {}) {
+        if (!this.context || !this.sfxGain || !Number.isFinite(hz) || hz <= 0) {
+            return;
+        }
+        const now = this.context.currentTime;
+        const osc = this.context.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = hz;
+        const gain = this.context.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, Number.isFinite(options.volume) ? options.volume : 0.3), now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    }
+
+    /**
      * Schedules a one-shot effect at an exact context time.
      * @param {string} key
      * @param {number} when AudioContext time in seconds

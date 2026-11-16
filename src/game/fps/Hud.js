@@ -14,6 +14,11 @@
  * attribute or class still costs a style recalculation if it is written.
  */
 import { APPROACH_BEATS, GRADE_LABEL } from '../rules/config.js';
+import { arcColour, arcFill, arcTickSpeeds } from '../feel/speedArc.js';
+
+const ARC_RADIUS = 40;
+const ARC_START_DEG = 150;
+const ARC_SPAN_DEG = 240 / 2; // 120 degrees across the bottom of the crosshair
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** How far ahead the note strip shows, in beats (bots appear APPROACH_BEATS ahead). */
@@ -77,6 +82,15 @@ export class Hud {
         this.velocitySvg = this.find('velocity');
         this.velocityText = this.find('velocityText');
 
+        this.speedArc = this.find('speedArc');
+        this.arcFill = this.speedArc?.querySelector('[data-part="fill"]');
+        this.arcTicks = this.speedArc ? {
+            perfect: this.speedArc.querySelector('[data-part="tickPerfect"]'),
+            good: this.speedArc.querySelector('[data-part="tickGood"]'),
+            loose: this.speedArc.querySelector('[data-part="tickLoose"]'),
+        } : null;
+        this.arcScale = 0;
+        this.perfectFlash = this.find('perfectFlash');
         this.velocityMarker = this.velocitySvg.querySelector('[data-part="marker"]');
         this.velocityTight = this.velocitySvg.querySelector('[data-part="tight"]');
         this.velocityPin = this.velocitySvg.querySelector('[data-part="pin"]');
@@ -288,10 +302,43 @@ export class Hud {
         }
     }
 
+    /**
+     * The speed arc under the crosshair: fills with speed, green at or below
+     * the perfect-stop threshold, with ticks at the good and loose thresholds.
+     * @param {{pinPoint:number, tight:number, loose:number}} grades SPEED_GRADE
+     */
+    setSpeedArc(velocity, maxSpeed, grades) {
+        if (!this.arcFill) {
+            return;
+        }
+        if (this.arcScale !== maxSpeed) {
+            this.arcScale = maxSpeed;
+            const marks = arcTickSpeeds(grades);
+            for (const [name, speed] of Object.entries(marks)) {
+                const angle = ((ARC_START_DEG - ARC_SPAN_DEG * arcFill(speed, maxSpeed)) * Math.PI) / 180;
+                const tick = this.arcTicks[name];
+                tick.setAttribute('x1', (Math.cos(angle) * (ARC_RADIUS - 3)).toFixed(2));
+                tick.setAttribute('y1', (Math.sin(angle) * (ARC_RADIUS - 3)).toFixed(2));
+                tick.setAttribute('x2', (Math.cos(angle) * (ARC_RADIUS + 3)).toFixed(2));
+                tick.setAttribute('y2', (Math.sin(angle) * (ARC_RADIUS + 3)).toFixed(2));
+            }
+        }
+        const fill = Math.max(0.5, arcFill(velocity, maxSpeed) * 100);
+        write(this.arcFill, 'stroke-dasharray', `${fill.toFixed(1)} 100`);
+        write(this.arcFill, 'stroke', arcColour(velocity, grades));
+    }
+
+    /** The perfect-stop flash; callers rate-limit it (FlashLimiter). */
+    flashPerfect() {
+        if (this.perfectFlash) {
+            this.perfectFlash.classList.add('is-on');
+            replayAnimations(this.perfectFlash);
+        }
+    }
+
     /** @param {number} progress 0..1 through the current beat */
     setBeat(progress) {
         write(this.beatRing, 'r', (11 + 28 * (1 - progress)).toFixed(2));
-        write(this.beatRing, 'opacity', (0.15 + 0.5 * progress).toFixed(3));
     }
 
     /**
@@ -372,6 +419,12 @@ export class Hud {
         this.judgeReason.textContent = detail;
         this.judgeBox.className = `hud__judgement hud__judgement--${tone} is-live`;
         replayAnimations(this.judgeBox);
+    }
+
+    /** @param {boolean} headshot */
+    flashBeat() {
+        this.beatRing.setAttribute('class', 'hud__beat is-flash');
+        replayAnimations(this.beatRing);
     }
 
     /** @param {boolean} headshot */

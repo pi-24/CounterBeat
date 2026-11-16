@@ -22,7 +22,9 @@ import { APPROACH_BEATS, GRADE, SPEED_GRADE } from '../rules/config.js';
 import { replayCanFailOut, modeForLevel } from '../rules/failout.js';
 import { aimScalesForLevel, coneDegrees } from '../rules/aim.js';
 import { resolveChart } from '../rules/charts.js';
-import { themeProvider, trackProvider } from '../providers/index.js';
+import { themeProvider, trackProvider, feedbackBus } from '../providers/index.js';
+import { FeelController } from '../feel/FeelController.js';
+import { hitPitch, SCALES } from '../audio/hitSounds.js';
 import { BeatMap } from '../rules/BeatMap.js';
 import { Conductor } from '../rules/Conductor.js';
 import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
@@ -65,6 +67,8 @@ export class PlayScreen {
         this.replay = options.replay ?? null;
         /** {t:number} clock driven by the atlas screenshot hook (no audio, never finishes into results). */
         this.atlas = options.atlas ?? null;
+        /** Seconds added to the atlas clock so captures start just before the first note (0 outside atlas). */
+        this.leadInOffset = 0;
         /** 'campaign' | 'quickPlay' | 'daily' | 'ranked' - decides fail-out with the difficulty. */
         this.mode = options.mode ?? null;
         /** Mode the run is played (and logged) in. */
@@ -84,6 +88,8 @@ export class PlayScreen {
 
         this.finished = false;
         this.paused = false;
+        this.wasMoving = false;
+        this.lastPerfectStopAt = -Infinity;
         this.wasCounterStrafing = false;
         this.unsubscribe = [];
         this.clearedAt = undefined;
@@ -116,6 +122,7 @@ export class PlayScreen {
         this.lanes = this.beatMap.lanes;
         this.lead = APPROACH_BEATS * (60 / this.level.bpm);
         this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
+        if (this.atlas) this.leadInOffset = Math.max(0, this.firstNoteTime - 1);
         this.judge = new Judge(this.level, this.lanes);
         this.scorer = new Scorer(this.beatMap.total);
         this.stopQuality = new StopQuality();
@@ -151,6 +158,8 @@ export class PlayScreen {
         hud.setHint('');
         hud.buildHighway(this.lanes.count);
 
+        this.feel = new FeelController(feedbackBus, settings, { arena: this.arena, camera, hud, field: this.targets });
+        this.unsubscribe.push(() => this.feel.dispose());
         this.unsubscribe.push(settings.onChange(() => {
             hud.applyCrosshair(settings);
             hud.applyVisibility(settings);
@@ -175,7 +184,7 @@ export class PlayScreen {
 
         if (this.atlas) {
             await prepared;
-            this.conductor = new Conductor(() => this.atlas.t, this.level.bpm, 0, this.level.gridOffset);
+            this.conductor = new Conductor(() => this.atlas.t + this.leadInOffset, this.level.bpm, 0, this.level.gridOffset);
             this.conductor.start();
             return;
         }
@@ -242,7 +251,10 @@ export class PlayScreen {
         }
         const { camera, hud, audio } = this.app;
         const songTime = this.conductor.songPosition;
-        this.conductor.update();
+        if (this.conductor.update()) {
+            feedbackBus.emit('beat', { strength: this.conductor.beatPosition % 4 < 1 ? 1 : 0.6 });
+        }
+        this.arena.updatePulse(dt);
 
         if (this.replay) {
             this.advanceReplay(songTime);
@@ -268,10 +280,20 @@ export class PlayScreen {
         this.arena.setActiveLane(nextNote ? nextNote.lane : -1);
 
         const speedFraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
-        camera.update(Arena.toWorldX(this.body.x), dt, speedFraction);
-        this.viewmodel.update(dt);
+        camera.update(Arena.toWorldX(this.body.x), this.feel.frozen ? 0 : dt, speedFraction); // hit-stop holds the kick/bob decay
+        if (!this.feel.frozen) {
+            this.viewmodel.update(dt); // hit-stop is cosmetic: only the viewmodel holds still
+        }
 
         hud.setVelocity(this.body.velocity, this.movement.maxSpeed, SPEED_GRADE.pinPoint, SPEED_GRADE.tight);
+        const stopped = this.body.speed <= SPEED_GRADE.pinPoint;
+        if (stopped && this.wasMoving && songTime - this.lastPerfectStopAt >= this.conductor.secondsPerBeat) {
+            this.lastPerfectStopAt = songTime; // at most one flash per beat, independent of any shot
+            feedbackBus.emit('perfectStop', { speed: this.body.speed });
+        }
+        if (this.body.speed > SPEED_GRADE.tight) this.wasMoving = true;
+        else if (stopped) this.wasMoving = false;
+        hud.setSpeedArc(this.body.velocity, this.movement.maxSpeed, SPEED_GRADE);
         hud.setBeat(this.conductor.beatProgress);
         hud.setLanes(nextNote ? nextNote.lane : -1,
             (this.body.x - this.lanes.left) / (this.lanes.right - this.lanes.left));
@@ -543,12 +565,16 @@ export class PlayScreen {
 
     /** @param {number} songTime */
     updateCountdown(songTime) {
+        if (this.atlas) {
+            this.app.hud.setCountdown('', false); // atlas frames show live play, not the lead-in
+            return;
+        }
         const first = this.firstNoteTime;
         const until = first - songTime;
         const spb = this.conductor.secondsPerBeat;
         if (until > 0 && until < spb * 4) {
             this.app.hud.setCountdown(String(Math.ceil(until / spb)), true);
-        } else if (songTime < first && !this.level.tutorial) {
+        } else if (songTime < first && !this.level.tutorial && !this.atlas) {
             this.app.hud.setCountdown('GET READY', true);
         } else {
             this.app.hud.setCountdown('', false);
@@ -680,6 +706,24 @@ export class PlayScreen {
         return new Ray(camera.position.clone(), direction, 120);
     }
 
+    /** In-key hit sound (or the plain sample when the player prefers it). */
+    playHitSound(note, judgement) {
+        const { audio, settings } = this.app;
+        const master = settings.get('hitVolume');
+        const perfect = judgement.grade === GRADE.PERFECT;
+        const track = trackProvider.get(this.level.trackId);
+        if (settings.get('plainHitSounds') || !track || !SCALES[track.scale]) {
+            audio.play(perfect ? 'sfx-perfect' : 'sfx-good', {
+                volume: (perfect ? 0.6 : 0.45) * master,
+                rate: judgement.headshot ? 1.25 : 1,
+            });
+            return;
+        }
+        const { hz } = hitPitch(track, { lane: note.lane, noteIndex: Number.isInteger(note.index) ? note.index : this.beatMap.notes.indexOf(note), mode: track.pitchMode === 'pattern' ? 'pattern' : 'lane' });
+        audio.play('sfx-good', { volume: 0.2 * master });
+        audio.playTone(judgement.headshot ? hz * 2 : hz, { volume: (perfect ? 0.45 : 0.3) * master });
+    }
+
     /**
      * @param {object} note
      * @param {object|null} entry
@@ -704,16 +748,17 @@ export class PlayScreen {
         hud.setProgress(this.scorer.judged, this.beatMap.total);
 
         if (hit) {
-            hud.showHitmarker(judgement.headshot);
-            audio.play(judgement.grade === GRADE.PERFECT ? 'sfx-perfect' : 'sfx-good', {
-                volume: judgement.grade === GRADE.PERFECT ? 0.6 : 0.45,
-                rate: judgement.headshot ? 1.25 : 1,
-            });
+            this.playHitSound(note, judgement);
+            const perfect = judgement.grade === GRADE.PERFECT;
+            feedbackBus.emit('hit', { perfect, headshot: judgement.headshot });
         } else {
-            audio.play('sfx-miss', { volume: 0.5 });
+            audio.play('sfx-miss', { volume: 0.5 * this.app.settings.get('hitVolume') });
         }
 
         if (entry) {
+            if (hit) {
+                feedbackBus.emit('shatter', { point, headshot: judgement.headshot, perfect: judgement.grade === GRADE.PERFECT });
+            }
             this.targets.resolve(entry, hit, point, judgement.headshot);
         }
 

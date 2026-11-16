@@ -162,6 +162,15 @@ export class Settings {
         if ('noteHighway' in changes) {
             out.noteHighway = Boolean(changes.noteHighway);
         }
+        if ('reducedEffects' in changes) {
+            out.reducedEffects = Boolean(changes.reducedEffects);
+        }
+        if ('plainHitSounds' in changes) {
+            out.plainHitSounds = Boolean(changes.plainHitSounds);
+        }
+        if ('hitVolume' in changes) {
+            out.hitVolume = Math.round(Settings.clamp(Number(changes.hitVolume), 0, 1) * 100) / 100;
+        }
         if ('audioOffset' in changes) {
             out.audioOffset = Settings.clamp(Number(changes.audioOffset), -0.25, 0.25);
         }
