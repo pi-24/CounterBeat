@@ -28,13 +28,16 @@ export function embedUrl(href) {
 }
 
 /**
- * Whether a fullscreenchange means the player left fullscreen (Esc, F11, browser
- * UI) while the embedded frame is up, so the frame must be torn down.
+ * Whether leaving fullscreen (Esc, F11, browser UI) should tear down the embedded
+ * frame. It never does: the frame keeps filling the window so a live run survives.
  * @param {boolean} wasFullscreen the frame had entered fullscreen
  * @param {boolean} isFullscreen  something is fullscreen now
  */
 export function shouldCloseOnFullscreenChange(wasFullscreen, isFullscreen) {
-    return wasFullscreen && !isFullscreen;
+    // Never: Esc (or the browser) dropping fullscreen must not tear down a live run. The frame
+    // still fills the window and the in-game exit (counterbeat-exit message) is the only way out.
+    void wasFullscreen; void isFullscreen;
+    return false;
 }
 
 /** Leaves the embedded game and returns to the page underneath. */
@@ -66,7 +69,7 @@ export function bindPlayLinks(doc = document) {
                 const now = Boolean(document.fullscreenElement);
                 if (shouldCloseOnFullscreenChange(entered, now)) {
                     document.removeEventListener('fullscreenchange', onChange);
-                    closeFrame(frame); // Esc leaves fullscreen AND the game: back on the site
+                    closeFrame(frame); // unreachable today; kept so a future rule can opt back in
                 }
                 entered = entered || now;
             };

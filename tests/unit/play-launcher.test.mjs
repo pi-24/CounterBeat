@@ -17,8 +17,8 @@ test('the embed URL keeps the page and adds the embed flag', () => {
 });
 
 import { shouldCloseOnFullscreenChange } from '../../src/pages/playLauncher.js';
-test('leaving fullscreen after entering it closes the embedded frame', () => {
-    assert.equal(shouldCloseOnFullscreenChange(true, false), true);
+test('leaving fullscreen never closes the embedded frame (a live run is not discarded by Esc)', () => {
+    assert.equal(shouldCloseOnFullscreenChange(true, false), false);
     assert.equal(shouldCloseOnFullscreenChange(false, false), false);
     assert.equal(shouldCloseOnFullscreenChange(false, true), false);
     assert.equal(shouldCloseOnFullscreenChange(true, true), false);
