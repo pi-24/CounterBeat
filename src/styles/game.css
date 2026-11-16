@@ -1917,3 +1917,15 @@
     .result__hist-bars { height: 44px; }
     .result__stars { margin: var(--s-2) 0; }
 }
+
+/* Results actions stay on screen at any frame height (the embedded, pre-fullscreen canvas is
+   ~515 px tall, so viewport media queries cannot help): the row sticks to the overlay's bottom
+   while the stats above it scroll. */
+.overlay--result .overlay__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: var(--s-2) var(--s-3);
+    margin-top: var(--s-2);
+    background: linear-gradient(180deg, rgba(5, 7, 11, 0), rgba(5, 7, 11, 0.92) 35%);
+}
