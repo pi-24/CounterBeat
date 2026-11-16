@@ -3,10 +3,10 @@
   "note": "Starting values, retuned after the M0 and M7 playtests. Edit this file, then run `npm run sync-rules` (regenerates src/game/rules/rulesData.js and the edge-function copy).",
   "grading": {
     "stopSpeed": { "perfect": 20, "good": 65, "loose": 140 },
-    "counterStrafeWindowMs": 320
+    "counterStrafeWindowMs": 320,
+    "rankAccuracy": 0.85
   },
   "stars": {
-    "rankAccuracy": 0.85,
     "challengeNoMiss": true,
     "challengeStopQuality": 0.8
   },

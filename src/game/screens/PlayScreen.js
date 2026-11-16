@@ -16,6 +16,7 @@
  *   inputs -> movement -> spawn notes -> expire missed notes -> shots
  * so the server lands on the same score to the point.
  */
+import { StopQuality } from '../progress/stars.js';
 import { Ray } from '../engine.js';
 import { APPROACH_BEATS, GRADE, SPEED_GRADE } from '../rules/config.js';
 import { replayCanFailOut, modeForLevel } from '../rules/failout.js';
@@ -29,6 +30,7 @@ import { Judge } from '../rules/Judge.js';
 import { Scorer } from '../rules/Scorer.js';
 import { RunRecorder, LOG_VERSION, readLook } from '../RunRecorder.js';
 import { Arena } from '../fps/Arena.js';
+import { isCosmeticUnlocked } from '../progress/unlocks.js';
 import { TargetField } from '../fps/TargetField.js';
 import { Viewmodel } from '../fps/Viewmodel.js';
 
@@ -61,6 +63,8 @@ export class PlayScreen {
         this.level = resolveChart(chartId);
         this.chartId = chartId;
         this.replay = options.replay ?? null;
+        /** {t:number} clock driven by the atlas screenshot hook (no audio, never finishes into results). */
+        this.atlas = options.atlas ?? null;
         /** 'campaign' | 'quickPlay' | 'daily' | 'ranked' - decides fail-out with the difficulty. */
         this.mode = options.mode ?? null;
         /** Mode the run is played (and logged) in. */
@@ -101,12 +105,20 @@ export class PlayScreen {
     async enter() {
         const { scene, camera, hud, audio, settings } = this.app;
 
+        // An equipped, unlocked arena theme re-dresses the room (visual only; the level data is untouched).
+        const themeId = this.app.services.progress?.values.equipped.theme;
+        if (themeId && !this.atlas && themeProvider.themes.has(themeId)
+            && isCosmeticUnlocked(themeProvider.theme(themeId), this.app.services.progress.total)) {
+            this.level = { ...this.level, arena: { theme: themeId } };
+        }
+
         this.beatMap = new BeatMap(this.level);
         this.lanes = this.beatMap.lanes;
         this.lead = APPROACH_BEATS * (60 / this.level.bpm);
         this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
         this.judge = new Judge(this.level, this.lanes);
         this.scorer = new Scorer(this.beatMap.total);
+        this.stopQuality = new StopQuality();
         const scale = this.replay
             ? { speed: 1, accel: 1, ...(this.replay.movement ?? {}) }
             : { speed: settings.get('moveSpeed'), accel: settings.get('moveAccel') };
@@ -160,6 +172,13 @@ export class PlayScreen {
             Promise.all([this.targets.prepare(), this.viewmodel.prepare()]),
             new Promise((resolve) => { window.setTimeout(resolve, PREPARE_TIMEOUT_MS); }),
         ]);
+
+        if (this.atlas) {
+            await prepared;
+            this.conductor = new Conductor(() => this.atlas.t, this.level.bpm, 0, this.level.gridOffset);
+            this.conductor.start();
+            return;
+        }
 
         await audio.unlock();
         if (!this.current) {
@@ -337,6 +356,7 @@ export class PlayScreen {
                 counterStrafed: false,
                 headshot: false,
                 reason: 'No shot',
+                shotFired: false,
             }, null);
         });
         this.checkFailure();
@@ -672,6 +692,9 @@ export class PlayScreen {
 
         const { hud, audio } = this.app;
         const result = this.scorer.apply(judgement);
+        if (judgement.shotFired !== false) {
+            this.stopQuality.add(judgement.speed);
+        }
         const hit = judgement.grade !== GRADE.MISS;
 
         hud.showJudgement(judgement.grade, judgement.reason, result.points, result.bonus);
@@ -752,6 +775,9 @@ export class PlayScreen {
             return;
         }
         this.finished = true;
+        if (this.atlas) {
+            return;
+        }
         this.conductor.stop();
         this.app.camera.lookEnabled = false;
         this.app.audio.fadeMusic(0, 0.7);
@@ -769,7 +795,13 @@ export class PlayScreen {
                 return; // the player already left this screen
             }
             this.app.camera.unlock();
-            this.app.showResults(record, this.chartId, log, { replay: Boolean(this.replay), runToken });
+            this.app.showResults(record, this.chartId, log, {
+                replay: Boolean(this.replay),
+                runToken,
+                runMode: this.runMode,
+                // PlayScreen always runs at full speed (practice's 0.75x lives elsewhere), so no speed is passed.
+                stopQuality: { stopShots: this.stopQuality.stopShots, stopGood: this.stopQuality.stopGood },
+            });
         }, RESULTS_DELAY_MS);
     }
 }

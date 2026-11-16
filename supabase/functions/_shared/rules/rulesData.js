@@ -8,21 +8,9 @@ export default {
             "good": 65,
             "loose": 140
         },
-        "counterStrafeWindowMs": 320
+        "counterStrafeWindowMs": 320,
+        "rankAccuracy": 0.85
     },
-    "stars": {
-        "rankAccuracy": 0.85,
-        "challengeNoMiss": true,
-        "challengeStopQuality": 0.8
-    },
-    "starGates": [
-        0,
-        3,
-        8,
-        14,
-        21,
-        28
-    ],
     "difficulties": {
         "easy": {
             "notesPerSecond": 0.95,

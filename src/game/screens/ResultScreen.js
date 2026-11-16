@@ -6,9 +6,14 @@
  * the game talks to storage - the screens themselves never import a
  * repository.
  */
-import { resolveChart, DIFFICULTIES } from '../rules/charts.js';
+import { resolveChart, DIFFICULTIES, TRACKS } from '../rules/charts.js';
 import { Showcase } from '../fps/Showcase.js';
 import { el } from '../../ui/format.js';
+import { themeProvider } from '../providers/index.js';
+import { awardsStars } from '../progress/stars.js';
+import { newlyUnlocked } from '../progress/unlocks.js';
+
+const STAR_LABELS = ['Pass', 'Rank A or better', 'Clean stops'];
 
 export class ResultScreen {
     /**
@@ -29,6 +34,67 @@ export class ResultScreen {
         this.runToken = options.runToken ?? null;
         this.follower = ResultScreen.nextChart(this.level);
         this.overlay = app.resultOverlay;
+        this.runMode = options.runMode ?? 'quickPlay';
+        this.runSpeed = options.speed ?? 1;
+        this.stopQuality = options.stopQuality ?? { stopShots: 0, stopGood: 0 };
+        /** @type {{best:boolean[], isNew:boolean[], unlocked:string[], total:number}|null} */
+        this.starResult = null;
+    }
+
+    /** Records the run's stars in the local progress store (never sent to the server). */
+    recordStars() {
+        const progress = this.app.services.progress;
+        const run = {
+            mode: this.runMode, trackId: this.level.trackId, difficulty: this.record.difficulty, speed: this.runSpeed,
+        };
+        if (this.level.kind !== 'track' || this.isReplay
+            || !awardsStars({ ...run, completed: this.record.completed })) {
+            return;
+        }
+        const prev = progress.starsFor(run.trackId, run.difficulty);
+        const { before, total } = progress.record(run, { ...this.record, ...this.stopQuality });
+        const best = progress.starsFor(run.trackId, run.difficulty);
+        const groups = {
+            theme: [...themeProvider.themes.values()],
+            target: [...themeProvider.targets.values()],
+            crosshair: [...themeProvider.crosshairs.values()],
+        };
+        this.starResult = {
+            best,
+            isNew: best.map((on, i) => on && !prev[i]),
+            unlocked: newlyUnlocked(TRACKS.map((t) => t.id), groups, before, total).map((id) => ResultScreen.unlockLabel(id)),
+            total,
+        };
+    }
+
+    /** @param {string} id e.g. 'track:neon' or 'crosshair:xh-ring' */
+    static unlockLabel(id) {
+        const [kind, key] = id.split(':');
+        if (kind === 'track') {
+            return `Track: ${TRACKS.find((t) => t.id === key)?.name ?? key}`;
+        }
+        const map = { theme: themeProvider.themes, target: themeProvider.targets, crosshair: themeProvider.crosshairs }[kind];
+        return `${kind[0].toUpperCase()}${kind.slice(1)}: ${map?.get(key)?.name ?? key}`;
+    }
+
+    /** The three campaign stars for this chart plus anything the new total opened. */
+    renderStars() {
+        const host = this.overlay.querySelector('#resultStars');
+        host.replaceChildren();
+        host.hidden = !this.starResult;
+        if (!this.starResult) {
+            return;
+        }
+        const row = el('div', 'result__star-row');
+        this.starResult.best.forEach((on, i) => {
+            const star = el('span', `result__star${on ? ' is-on' : ''}${this.starResult.isNew[i] ? ' is-new' : ''}`,
+                `${on ? '★' : '☆'} ${STAR_LABELS[i]}`);
+            row.append(star);
+        });
+        host.append(row, el('p', 'result__star-total mono', `★ ${this.starResult.total} total`));
+        if (this.starResult.unlocked.length) {
+            host.append(el('p', 'result__unlocked', `Unlocked: ${this.starResult.unlocked.join(', ')}`));
+        }
     }
 
     /**
@@ -50,6 +116,7 @@ export class ResultScreen {
 
     async enter() {
         this.outcome = {};
+        this.recordStars();
         this.showcase = new Showcase(this.app.scene, this.app.camera, this.level);
         this.render();
         this.overlay.hidden = false;
@@ -112,7 +179,7 @@ export class ResultScreen {
             subtitle.textContent = `${this.level.name}: one shot at the daily leaderboard per run, best counts`;
         } else if (r.completed) {
             subtitle.textContent = this.follower
-                ? `${this.level.name}: ${Math.round(this.level.passAccuracy * 100)}% accuracy clears it and opens ${this.follower.difficulty.name}`
+                ? `${this.level.name}: ${Math.round(this.level.passAccuracy * 100)}% accuracy clears it`
                 : `${this.level.name}: the top of this track's ladder`;
         } else {
             subtitle.textContent = 'Your focus ran out. Missed bots drain it fastest.';
@@ -141,6 +208,8 @@ export class ResultScreen {
             item.append(el('span', '', label), el('span', `mono result__value${tone ? ` result__value--${tone}` : ''}`, value));
             list.append(item);
         }
+
+        this.renderStars();
 
         const guest = o.querySelector('#resultGuest');
         guest.hidden = this.app.services.isLoggedIn() || this.level.tutorial || this.isReplay;

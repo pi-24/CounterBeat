@@ -14,6 +14,8 @@ import { validateRun } from '../../game/rules/validateRun.js';
 import { resolveChart } from '../../game/rules/charts.js';
 
 const SETTINGS_KEY = 'settings';
+/** The account-side copy; ProgressStore keeps the device copy under 'progress'. */
+const PROGRESS_KEY = 'account.progress';
 
 export class LocalBackend {
     constructor() {
@@ -151,5 +153,13 @@ export class LocalBackend {
 
     async saveSettings(values) {
         store.write(SETTINGS_KEY, values);
+    }
+
+    async loadProgress() {
+        return store.read(PROGRESS_KEY, null);
+    }
+
+    async saveProgress(values) {
+        store.write(PROGRESS_KEY, values);
     }
 }

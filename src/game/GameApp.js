@@ -19,7 +19,8 @@ import { ResultScreen } from './screens/ResultScreen.js';
 import { SettingsPanel } from './screens/SettingsPanel.js';
 import { Calibration } from './screens/Calibration.js';
 import { SongLibrary } from './library/SongLibrary.js';
-import { assets } from './providers/index.js';
+import { assets, themeProvider } from './providers/index.js';
+import { CosmeticsPanel } from './screens/CosmeticsPanel.js';
 import { toast } from '../ui/Toast.js';
 
 /**
@@ -28,6 +29,7 @@ import { toast } from '../ui/Toast.js';
  * @property {() => boolean} isLoggedIn
  * @property {(chartId:string) => boolean} hasPassed
  * @property {(chartId:string) => number} getPersonalBest
+ * @property {import('./progress/store.js').ProgressStore} progress stars and cosmetics (local, synced, never server-verified)
  * @property {(record:object, log:object, runToken?:Promise<string|null>|null) => Promise<{personalBest:boolean, saved:boolean, rejected?:boolean, score?:number}>} onRunComplete
  * @property {(judgement:object) => void} onJudgement
  * @property {(chartId:string) => (Promise<string|null>|null)} [startRun] asks the server for
@@ -67,6 +69,9 @@ export class GameApp {
             audio: this.audio,
             settings: this.settings,
         });
+        this.cosmetics = new CosmeticsPanel(
+            options.settingsForm.querySelector('#cosmetics'), this.services.progress, themeProvider, this.settings,
+        );
         this.settingsPanel.onCalibrate = () => this.calibration.open();
         this.library = SongLibrary.available ? new SongLibrary(this.audio) : null;
         /** A replay to open as soon as the menu would otherwise show. */
@@ -148,6 +153,11 @@ export class GameApp {
     /** @param {string} chartId @param {string} [mode] campaign | quickPlay | daily | ranked */
     showPlay(chartId, mode) {
         return this.switchTo(new PlayScreen(this, chartId, { mode }));
+    }
+
+    /** Atlas screenshot hook: a play screen on a frozen, caller-driven clock. No audio, no results. */
+    switchToAtlasPlay(chartId, clock) {
+        return this.switchTo(new PlayScreen(this, chartId, { mode: 'quickPlay', atlas: clock }));
     }
 
     /** @param {string} chartId @param {object} log a RunRecorder log */

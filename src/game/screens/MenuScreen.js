@@ -4,18 +4,22 @@
  * Song select, the daily challenge, the player's own songs and settings,
  * drawn as an HTML overlay above a slowly drifting view of an arena.
  *
- * Every official track offers four difficulties.  Easy and Normal are always
- * open; Hard opens once Normal on that track has been cleared, Expert once
- * Hard has - so the ladder means something without walling anyone off from
- * a song they like.
+ * Every official track offers four difficulties.  Tracks open on star totals
+ * (RULES.starGates, see progress/unlocks.js); once a track is open all of its
+ * difficulties are playable. Clearing a chart on Easy, Normal or Hard earns up
+ * to three stars; Expert earns none.
  */
 import {
-    TRACKS, DIFFICULTIES, ARENAS, resolveChart, dailyChartId, dailyDate, unlockRequirement,
+    TRACKS, DIFFICULTIES, ARENAS, resolveChart, dailyChartId, dailyDate,
     buildCustomChart,
 } from '../rules/charts.js';
 import { Showcase } from '../fps/Showcase.js';
 import { themeProvider, trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
+import { STAR_DIFFICULTIES, STARS_PER_CHART, CAMPAIGN_TRACK_IDS } from '../progress/stars.js';
+import { trackStates } from '../progress/unlocks.js';
+
+const CAMPAIGN_STAR_TOTAL = CAMPAIGN_TRACK_IDS.length * STAR_DIFFICULTIES.length * STARS_PER_CHART;
 
 export class MenuScreen {
     /** @param {import('../GameApp.js').GameApp} app */
@@ -82,6 +86,10 @@ export class MenuScreen {
             ? `Signed in as ${name}. Scores are saved.`
             : 'Playing as a guest. Log in to save your scores.';
         status.className = `menu__status ${logged ? 'menu__status--ok' : 'menu__status--warn'}`;
+        const stars = this.overlay.querySelector('#menuStars');
+        if (stars) {
+            stars.textContent = `★ ${this.app.services.progress.total} / ${CAMPAIGN_STAR_TOTAL} stars`;
+        }
     }
 
     // ------------------------------------------------------------ daily ----
@@ -146,18 +154,20 @@ export class MenuScreen {
             bpm: tutorial.bpm, thumb: themeProvider.theme('range').thumb,
         }, [{ label: 'Start', chart: tutorial, unlocked: true, best: 0, passed: false }]));
 
+        const progress = this.app.services.progress;
+        const states = trackStates(TRACKS.map((t) => t.id), progress.total);
         for (const track of TRACKS) {
+            const state = states[track.id];
             const options = DIFFICULTIES.map((difficulty) => {
                 const chart = resolveChart(`t:${track.id}:${difficulty.id}`);
-                const requirement = unlockRequirement(difficulty.id);
-                const unlocked = !requirement || this.app.services.hasPassed(`t:${track.id}:${requirement}`);
                 return {
                     label: difficulty.name,
                     chart,
-                    unlocked,
+                    unlocked: state.unlocked,
                     best: this.app.services.getPersonalBest(chart.chartId),
                     passed: this.app.services.hasPassed(chart.chartId),
-                    requirement,
+                    lockNote: `Earn ${state.gate} stars to open this track (you have ${progress.total})`,
+                    stars: STAR_DIFFICULTIES.includes(difficulty.id) ? progress.starsFor(track.id, difficulty.id) : null,
                 };
             });
             host.append(this.trackCard({
@@ -169,7 +179,7 @@ export class MenuScreen {
 
     /**
      * @param {{key:string, name:string, mood:string, bpm:number, thumb:string, trackId?:string}} info
-     * @param {Array<{label:string, chart:object, unlocked:boolean, best:number, passed:boolean, requirement?:string|null}>} options
+     * @param {Array<{label:string, chart:object, unlocked:boolean, best:number, passed:boolean, lockNote?:string, stars?:boolean[]|null}>} options
      */
     trackCard(info, options) {
         const card = el('div', 'track');
@@ -190,12 +200,15 @@ export class MenuScreen {
             button.disabled = !option.unlocked;
             button.title = option.unlocked
                 ? `${option.chart.name}: ${option.chart.lanes} windows, ±${Math.round(option.chart.timing.perfect * 1000)} ms perfect window`
-                : `Clear ${option.requirement} on this track first`;
+                : option.lockNote;
             button.append(
                 el('span', 'diff__label', option.label),
                 el('span', 'diff__best mono', option.unlocked
                     ? (option.best ? option.best.toLocaleString('en-GB') : '-')
                     : 'locked'),
+                ...(option.unlocked && option.stars
+                    ? [el('span', 'diff__stars', option.stars.slice(0, STARS_PER_CHART).map((on) => (on ? '★' : '☆')).join(''))]
+                    : []),
             );
             button.addEventListener('click', () => this.start(option.chart.chartId));
             if (info.trackId) {

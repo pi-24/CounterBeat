@@ -157,6 +157,13 @@
     font-size: 0.8rem;
 }
 
+.menu__stars {
+    margin: var(--s-1) 0 0;
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+    color: var(--c-accent, var(--c-text));
+}
+
 .menu__status--ok {
     color: var(--c-mint);
 }
@@ -520,6 +527,42 @@
 
 .result__score-label.is-best {
     color: var(--c-mint);
+}
+
+.result__stars {
+    display: grid;
+    gap: var(--s-2);
+    margin: var(--s-3) 0;
+    text-align: center;
+}
+
+.result__star-row {
+    display: flex;
+    justify-content: center;
+    gap: var(--s-4);
+    flex-wrap: wrap;
+}
+
+.result__star {
+    color: var(--c-text-dim);
+    font-size: 0.85rem;
+}
+
+.result__star.is-on { color: var(--c-accent); }
+.result__star.is-new { color: var(--c-cyan); font-weight: 700; }
+
+.result__star-total,
+.result__unlocked {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--c-text-dim);
+}
+
+.result__unlocked { color: var(--c-mint); }
+
+.settings__cosmetics {
+    display: grid;
+    gap: var(--s-2);
 }
 
 .result__breakdown {
@@ -1375,6 +1418,12 @@
 .diff--normal .diff__label { color: var(--c-cyan); }
 .diff--hard .diff__label { color: var(--c-accent); }
 .diff--expert .diff__label { color: var(--c-pink); }
+
+.diff__stars {
+    color: var(--c-accent);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+}
 
 .diff__best {
     color: var(--c-text-dim);

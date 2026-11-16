@@ -144,6 +144,25 @@ when you do (the validator refuses older logs rather than misjudging them;
 the replay viewer still plays version 3 logs with the rules they were
 recorded under).
 
+## Stars, unlocks and tampering
+
+Campaign and full-speed Quick Play award up to 3 stars per chart on
+Easy/Normal/Hard (pass, rank S/A at 85%+, no misses or 80% Perfect/Good stops);
+Expert awards none. Star totals gate tracks 2-6 (3/8/14/21/28) and the
+crosshairs, themes and target skins (`starCost` in `data/*.json`).
+Code: `src/game/progress/`.
+
+Stars, equipped cosmetics and the calibrated flag are stored in local storage
+and synced to the Supabase profile (`profiles.progress`, migration 0004) when
+logged in. **Tamper risk:** they are not server-verified, so anyone can edit
+local storage or their profile row and unlock everything. This is accepted
+because stars are progression and visual only. Ranked scores stay
+server-verified; neither the ranked submit path nor the edge function reads
+star data (the synced edge copy of `rulesData.js` has the star config
+stripped, and `tests/unit/stars-not-server.test.mjs` enforces it).
+
+**Rank change:** the rank-A threshold moved from 90% to 85% accuracy (per the GDD), so letter ranks of older runs, including ranked ones, are now graded more leniently. Scores themselves are unchanged.
+
 ## How the anti-cheat works
 
 The client never decides a ranked score. While you play, `RunRecorder`

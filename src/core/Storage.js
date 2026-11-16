@@ -11,7 +11,7 @@ export class Storage {
      *   site's data cannot collide with anything else on the same origin.
      * @param {globalThis.Storage} [backing] injected for testing.
      */
-    constructor(namespace, backing = window.localStorage) {
+    constructor(namespace, backing = globalThis.localStorage) {
         this.namespace = namespace;
         this.backing = backing;
     }

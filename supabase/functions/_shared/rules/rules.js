@@ -18,6 +18,8 @@ export const GRADES = Object.freeze(['miss', 'ok', 'good', 'perfect']);
 /** Stop speed thresholds in track units per second (20 / 65 / 140). */
 export const STOP_SPEED = Object.freeze({ ...RULES.grading.stopSpeed });
 
+/** Accuracy at which a run is rank A (the letter-rank threshold). */
+export const RANK_A_ACCURACY = RULES.grading.rankAccuracy;
 /** Counter-strafe credit window in milliseconds (320). */
 export const COUNTER_STRAFE_WINDOW_MS = RULES.grading.counterStrafeWindowMs;
 

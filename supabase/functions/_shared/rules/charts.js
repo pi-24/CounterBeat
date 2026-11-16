@@ -438,20 +438,3 @@ export function allTrackCharts() {
     }
     return charts;
 }
-
-/**
- * The difficulty a player has to clear to open the next one on a track:
- * Easy and Normal are always open, Hard needs Normal passed, Expert needs
- * Hard passed.
- * @param {string} difficultyId
- * @returns {string|null} the difficulty that must be passed first
- */
-export function unlockRequirement(difficultyId) {
-    if (difficultyId === 'hard') {
-        return 'normal';
-    }
-    if (difficultyId === 'expert') {
-        return 'hard';
-    }
-    return null;
-}

@@ -358,6 +358,32 @@ export class SupabaseBackend {
         await this.client.from('profiles').update({ settings: values }).eq('id', this.user.id);
     }
 
+    // -------------------------------------------------------- progress ----
+    // Stars and cosmetics: local-first, synced here, never server-verified.
+
+    async loadProgress() {
+        if (!this.user) {
+            return null;
+        }
+        const { data, error } = await this.client.from('profiles').select('progress').eq('id', this.user.id).maybeSingle();
+        if (error) {
+            // Fail soft (e.g. migration 0004 not applied yet): progress stays local.
+            console.warn('Progress: could not load the account copy', error.message);
+            return null;
+        }
+        return data?.progress ?? null;
+    }
+
+    async saveProgress(values) {
+        if (!this.user) {
+            return;
+        }
+        const { error } = await this.client.from('profiles').update({ progress: values }).eq('id', this.user.id);
+        if (error) {
+            throw new Error(error.message);
+        }
+    }
+
     // --------------------------------------------------------- helpers ----
 
     /** @param {object} row */

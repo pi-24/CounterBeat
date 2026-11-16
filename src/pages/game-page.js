@@ -12,11 +12,20 @@ import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
 import { GRADE_LABEL } from '../game/rules/config.js';
 import { settings } from '../game/Settings.js';
+import { ProgressStore } from '../game/progress/store.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
 import { toast } from '../ui/Toast.js';
+import { parseAtlasParams, atlasServices, showAtlasScene } from '../game/atlasHook.js';
 
 const backend = await initNavigation('game');
 await settings.sync(backend);
+
+const starProgress = new ProgressStore();
+// The screenshot hook (?atlas_scene=) never touches saved progress.
+const atlasParams = parseAtlasParams(window.location.search);
+if (!atlasParams) {
+    await starProgress.sync(backend);
+}
 
 const user = backend.currentUser();
 const guestNotice = document.getElementById('guestNotice');
@@ -74,6 +83,8 @@ async function pendingReplay() {
 
 /** @type {import('../game/GameApp.js').GameServices} */
 const services = {
+    progress: starProgress,
+
     getPlayerName() {
         return user ? user.displayName : 'Guest';
     },
@@ -224,12 +235,15 @@ async function boot() {
                 calibration: document.getElementById('calibrationOverlay'),
             },
             settingsForm: document.getElementById('settingsForm'),
-            services,
+            services: atlasParams ? atlasServices(services) : services,
             onProgress(done, total) {
                 loadingText.textContent = `Loading audio ${done}/${total}…`;
             },
         });
         await app.boot();
+        if (atlasParams) {
+            await showAtlasScene(app, atlasParams);
+        }
     } catch (error) {
         console.error(error);
         showError(error instanceof Error ? error.message : String(error));

@@ -137,6 +137,7 @@
                                     <h2 class="menu__title">COUNTER<span>BEAT</span></h2>
                                     <p class="menu__tag">Strafe in &bull; counter-strafe to a dead stop &bull; fire on the beat</p>
                                     <p class="menu__status" id="menuStatus"></p>
+                                    <p class="menu__stars mono" id="menuStars"></p>
                                 </div>
 
                                 <div class="menu__tabs" role="tablist">
@@ -286,6 +287,11 @@
                                             </div>
                                         </fieldset>
 
+                                        <fieldset class="settings__group">
+                                            <legend class="settings__legend">Cosmetics</legend>
+                                            <div id="cosmetics" class="settings__cosmetics"></div>
+                                        </fieldset>
+
                                         <div class="settings__foot">
                                             <span class="text-dim">Saved automatically to this browser.</span>
                                             <button class="btn btn--ghost" type="button" data-action="reset-settings">Reset
@@ -324,6 +330,7 @@
                                     </div>
                                     <ul class="result__breakdown" id="resultBreakdown"></ul>
                                 </div>
+                                <div class="result__stars" id="resultStars" hidden></div>
                                 <p class="result__guest" id="resultGuest" hidden>Guest run. Log in before playing to
                                     save this to the rankings.</p>
                                 <div class="overlay__actions">
