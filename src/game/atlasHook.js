@@ -2,7 +2,7 @@
  * atlasHook.js
  *
  * Optional URL hook for automated screenshots:
- *   ?atlas_scene=<title|play|results|calibration|tutorial|settings>&atlas_seed=<n>&atlas_t=<seconds>
+ *   ?atlas_scene=<title|play|practice|results|calibration|tutorial|settings>&atlas_seed=<n>&atlas_t=<seconds>
  * It renders a seeded state of the real screens and must be harmless in a
  * shipped build: progress is held in memory only, no run is ever submitted and
  * nothing is written to local storage or the account.
@@ -11,7 +11,7 @@ import { resolveChart, TRACKS } from './rules/charts.js';
 import { BeatMap } from './rules/BeatMap.js';
 import { ProgressStore } from './progress/store.js';
 
-export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'calibration', 'tutorial', 'settings']);
+export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'practice', 'calibration', 'tutorial', 'settings']);
 
 /**
  * @param {string} search a location.search string
@@ -95,6 +95,28 @@ export function syntheticRun(seed) {
     };
 }
 
+/** The looped section (in beats) a practice screenshot shows. */
+export const ATLAS_PRACTICE_LOOP = Object.freeze({ startBeat: 8, endBeat: 24 });
+
+/** Deterministic timing errors (ms, negative early) for a results screenshot: a tidy cluster, slightly late. */
+export function syntheticTimingErrors(seed, count = 48) {
+    let state = (seed + 1) * 2654435761 % 4294967296;
+    const next = () => {
+        state = (state * 1664525 + 1013904223) % 4294967296;
+        return state / 4294967296;
+    };
+    return Array.from({ length: count }, () => Math.round((next() + next() + next() - 1.5) * 50 + 6));
+}
+
+/** Puts a few judged shots on the practice HUD so the live readout is on screen. Display only. */
+export function seedPracticeReadout(play) {
+    if (!play?.timingReadout) return;
+    for (const ms of syntheticTimingErrors(1, 5)) {
+        play.timingReadout.add(ms);
+    }
+    play.app.hud.setHint(play.practiceHint());
+}
+
 /**
  * Shows the requested scene on an already-booted GameApp.
  * @param {import('./GameApp.js').GameApp} app
@@ -105,7 +127,17 @@ export async function showAtlasScene(app, params) {
         const run = syntheticRun(params.seed);
         await app.showResults(run.record, run.chartId, { mode: 'quickPlay', ticks: [], inputs: [], shots: [] }, {
             runMode: 'quickPlay', stopQuality: run.stopQuality,
+            timingErrorsMs: syntheticTimingErrors(params.seed),
         });
+    } else if (params.scene === 'practice') {
+        const clock = { t: 0 };
+        await app.switchToAtlasPractice(atlasChartId(params.seed), clock, ATLAS_PRACTICE_LOOP);
+        const step = 1 / 30;
+        while (clock.t < params.t) {
+            clock.t += step;
+            app.current.update(step);
+        }
+        seedPracticeReadout(app.current);
     } else if (params.scene === 'calibration') {
         await app.showMenu();
         app.showAtlasCalibration();

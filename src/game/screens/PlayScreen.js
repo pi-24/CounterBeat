@@ -34,6 +34,10 @@ import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
 import { Judge } from '../rules/Judge.js';
 import { Scorer } from '../rules/Scorer.js';
 import { RunRecorder, LOG_VERSION, readLook } from '../RunRecorder.js';
+import {
+    PRACTICE_SPEED, isPractice, normaliseSection, applySection, LiveTimingReadout,
+    realTimeErrorMs, practiceHintText, recordLoopPass,
+} from '../modes/practice.js';
 import { Arena } from '../fps/Arena.js';
 import { isCosmeticUnlocked } from '../progress/unlocks.js';
 import { TargetField } from '../fps/TargetField.js';
@@ -77,6 +81,16 @@ export class PlayScreen {
         this.mode = options.mode ?? null;
         /** Mode the run is played (and logged) in. */
         this.runMode = resolveRunMode(this.level, this.mode, this.replay?.mode ?? modeForLevel(this.level));
+        /** Practice: 0.75x music, loop, live readout, no rewards. Derived from the resolved run mode so speed and rewards cannot disagree. */
+        this.practice = isPractice(this.runMode) && !this.replay && !this.level.tutorial && (!options.atlas || options.atlasPractice);
+        /** @type {{startBeat:number,endBeat:number}|null} */
+        this.section = options.section ?? null;
+        this.pendingStartBeat = null;
+        /** Timing errors (ms, negative early) of every shot fired at a bot, for the results histogram. */
+        this.timingErrorsMs = [];
+        this.timingReadout = new LiveTimingReadout();
+        /** Per-pass stats of a looping section, kept across passes. */
+        this.loopPasses = [];
         /** hitbox and spread scales for this level, read once. */
         this.aim = aimScalesForLevel(this.level);
         /** Logs from before LOG_VERSION 4 replay with the rules they were recorded under. */
@@ -127,6 +141,14 @@ export class PlayScreen {
         this.beatMap = new BeatMap(this.level);
         this.lanes = this.beatMap.lanes;
         this.lead = APPROACH_BEATS * (60 / this.level.bpm);
+        this.sectionStartSeconds = 0;
+        if (this.practice) {
+            const totalBeats = (this.beatMap.duration - (this.level.gridOffset ?? 0)) / this.beatMap.secondsPerBeat;
+            // Filter to the section here, before the scorer and HUD read beatMap.total.
+            const applied = applySection(this.beatMap, this.section, this.level.gridOffset ?? 0, this.lead);
+            this.section = applied.section;
+            this.sectionStartSeconds = applied.startSeconds;
+        }
         this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
         if (this.atlas) this.leadInOffset = Math.max(0, this.firstNoteTime - 1);
         this.judge = new Judge(this.level, this.lanes);
@@ -136,6 +158,7 @@ export class PlayScreen {
             ? { speed: 1, accel: 1, ...(this.replay.movement ?? {}) }
             : { speed: settings.get('moveSpeed'), accel: settings.get('moveAccel') };
         this.movement = CounterStrafeBody.scaled(this.level.movement, scale);
+        this.recorderScale = scale;
         this.recorder = new RunRecorder(this.chartId, scale, this.runMode);
         this.body = new CounterStrafeBody(
             this.movement,
@@ -165,7 +188,7 @@ export class PlayScreen {
         hud.setScore(0, 0, 1);
         hud.setAccuracy(0);
         hud.setProgress(0, this.beatMap.total);
-        hud.setHint('');
+        hud.setHint(this.practice ? this.practiceHint() : '');
         hud.buildHighway(this.lanes.count);
 
         this.feel = new FeelController(feedbackBus, settings, { arena: this.arena, camera, hud, field: this.targets });
@@ -222,7 +245,8 @@ export class PlayScreen {
             return;
         }
         audio.resetMusicVolume();
-        audio.playMusic(this.level.musicKey);
+        // Practice's 0.75x is set before the source starts, so the song position is slow from t=0.
+        audio.playMusic(this.level.musicKey, false, this.sectionStartSeconds, this.practice ? PRACTICE_SPEED : 1);
         this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm,
             this.replay ? 0 : settings.get('audioOffset'), this.level.gridOffset);
         this.conductor.start();
@@ -327,8 +351,15 @@ export class PlayScreen {
         if (!nextNote && this.clearedAt === undefined) {
             this.clearedAt = songTime;
         }
-        if (!this.replay && ((this.clearedAt !== undefined && songTime >= this.clearedAt + 1.2)
+        const clearedDelay = this.practice && this.section ? 0.4 : 1.2; // loops restart quickly
+        if (!this.replay && ((this.clearedAt !== undefined && songTime >= this.clearedAt + clearedDelay)
             || songTime >= this.beatMap.duration)) {
+            if (this.practice && this.section && !this.atlas) {
+                // Loop: keep this pass's stats, then rewind in place (no scene rebuild).
+                this.loopPasses = recordLoopPass(this.loopPasses, this.scorer);
+                this.resetPass();
+                return;
+            }
             this.finish(true);
         }
     }
@@ -756,6 +787,15 @@ export class PlayScreen {
         const result = this.scorer.apply(judgement);
         if (judgement.shotFired !== false) {
             this.stopQuality.add(judgement.speed);
+            // Practice music runs at 0.75x, so song-time errors are shown as real-time ms.
+            const errorMs = realTimeErrorMs(judgement.timingError, this.practice ? PRACTICE_SPEED : 1);
+            if (errorMs !== null) {
+                this.timingErrorsMs.push(errorMs);
+                if (this.practice) {
+                    this.timingReadout.add(errorMs);
+                    this.app.hud.setHint(this.practiceHint());
+                }
+            }
         }
         const hit = judgement.grade !== GRADE.MISS;
         if (this.tutorialProgress) {
@@ -829,6 +869,102 @@ export class PlayScreen {
         this.paused = false;
     }
 
+    /** The practice HUD line: loop state, the live readout and the loop keys. */
+    practiceHint() {
+        return practiceHintText({ section: this.section, pendingStartBeat: this.pendingStartBeat, readoutText: this.timingReadout.text(), showLegend: this.timingReadout.last === null || this.pendingStartBeat !== null });
+    }
+
+    /**
+     * Practice loop keys: [ marks the start at the current beat, ] marks the
+     * end and begins looping, \ clears the loop.
+     * @param {string} code
+     */
+    practiceKey(code) {
+        if (!this.practice || this.finished || this.paused || !this.conductor) {
+            return;
+        }
+        const beat = Math.round(this.conductor.beatPosition);
+        if (code === 'BracketLeft') {
+            this.pendingStartBeat = Math.max(0, beat);
+        } else if (code === 'BracketRight' && this.pendingStartBeat !== null) {
+            const section = normaliseSection({ startBeat: this.pendingStartBeat, endBeat: beat }, Infinity);
+            if (section) {
+                this.pendingStartBeat = null;
+                this.setSection(section);
+                return;
+            }
+        } else if (code === 'Backslash') {
+            this.pendingStartBeat = null;
+            if (this.section) {
+                this.setSection(null);
+                return;
+            }
+        } else if (code === 'Enter') {
+            this.endPractice();
+            return;
+        } else {
+            return;
+        }
+        this.app.hud.setHint(this.practiceHint());
+    }
+
+    /** Sets or clears the looping section and rewinds in place. */
+    setSection(section) {
+        this.beatMap = new BeatMap(this.level);
+        const grid = this.level.gridOffset ?? 0;
+        const applied = applySection(this.beatMap, section, grid, this.lead);
+        this.section = applied.section;
+        this.sectionStartSeconds = applied.startSeconds;
+        this.loopPasses = [];
+        this.resetPass();
+    }
+
+    /**
+     * Rewinds the chart, scorer, clock and music to the start of the section
+     * (or the track) without rebuilding the scene. Timing history and stop
+     * stats carry over; each pass keeps its own score and accuracy.
+     */
+    resetPass() {
+        const { audio, settings, hud } = this.app;
+        for (const entry of [...this.targets.entries]) {
+            this.targets.remove(entry);
+        }
+        for (const note of this.beatMap.notes) {
+            note.resolved = false;
+            note.spawned = false;
+            note.grade = null;
+        }
+        this.beatMap.spawnCursor = 0;
+        this.beatMap.pendingCursor = 0;
+        this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
+        this.scorer = new Scorer(this.beatMap.total);
+        this.clearedAt = undefined;
+        this.simSongTime = undefined;
+        this.clockMs = 0;
+        this.recorder = new RunRecorder(this.chartId, this.recorderScale, this.runMode);
+        this.lastPerfectStopAt = -Infinity;
+        // Every pass starts from lane centre at rest, so passes are comparable.
+        this.body.x = this.lanes.centre(Math.floor(this.level.lanes / 2));
+        this.body.velocity = 0;
+        // timingErrorsMs deliberately accumulates across passes: the results histogram covers the whole session.
+        hud.setFocus(1);
+        hud.setScore(0, 0, 1);
+        hud.setAccuracy(0);
+        hud.setProgress(0, this.beatMap.total);
+        hud.setHint(this.practiceHint());
+        audio.playMusic(this.level.musicKey, false, this.sectionStartSeconds, PRACTICE_SPEED);
+        this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm, settings.get('audioOffset'), this.level.gridOffset);
+        this.conductor.start();
+    }
+
+    /** Ends a practice session early (loop or not) and shows its results. */
+    endPractice() {
+        if (this.section && this.scorer.judged > 0) {
+            this.loopPasses = recordLoopPass(this.loopPasses, this.scorer);
+        }
+        this.finish(true);
+    }
+
     restart() {
         if (this.finished) {
             return; // the run is over and on its way to the results (and to being saved)
@@ -837,7 +973,7 @@ export class PlayScreen {
             this.app.showReplay(this.chartId, this.replay);
             return;
         }
-        this.app.showPlay(this.chartId, this.runMode);
+        this.app.showPlay(this.chartId, this.runMode, this.practice && this.section ? { section: this.section } : {});
     }
 
     quit() {
@@ -880,7 +1016,11 @@ export class PlayScreen {
                 replay: Boolean(this.replay),
                 runToken,
                 runMode: this.runMode,
-                // PlayScreen always runs at full speed (practice's 0.75x lives elsewhere), so no speed is passed.
+                timingErrorsMs: this.timingErrorsMs,
+                section: this.practice ? this.section : null,
+                loopPasses: this.practice ? this.loopPasses : [],
+                // Practice timing errors are real-time ms (song-time error / 0.75), not song-time ms,
+                // so a slowed run shows what the player's hands did on the clock.
                 stopQuality: { stopShots: this.stopQuality.stopShots, stopGood: this.stopQuality.stopGood },
             });
         }, RESULTS_DELAY_MS);

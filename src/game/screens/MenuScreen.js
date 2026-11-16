@@ -17,6 +17,7 @@ import { Showcase } from '../fps/Showcase.js';
 import { themeProvider, trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
 import { STAR_DIFFICULTIES, STARS_PER_CHART, CAMPAIGN_TRACK_IDS } from '../progress/stars.js';
+import { chartPlayable } from '../modes/practice.js';
 import { trackStates } from '../progress/unlocks.js';
 
 const CAMPAIGN_STAR_TOTAL = CAMPAIGN_TRACK_IDS.length * STAR_DIFFICULTIES.length * STARS_PER_CHART;
@@ -164,7 +165,7 @@ export class MenuScreen {
                 return {
                     label: difficulty.name,
                     chart,
-                    unlocked: state.unlocked,
+                    unlocked: chartPlayable(this.app.playMode, state.unlocked),
                     best: this.app.services.getPersonalBest(chart.chartId),
                     passed: this.app.services.hasPassed(chart.chartId),
                     lockNote: `Earn ${state.gate} stars to open this track (you have ${progress.total})`,

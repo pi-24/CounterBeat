@@ -279,8 +279,11 @@ export class AudioEngine {
      * Starts the level track from the beginning.
      * @param {string} key
      * @param {boolean} [loop]
+     * @param {number} [offsetSeconds] where in the track to start
+     * @param {number} [rate] playback rate, applied before the source starts so
+     *   the song position runs at that rate from the very first sample
      */
-    playMusic(key, loop = false) {
+    playMusic(key, loop = false, offsetSeconds = 0, rate = 1) {
         this.stopMusic();
         const buffer = this.buffers.get(key);
         if (!buffer || !this.context) {
@@ -290,20 +293,22 @@ export class AudioEngine {
         source.buffer = buffer;
         source.loop = loop;
         source.connect(this.musicGain);
+        const playbackRate = rate > 0 ? rate : 1;
+        source.playbackRate.value = playbackRate;
 
         // Schedule a hair in the future so the start time is exact rather
         // than "whenever the audio thread gets to it".
         const startAt = this.context.currentTime + 0.05;
-        source.start(startAt);
+        source.start(startAt, Math.max(0, offsetSeconds));
 
         this.musicSource = source;
         this.musicStartedAt = startAt;
         this.musicKey = key;
         // The song position is measured from an anchor so the playback rate
         // can change mid-track (slow-motion replays) without a jump.
-        this.musicRate = 1;
+        this.musicRate = playbackRate;
         this.musicAnchorClock = startAt;
-        this.musicAnchorPosition = 0;
+        this.musicAnchorPosition = Math.max(0, offsetSeconds);
     }
 
     /**

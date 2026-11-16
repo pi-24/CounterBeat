@@ -13,6 +13,8 @@ import { GRADE_ICONS } from '../feel/judgementPalette.js';
 import { themeProvider } from '../providers/index.js';
 import { awardsStars } from '../progress/stars.js';
 import { newlyUnlocked } from '../progress/unlocks.js';
+import { buildResultsView, renderHistogram } from '../../ui/Results.js';
+import { isPractice, routeRunResult, loopSummaryText } from '../modes/practice.js';
 
 const STAR_LABELS = ['Pass', 'Rank A or better', 'Clean stops'];
 
@@ -40,6 +42,9 @@ export class ResultScreen {
         this.stopQuality = options.stopQuality ?? { stopShots: 0, stopGood: 0 };
         /** @type {{best:boolean[], isNew:boolean[], unlocked:string[], total:number}|null} */
         this.starResult = null;
+        this.timingErrorsMs = options.timingErrorsMs ?? [];
+        this.practiceSection = options.section ?? null;
+        this.loopPasses = options.loopPasses ?? [];
     }
 
     /** Records the run's stars in the local progress store (never sent to the server). */
@@ -98,6 +103,30 @@ export class ResultScreen {
         }
     }
 
+    /** Timing-error histogram, mean offset and stop-quality stats. */
+    renderTiming() {
+        const view = buildResultsView({
+            record: this.record, timingErrorsMs: this.timingErrorsMs, stopQuality: this.stopQuality,
+            mode: this.runMode, hasNext: Boolean(this.follower), isReplay: this.isReplay,
+        });
+        const o = this.overlay;
+        const host = o.querySelector('#resultTiming');
+        if (!host) {
+            return;
+        }
+        host.hidden = this.isReplay;
+        const hist = o.querySelector('#resultHist');
+        if (hist) renderHistogram(hist, view.histogram);
+        const off = o.querySelector('#resultOffset');
+        if (off) {
+            off.textContent = view.offsetText;
+            off.classList.remove('is-early', 'is-late');
+            if (view.offsetClass) off.classList.add(view.offsetClass);
+        }
+        const stops = o.querySelector('#resultStops');
+        if (stops) stops.textContent = view.stopStats.text;
+    }
+
     /**
      * The next rung on this track's ladder, if there is one.
      * @param {object} level
@@ -115,17 +144,40 @@ export class ResultScreen {
         return next ? resolveChart(`t:${level.trackId}:${next.id}`) : null;
     }
 
+    /**
+     * Hands the run to the reward paths (stars, then submission) and returns the pending submit, if any.
+     * Practice never reaches either; replays pass through routeRunResult but recordStars gates on
+     * the mode and onSubmit refuses replays and the tutorial. Kept apart from enter() so it can be tested without a scene.
+     * @returns {Promise<object|null>|null}
+     */
+    routeRewards() {
+        const mode = this.isReplay ? 'replay' : this.runMode;
+        let submit = null;
+        routeRunResult(mode, {
+            onStars: () => {
+                this.recordStars(); // before the first render, so stars and unlock text paint right away
+            },
+            onSubmit: () => {
+                if (this.level.tutorial || this.isReplay) {
+                    return false;
+                }
+                // Saving can take a round trip to the server; the screen is up
+                // already and updates when the verdict lands.
+                submit = this.app.services.onRunComplete(this.record, this.log, this.runToken);
+                return true;
+            },
+        });
+        return submit;
+    }
+
     async enter() {
         this.outcome = {};
-        this.recordStars();
         this.showcase = new Showcase(this.app.scene, this.app.camera, this.level);
+        const submit = this.routeRewards();
         this.render();
         this.overlay.hidden = false;
-
-        if (!this.level.tutorial && !this.isReplay) {
-            // Saving can take a round trip to the server; the screen is up
-            // already and updates when the verdict lands.
-            this.outcome = (await this.app.services.onRunComplete(this.record, this.log, this.runToken)) ?? {};
+        if (submit) {
+            this.outcome = (await submit) ?? {};
             if (this.app.current === this) {
                 this.renderOutcome();
             }
@@ -170,7 +222,10 @@ export class ResultScreen {
         headline.className = `result__headline ${passed ? 'result__headline--pass' : (r.completed ? 'result__headline--warn' : 'result__headline--fail')}`;
 
         const subtitle = o.querySelector('#resultSubtitle');
-        if (this.isReplay) {
+        if (isPractice(this.runMode) && !this.isReplay) {
+            const passes = loopSummaryText(this.loopPasses);
+            subtitle.textContent = `${this.level.name}: practice run, no stars or scores are saved${passes ? ` · ${passes}` : ''}`;
+        } else if (this.isReplay) {
             subtitle.textContent = `${this.level.name}, as it was played`;
         } else if (this.level.tutorial) {
             subtitle.textContent = 'Not ranked. The Range on Easy is waiting.';
@@ -213,12 +268,13 @@ export class ResultScreen {
         }
 
         this.renderStars();
+        this.renderTiming();
 
         const guest = o.querySelector('#resultGuest');
-        guest.hidden = this.app.services.isLoggedIn() || this.level.tutorial || this.isReplay;
+        guest.hidden = this.app.services.isLoggedIn() || this.level.tutorial || this.isReplay || isPractice(this.runMode);
 
         const next = o.querySelector('[data-action="next"]');
-        next.hidden = this.isReplay || !(this.follower && (passed || this.level.tutorial));
+        next.hidden = this.isReplay || !(this.follower && (passed || this.level.tutorial || isPractice(this.runMode)));
         if (this.follower) {
             next.textContent = `Next: ${this.follower.name}`;
         }
@@ -230,12 +286,12 @@ export class ResultScreen {
             this.app.showReplay(this.level.chartId, this.log);
             return;
         }
-        this.app.showPlay(this.level.chartId, this.log?.mode);
+        this.app.showPlay(this.level.chartId, this.runMode, this.practiceSection ? { section: this.practiceSection } : {});
     }
 
     next() {
-        if (this.follower && (this.record.passed || this.level.tutorial)) {
-            this.app.showPlay(this.follower.chartId, this.log?.mode);
+        if (this.follower && (this.record.passed || this.level.tutorial || isPractice(this.runMode))) {
+            this.app.showPlay(this.follower.chartId, this.runMode);
         }
     }
 

@@ -7,6 +7,7 @@
  * who is playing and hand it finished runs, and it is the page's job to put
  * those in local storage.
  */
+import { practiceKeyFree } from './modes/practice.js';
 import { requestFullscreenFromGesture, lockPromptNeeded } from './onboarding/startFlow.js';
 import { Engine, Scene } from './engine.js';
 import { FpsCamera } from './fps/FpsCamera.js';
@@ -93,7 +94,10 @@ export class GameApp {
         /** Mode chosen on the main menu: campaign | quickPlay | practice. */
         this.playMode = 'quickPlay';
         this.mainMenu = new MainMenu(this.menuOverlay, {
-            onMode: (mode) => { this.playMode = mode; },
+            onMode: (mode) => {
+                this.playMode = mode;
+                this.current?.renderTracks?.(); // Practice opens every track
+            },
             onDaily: () => this.current?.start?.(dailyChartId()),
             onTutorial: () => this.startTutorial(),
         });
@@ -282,6 +286,11 @@ export class GameApp {
         return this.switchTo(new PlayScreen(this, chartId, { mode: 'quickPlay', atlas: clock }));
     }
 
+    /** Atlas screenshot hook: a practice play screen on a caller-driven clock (loop set, no audio, nothing saved). */
+    switchToAtlasPractice(chartId, clock, section) {
+        return this.switchTo(new PlayScreen(this, chartId, { mode: 'practice', atlas: clock, atlasPractice: true, section }));
+    }
+
     /** @param {string} chartId @param {object} log a RunRecorder log */
     showReplay(chartId, log) {
         return this.switchTo(new PlayScreen(this, chartId, { replay: log }));
@@ -362,6 +371,9 @@ export class GameApp {
             }
             if (code === this.settings.get('bindings').fire && play && !play.paused) {
                 play.fire(undefined, event.timeStamp);
+            } else if (play && play.practice && !play.paused && practiceKeyFree(code, this.settings.get('bindings'))) {
+                event.preventDefault(); // Enter must not also click a focused button
+                play.practiceKey(code);
             } else if (code === 'KeyR' && play) {
                 play.restart();
             } else if (code === 'KeyQ' && play && play.paused) {

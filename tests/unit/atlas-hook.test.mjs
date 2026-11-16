@@ -40,3 +40,10 @@ test('atlas services never save progress or submit a run', async () => {
     assert.equal(services.progress.backend, null);
     assert.equal(typeof memoryStorage().read, 'function');
 });
+
+test('practice and results scenes parse; synthetic timing errors are deterministic', async () => {
+    const { syntheticTimingErrors } = await import('../../src/game/atlasHook.js');
+    assert.equal(parseAtlasParams('?atlas_scene=practice&atlas_seed=1&atlas_t=4').scene, 'practice');
+    assert.deepEqual(syntheticTimingErrors(3), syntheticTimingErrors(3));
+    assert.equal(syntheticTimingErrors(3).length, 48);
+});
