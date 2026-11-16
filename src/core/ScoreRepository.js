@@ -23,8 +23,6 @@ import { rowVersion } from '../net/submit.js';
 import { currentChartVersions } from '../net/versions.js';
 import { canSubmitRanked } from './customGate.js';
 
-/** Version of a chart a score was set on; unversioned (generated) charts are 0. */
-
 const KEY = 'scores';
 const LOG_KEY = 'logs';
 const MAX_RECORDS = 500;

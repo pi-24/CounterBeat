@@ -197,7 +197,7 @@ export class ResultScreen {
             o.querySelector('#resultScore').textContent = this.outcome.score.toLocaleString('en-GB');
         }
         if (this.outcome.localOnly && this.record.kind !== 'custom') {
-            scoreLabel.textContent = this.outcome.personalBest ? 'NEW LOCAL BEST · NOT RANKED' : 'LOCAL BEST ONLY · HARD AND EXPERT ARE RANKED';
+            scoreLabel.textContent = localOnlyLabel(this.outcome);
             scoreLabel.className = `result__score-label${this.outcome.personalBest ? ' is-best' : ''}`;
             return;
         }
@@ -303,4 +303,16 @@ export class ResultScreen {
     menu() {
         this.app.showMenu();
     }
+}
+
+/**
+ * The score label for a run kept locally: guests are told why (not logged in), gated
+ * difficulties/modes are told which ones rank.
+ * @param {{personalBest?:boolean, reason?:string}} outcome
+ */
+export function localOnlyLabel(outcome) {
+    if (outcome.reason === 'guest') {
+        return outcome.personalBest ? 'NEW LOCAL BEST · LOG IN TO RANK' : 'GUEST RUN · LOG IN TO RANK';
+    }
+    return outcome.personalBest ? 'NEW LOCAL BEST · NOT RANKED' : 'LOCAL BEST ONLY · HARD AND EXPERT ARE RANKED';
 }

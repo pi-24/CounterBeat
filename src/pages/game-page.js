@@ -119,7 +119,7 @@ const services = {
             const { personalBest } = localBests.record(record);
             renderPersonalBests();
             toast.info('Guest run finished. Log in before playing to save scores to the rankings.');
-            return { saved: false, localOnly: true, personalBest, score: record.score };
+            return { saved: false, localOnly: true, reason: 'guest', personalBest, score: record.score };
         }
 
         // Easy, Normal, Campaign and Practice never reach the ranked server:

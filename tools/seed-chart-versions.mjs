@@ -1,10 +1,14 @@
 /**
- * Prints (or with --write, writes to supabase/migrations/0006_seed_chart_versions.sql)
- * the SQL that seeds public.chart_versions from the shared chart definitions.
- * Run at deploy time after bumping a chart version. Never touches the network.
+ * Prints the SQL that seeds public.chart_versions from the shared chart definitions.
+ * With --write, adds it as a NEW migration (supabase/migrations/NNNN_seed_chart_versions.sql,
+ * numbered after the newest migration) whenever it differs from the latest seed migration.
+ * Applied migrations never re-run, so a chart-version bump must ship as a new file to reach
+ * a deployed database. The SQL is an idempotent upsert. Never touches the network.
  */
-import { writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { currentChartVersions } from '../src/net/versions.js';
+
+const MIGRATIONS = new URL('../supabase/migrations/', import.meta.url);
 
 export function seedSql(versions = currentChartVersions()) {
     const rows = Object.entries(versions).sort(([a], [b]) => a.localeCompare(b))
@@ -14,10 +18,29 @@ export function seedSql(versions = currentChartVersions()) {
         + `on conflict (chart_id) do update set version = excluded.version, updated_at = now();\n`;
 }
 
+/** @param {string[]} files migration file names -> the newest seed migration name, or null */
+export function latestSeedMigration(files) {
+    return files.filter((f) => /^\d{4}_seed_chart_versions\.sql$/.test(f)).sort().at(-1) ?? null;
+}
+
+/** @param {string[]} files -> the file name the next migration should use */
+export function nextSeedMigrationName(files) {
+    const top = Math.max(0, ...files.map((f) => Number.parseInt(f.slice(0, 4), 10)).filter(Number.isFinite));
+    return `${String(top + 1).padStart(4, '0')}_seed_chart_versions.sql`;
+}
+
 if (process.argv[1] && process.argv[1].endsWith('seed-chart-versions.mjs')) {
     const sql = seedSql();
     if (process.argv.includes('--write')) {
-        writeFileSync(new URL('../supabase/migrations/0006_seed_chart_versions.sql', import.meta.url), sql);
+        const files = readdirSync(MIGRATIONS);
+        const latest = latestSeedMigration(files);
+        if (latest && readFileSync(new URL(latest, MIGRATIONS), 'utf8') === sql) {
+            process.stdout.write(`${latest} is current; nothing to write.\n`);
+        } else {
+            const name = nextSeedMigrationName(files);
+            writeFileSync(new URL(name, MIGRATIONS), sql);
+            process.stdout.write(`wrote supabase/migrations/${name}\n`);
+        }
     } else {
         process.stdout.write(sql);
     }

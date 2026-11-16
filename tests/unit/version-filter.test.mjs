@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { filterCurrentVersion, rowVersion } from '../../src/net/submit.js';
 import { currentChartVersions } from '../../src/net/versions.js';
-import { seedSql } from '../../tools/seed-chart-versions.mjs';
+import { seedSql, latestSeedMigration, nextSeedMigrationName } from '../../tools/seed-chart-versions.mjs';
+import { readdirSync } from 'node:fs';
 import { ScoreRepository } from '../../src/core/ScoreRepository.js';
 
 const run = (id, userId, score, chartVersion) => ({
@@ -77,6 +78,15 @@ test('seed SQL covers every chart with its active version', () => {
     assert.match(sql, /on conflict \(chart_id\) do update/);
     const full = seedSql();
     for (const [id, v] of Object.entries(currentChartVersions())) assert.ok(full.includes(`('${id}', ${v})`));
-    const migration = readFileSync(new URL('../../supabase/migrations/0006_seed_chart_versions.sql', import.meta.url), 'utf8');
-    assert.equal(migration, full, 'migration 0006 is stale: run node tools/seed-chart-versions.mjs --write');
+    const dir = new URL('../../supabase/migrations/', import.meta.url);
+    const latest = latestSeedMigration(readdirSync(dir));
+    assert.ok(latest, 'a seed migration exists');
+    assert.equal(readFileSync(new URL(latest, dir), 'utf8'), full, `${latest} is stale: run node tools/seed-chart-versions.mjs --write`);
+});
+
+test('a chart-version bump ships as a new migration, never an edit of an applied one', () => {
+    const files = ['0005_ranked_version_reset.sql', '0006_seed_chart_versions.sql'];
+    assert.equal(latestSeedMigration(files), '0006_seed_chart_versions.sql');
+    assert.equal(nextSeedMigrationName(files), '0007_seed_chart_versions.sql');
+    assert.equal(latestSeedMigration([...files, '0007_seed_chart_versions.sql']), '0007_seed_chart_versions.sql');
 });
