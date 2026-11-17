@@ -1,0 +1,10 @@
+{
+  "appId": 480,
+  "appIdIsPlaceholder": true,
+  "note": "480 is Valve's public Spacewar test app. Replace with the real App ID once the creator has created the Steamworks app.",
+  "achievements": [
+    "ACH_FIRST_PERFECT_STOP",
+    "ACH_FIRST_S_RANK",
+    "ACH_CAMPAIGN_COMPLETE"
+  ]
+}

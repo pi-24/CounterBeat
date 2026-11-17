@@ -2,7 +2,8 @@
   "appId": "com.counterbeat.game",
   "productName": "CounterBeat",
   "directories": { "output": "release" },
-  "files": ["electron/**/*", "dist/**/*", "package.json"],
+  "asarUnpack": ["node_modules/steamworks.js/dist/**/*.node", "node_modules/steamworks.js/dist/**/*.dll", "node_modules/steamworks.js/dist/**/*.so", "node_modules/steamworks.js/dist/**/*.dylib"],
+  "files": ["electron/**/*", "dist/**/*", "package.json", "data/steam.json"],
   "win": {
     "target": [{ "target": "dir", "arch": ["x64"] }],
     "signAndEditExecutable": false

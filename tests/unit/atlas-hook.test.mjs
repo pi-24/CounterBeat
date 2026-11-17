@@ -56,7 +56,7 @@ test('markAtlasReady waits for the lazy chunks, shaders and streamed audio', asy
     const app = {
         ready3d: later('3d', 10),
         scene: { whenReadyAsync: () => later('shaders', 30) },
-        audioStreaming: later('audio', 60),
+        audioStreaming: later('audio', 400),
     };
     const ready = markAtlasReady(app);
     assert.equal(globalThis.window.__atlasReady, undefined, 'not ready while chunks are still loading');
