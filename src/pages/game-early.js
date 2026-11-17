@@ -8,9 +8,13 @@
  */
 import { bindEarlyStart } from '../game/onboarding/startFlow.js';
 import { parseAtlasParams } from '../game/atlasParams.js';
+import { isDesktop } from '../platform/platform.js';
 
 /** Shared with GameApp: set when Play was clicked before the game chunk finished loading. */
 export const early = { clicked: false };
+
+/** Desktop splash hint: the app is already fullscreen, so name the one useful key instead. */
+export const DESKTOP_START_HINT = 'Alt+Enter toggles windowed mode';
 
 export function showEarlySplash() {
     const params = new URLSearchParams(window.location.search);
@@ -20,6 +24,10 @@ export function showEarlySplash() {
     }
     const button = start.querySelector('[data-action="start-play"]');
     start.hidden = false;
+    if (isDesktop()) {
+        // The desktop app already starts fullscreen: do not carry the browser-era instruction.
+        start.querySelector('.start__hint').textContent = DESKTOP_START_HINT;
+    }
     document.getElementById('loadingOverlay').hidden = true;
     bindEarlyStart(button, document.getElementById('stage'), document, early);
 }

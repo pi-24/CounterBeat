@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const { windowOptions, isWindowToggle, START_PAGE, APP_URL } = createRequire(import.meta.url)('../../electron/windowConfig.js');
-import { getPlatform, applyPlatform, setDesktopWindowed } from '../../src/platform/platform.js';
+import { getPlatform, applyPlatform, setDesktopWindowed, accountStatus } from '../../src/platform/platform.js';
 import { Settings } from '../../src/game/Settings.js';
 
 test('desktop window opens fullscreen with no frame or menu chrome', () => {
@@ -58,4 +58,12 @@ test('windowed setting persists with other settings', () => {
     assert.equal(s.get('windowed'), false);
     s.update({ windowed: true });
     assert.equal(new Settings(storage).get('windowed'), true);
+});
+
+test('AC28: the desktop menu never tells the player to log in; the web build still does', () => {
+    assert.deepEqual(accountStatus({ logged: false, desktop: true }), { text: 'Progress is saved on this PC.', ok: true });
+    assert.match(accountStatus({ logged: false, desktop: false }).text, /guest.*Log in/);
+    assert.equal(accountStatus({ logged: false, desktop: false }).ok, false);
+    assert.equal(accountStatus({ logged: true, name: 'Ana', desktop: true }).text, 'Signed in as Ana. Scores are saved.');
+    assert.doesNotMatch(accountStatus({ logged: false, desktop: true }).text, /guest|log in/i);
 });

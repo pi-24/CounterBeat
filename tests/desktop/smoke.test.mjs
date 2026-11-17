@@ -32,13 +32,21 @@ async function smoke(extraEnv) {
     return JSON.parse(line);
 }
 
-test('electron boots the built app, shows the menu and no web chrome (forced Steam fallback)', { timeout: 90000 }, async () => {
+test('electron boots offline in a shown window, clicks through to the menu with no web chrome (forced Steam fallback)', { timeout: 90000 }, async () => {
     const out = await smoke({ CB_STEAM_FORCE_OFF: '1' });
     assert.equal(out.ok, true);
     assert.equal(out.steam.available, false);
     assert.equal(out.steam.achievements, false);
     assert.equal(out.steam.appId, null);
     assert.match(out.steam.warning || '', /\[steam\] disabled/);
+    // AC28: no browser/web-page shell anywhere in the menu flow.
+    for (const k of ['headerVisible', 'guestBannerVisible', 'footerVisible', 'stageBarVisible', 'railVisible', 'pageScrolls']) assert.equal(out[k], false, k);
+    assert.equal(out.menu, true);
+    assert.equal(out.platform, 'desktop');
+    // AC28: starts fullscreen; the real Alt+Enter path toggles windowed and back.
+    assert.equal(out.fullscreen, true);
+    assert.deepEqual(out.afterAltEnter, { windowed: true, fullscreen: false });
+    assert.deepEqual(out.afterSecondAltEnter, { windowed: false, fullscreen: true });
 });
 
 test('electron with the real Steam init path still reaches the menu and exits cleanly', { timeout: 90000, skip: process.env.CB_STEAM_LIVE !== '1' && 'set CB_STEAM_LIVE=1 to run against a live Steam client' }, async () => {

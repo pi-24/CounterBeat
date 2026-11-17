@@ -15,6 +15,7 @@ import {
 } from '../rules/charts.js';
 import { themeProvider, trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
+import { accountStatus, isDesktop } from '../../platform/platform.js';
 import { CUSTOM_LABEL, CUSTOM_NOTE } from '../../ui/CustomSongs.js';
 import { STAR_DIFFICULTIES, STARS_PER_CHART, CAMPAIGN_TRACK_IDS } from '../progress/stars.js';
 import { chartPlayable } from '../modes/practice.js';
@@ -97,10 +98,9 @@ export class MenuScreen {
         const name = this.app.services.getPlayerName();
         const logged = this.app.services.isLoggedIn();
         const status = this.overlay.querySelector('#menuStatus');
-        status.textContent = logged
-            ? `Signed in as ${name}. Scores are saved.`
-            : 'Playing as a guest. Log in to save your scores.';
-        status.className = `menu__status ${logged ? 'menu__status--ok' : 'menu__status--warn'}`;
+        const account = accountStatus({ logged, name, desktop: isDesktop() });
+        status.textContent = account.text;
+        status.className = `menu__status ${account.ok ? 'menu__status--ok' : 'menu__status--warn'}`;
         const stars = this.overlay.querySelector('#menuStars');
         if (stars) {
             stars.textContent = `★ ${this.app.services.progress.total} / ${CAMPAIGN_STAR_TOTAL} stars`;

@@ -1834,11 +1834,22 @@
     background: var(--c-bg);
 }
 
-.is-embedded {
+.is-embedded,
+.is-desktop {
     overflow: hidden;
 }
 
-.is-embedded .stage {
+/* Desktop shell: the stage IS the window (no page layout, side rail or scrollbar around it). */
+.is-desktop .rail {
+    display: none;
+}
+
+.is-desktop .game-layout {
+    display: block;
+}
+
+.is-embedded .stage,
+.is-desktop .stage {
     position: fixed;
     inset: 0;
     z-index: 1;
