@@ -21,8 +21,8 @@ export function activeDevice({ padConnected, padActiveAt, kbMouseAt, padPlays, i
 /** Pad wording for the tutorial stages, keyed by stage id (no binding names: they can be rebound). */
 export const PAD_TUTORIAL = Object.freeze({
     stop: {
-        hint: 'Strafe with the left stick or d-pad, then push the other way to counter-strafe. Get the arc green (20 u/s or less)',
-        failHint: 'Too fast. Push the opposite way and let go; stop inside the green zone',
+        hint: 'Strafe with the left stick or d-pad, then push the other way to counter-strafe. Bring the arc into the Perfect zone (20 u/s or less)',
+        failHint: 'Too fast. Push the opposite way and let go; stop inside the Perfect zone',
     },
     time: {
         hint: 'Stop, then press Fire as the ring closes on the bot. Perfect or Good timing counts',

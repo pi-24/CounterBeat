@@ -149,7 +149,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     sensitivity: 1.6,       // CS-style
     dpi: 800,
     fov: 103,               // horizontal, Valorant's fixed value
-    crosshairColour: '#7effba',
+    crosshairColour: '#e2ff1f',
     crosshairLength: 7,
     crosshairGap: 4,
     crosshairThickness: 2,
@@ -167,7 +167,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     plainHitSounds: false,  // true = the original unpitched hit samples
     musicVolume: 0.55,      // 0..1
     sfxVolume: 0.8,         // 0..1
-    judgementPalette: 'neon', // 'neon' | 'safe' (colour-blind-safe)
+    judgementPalette: 'default', // 'default' (Direction C set; legacy saved id 'neon' is migrated) | 'safe' (high contrast)
     reducedFlash: false,    // cap flashes at 3 per second without the other reduced effects
     beatCue: false,         // on-screen beat cue (a pulse at screen centre on every beat)
     bindings: { strafeLeft: 'KeyA', strafeRight: 'KeyD', fire: 'Space' },

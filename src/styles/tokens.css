@@ -1,48 +1,77 @@
 /* ==========================================================================
-   tokens.css - the single source of palette tokens (GDD section 7).
-   Neon-rhythm look: near-black blue base, cyan primary, magenta secondary,
-   thin emissive outlines on dark flat fills. Every page links this first.
-   The tactical-range look (tutorial) overrides the same tokens under
-   [data-look="tactical"] so no component needs its own colours.
+   tokens.css - the single source of truth for the CounterBeat design system.
+   Direction C "Bold Editorial" (docs/design/ui-direction-c.html): near-black
+   ink, warm paper, one acid accent, two greys. Flat fills, thick rules, no
+   glows, no hue-only meaning. Judgements read by shape + brightness.
+   Every page links this first. The names --ink/--paper/--acid/--dim are the
+   design-system tokens; the older --c-* roles are kept as aliases onto them so
+   every screen follows the one palette. data/art.json uiPalette mirrors the hex
+   values (tools/validate-assets.mjs and the palette test keep them in sync).
+   The tactical-range 3D environment colours are NOT UI tokens (see --env-*).
    ========================================================================== */
+@import url("./fonts.css");
 
 :root {
-    /* Surfaces: near-black blue */
-    --c-bg: #070a14;
-    --c-bg-alt: #0a0f1d;
-    --c-surface: #0f1626;
-    --c-surface-2: #16203a;
-    --c-line: #1f3050;
+    /* Design-system palette */
+    --ink: #0c0c0b;
+    --ink-2: #161614;
+    --ink-3: #22221f;
+    --ink-4: #34332e;
+    --paper: #efeadf;
+    --paper-2: #d9d3c5;
+    --dim: #a29d92;
+    --mute: #6c6961;
+    --acid: #e2ff1f;
+    --acid-dk: #b8d000;
 
-    /* Text */
-    --c-text: #e6f1ff;
-    --c-text-dim: #93a6c4;
-    --c-text-faint: #647693;
+    /* Type: Anton display, Archivo body, Space Mono data */
+    --display: "Anton", Impact, "Arial Narrow Bold", sans-serif;
+    --body: "Archivo", system-ui, "Segoe UI", sans-serif;
+    --mono: "Space Mono", ui-monospace, Consolas, monospace;
 
-    /* Primary cyan, secondary magenta */
-    --c-primary: #19e3ff;
-    --c-secondary: #ff2fb3;
+    /* Rule weights: thick rules carry the layout */
+    --rule-thin: 1px;
+    --rule: 3px;
+    --rule-thick: 6px;
+
+    /* Role aliases used by every screen */
+    --c-bg: var(--ink);
+    --c-bg-alt: var(--ink-2);
+    --c-surface: var(--ink-2);
+    --c-surface-2: var(--ink-3);
+    --c-line: var(--ink-4);
+
+    --c-text: var(--paper);
+    --c-text-dim: var(--paper-2);
+    --c-text-faint: var(--dim);
+
+    --c-primary: var(--acid);
+    --c-secondary: var(--paper);
     --c-accent: var(--c-primary);
-    --c-accent-dk: #0bb4cc;
-    --c-cyan: var(--c-primary);
-    --c-pink: var(--c-secondary);
-    --c-mint: var(--j-perfect);
-    --c-danger: var(--c-secondary);
-    --c-warn: #ffd23f;
+    --c-accent-dk: var(--acid-dk);
+    --c-danger: var(--paper);
+    --c-warn: var(--acid);
 
-    /* Colour-blind-safe judgement set (no red/green reliance) */
-    --j-perfect: #c9fbff;
-    --j-good: #ffd23f;
-    --j-loose: #ff9a2e;
-    --j-miss: #b0408f;
+    /* Judgements: shape + brightness, never hue alone
+       Perfect = acid diamond, Good = paper circle, Loose = dim triangle, Miss = grey cross */
+    --j-perfect: var(--acid);
+    --j-good: var(--paper);
+    --j-loose: var(--dim);
+    --j-miss: var(--mute);
 
-    /* Thin emissive outline + glow */
-    --outline: 1px solid var(--c-primary);
-    --glow: 0 0 12px color-mix(in srgb, var(--c-primary) 45%, transparent);
-    --glow-2: 0 0 12px color-mix(in srgb, var(--c-secondary) 45%, transparent);
+    /* Flat emphasis: a thick outline, no glow */
+    --outline: 3px solid var(--paper);
+    --glow: none;
+    --glow-2: none;
+    --offset-shadow: 8px 8px 0 var(--paper);
 
     /* Placeholder label */
     --c-placeholder: var(--c-warn);
+
+    /* Tactical-range 3D environment (tutorial scene). Kept apart from the UI tokens:
+       the HUD and menus keep the C palette while the range keeps concrete and orange. */
+    --env-concrete: #1b1d20;
+    --env-marking: #ff8a2a;
 }
 
 /* Translucent mixes derived from the palette roles above (role-percent). They follow the active look. */
@@ -101,24 +130,11 @@
     --mix-warn-22: color-mix(in srgb, var(--c-warn) 22%, transparent);
 }
 
-/* Tactical range: grey concrete, orange markings (tutorial scenes) */
+/* Tactical range: only the 3D environment tokens change; UI tokens are untouched so the
+   design stays consistent in the tutorial. */
 [data-look="tactical"] {
-    --c-bg: #1b1d20;
-    --c-bg-alt: #22252a;
-    --c-surface: #2b2f35;
-    --c-surface-2: #353a41;
-    --c-line: #4a5058;
-    --c-text: #eceae4;
-    --c-text-dim: #b0aea6;
-    --c-text-faint: #85837c;
-    --c-primary: #ff8a2a;
-    --c-secondary: #ffd23f;
-    --c-accent: var(--c-primary);
-    --c-accent-dk: #d96a12;
-    --c-cyan: var(--c-primary);
-    --c-pink: var(--c-secondary);
-    --glow: none;
-    --glow-2: none;
+    --env-concrete: #2b2f35;
+    --env-marking: #ff8a2a;
 }
 
 /* Shared shape-language helpers */
@@ -130,7 +146,6 @@
     font-size: 0.7em;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 .beta-tag {
     display: inline-block;
@@ -140,7 +155,6 @@
     font-size: 0.7em;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    box-shadow: var(--glow-2);
 }
 
 .song-list__note { color: var(--c-secondary); font-size: 0.85em; margin: 0 0 0.6em; }

@@ -50,6 +50,10 @@ test('the rendered main menu lists exactly the seven configured entries, in orde
     assert.deepEqual(labels, ['Campaign', 'Quick Play', 'Daily', 'Ranked/Leaderboards', 'Custom (Beta)', 'Practice', 'Settings']);
     assert.deepEqual(labels, MENU_ITEMS.map((i) => i.label));
     assert.ok(menu.classList.contains('menu--root'), 'the menu opens on the root list');
+    // C design system: every row is a focus slab, and the prompt bar is mounted on the overlay
+    assert.ok(main.every((b) => b.className.split(' ').includes('slab')), 'rows are slabs');
+    assert.deepEqual(main.map((b) => b.children.at(-1).textContent), ['01', '02', '03', '04', '05', '06', '07']);
+    assert.ok(overlay.querySelector('.prompt-bar'), 'prompt bar mounted');
 });
 
 test('no legacy tab row exists in the markup, script or styles', () => {

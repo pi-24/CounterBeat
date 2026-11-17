@@ -11,7 +11,7 @@ import { store } from '../core/Storage.js';
 import { sanitiseBindings } from './input/bindings.js';
 import { sanitisePadBindings } from '../input/padBindings.js';
 import { padSettingDefaults, PAD_RANGES } from '../input/gamepadConfig.js';
-import { PALETTE_IDS } from './feel/judgementPalette.js';
+import { PALETTE_IDS, migratePaletteId } from './feel/judgementPalette.js';
 import { DEFAULT_SETTINGS, VALORANT_SENS_RATIO, YAW_PER_COUNT, MOVEMENT_SCALE } from './rules/config.js';
 
 const KEY = 'settings';
@@ -183,8 +183,8 @@ export class Settings {
                 out[name] = Math.round(Settings.clamp(Number(changes[name]), 0, 1) * 100) / 100;
             }
         }
-        if ('judgementPalette' in changes && PALETTE_IDS.includes(changes.judgementPalette)) {
-            out.judgementPalette = changes.judgementPalette;
+        if ('judgementPalette' in changes && PALETTE_IDS.includes(migratePaletteId(changes.judgementPalette))) {
+            out.judgementPalette = migratePaletteId(changes.judgementPalette);
         }
         for (const name of ['reducedFlash', 'beatCue']) {
             if (name in changes) {

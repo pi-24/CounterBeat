@@ -77,7 +77,7 @@ export class Hud {
         this.beatCueEl = this.find('beatCue');
         this.beatCueOn = false;
         this.softCue = false;
-        this.palette = paletteFor('neon');
+        this.palette = paletteFor('default');
         this.judgeBox = this.find('judgement');
         this.judgeText = this.find('judgeText');
         this.judgeReason = this.find('judgeReason');
@@ -316,7 +316,7 @@ export class Hud {
     }
 
     /**
-     * The speed arc under the crosshair: fills with speed, green at or below
+     * The speed arc under the crosshair: fills with speed, acid at or below
      * the perfect-stop threshold, with ticks at the good and loose thresholds.
      * @param {{pinPoint:number, tight:number, loose:number}} grades SPEED_GRADE
      */

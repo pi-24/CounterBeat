@@ -69,7 +69,7 @@ export function statTile(label, value) {
     labelNode.className = 'stat__label';
     labelNode.textContent = label;
 
-    wrapper.append(valueNode, labelNode);
+    wrapper.append(labelNode, valueNode); // DOM order = reading order: caption, then numeral
     return wrapper;
 }
 

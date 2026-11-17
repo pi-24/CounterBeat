@@ -27,7 +27,7 @@ export const TOGGLE_FIELDS = Object.freeze([
     { name: 'beatCue', label: 'On-screen beat cue' },
 ]);
 
-export const PALETTE_LABELS = Object.freeze({ neon: 'Neon (default)', safe: 'Colour-blind safe' });
+export const PALETTE_LABELS = Object.freeze({ default: 'Editorial (default)', safe: 'Colour-blind safe (high contrast)' });
 
 /** The pad's sliders: strafe deadzone, look sensitivity and response, and shot latency compensation. */
 export const PAD_SLIDERS = Object.freeze([
@@ -92,7 +92,7 @@ export function mountGameSettings(host, settings, handlers = {}) {
     access.append(paletteRow);
     refreshers.push(() => {
         select.value = settings.get('judgementPalette');
-        const colours = PALETTES[settings.get('judgementPalette')] ?? PALETTES.neon;
+        const colours = PALETTES[settings.get('judgementPalette')] ?? PALETTES.default;
         legend.replaceChildren(...GRADES.map((grade) => {
             const chip = el('span', 'palette-legend__chip', `${GRADE_ICONS[grade]} ${GRADE_NAMES[grade]}`);
             chip.style.color = colours[grade];

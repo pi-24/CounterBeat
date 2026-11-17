@@ -1,16 +1,18 @@
 /**
  * speedArc.js - pure helpers for the speed arc around the crosshair.
- * The arc fills with speed (against the level's top speed) and turns green
+ * The arc fills with speed (against the level's top speed) and turns acid
  * at or below the perfect-stop threshold.  Each band also has its own tick
  * position, so the arc never relies on colour alone.
  */
 import { SPEED_GRADE } from '../rules/config.js';
+import { GRADE_COLOURS } from '../../ui/palette.js';
 
+/** perfect = acid (at or below the perfect-stop threshold), good = paper, loose = dim, fast = mute. */
 export const ARC_COLOURS = Object.freeze({
-    perfect: '#3dff9a', // green: at or below the perfect-stop threshold
-    good: '#ffd23f',
-    loose: '#ff9a3c',
-    fast: '#ff3ca8',
+    perfect: GRADE_COLOURS.default.perfect,
+    good: GRADE_COLOURS.default.good,
+    loose: GRADE_COLOURS.default.ok,
+    fast: GRADE_COLOURS.default.miss,
 });
 
 /** One threshold source: `grades` ({pinPoint, tight, loose}, i.e. SPEED_GRADE) feeds colour and ticks.

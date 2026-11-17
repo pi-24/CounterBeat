@@ -123,7 +123,11 @@ export class GameApp {
             gamepad: this.gamepad,
         });
         this.applyAudioSettings();
-        this.settings.onChange(() => this.applyAudioSettings());
+        this.applyVisualSettings();
+        this.settings.onChange(() => {
+            this.applyAudioSettings();
+            this.applyVisualSettings();
+        });
         this.library = SongLibrary.available ? new SongLibrary(this.audio) : null;
         /** A replay to open as soon as the menu would otherwise show. */
         this.pendingReplay = options.replay ?? null;
@@ -215,6 +219,11 @@ export class GameApp {
 
     applyAudioSettings() {
         this.audio.setVolumes(this.settings.get('musicVolume'), this.settings.get('sfxVolume'));
+    }
+
+    /** Mirror Reduced effects onto <body> so the shared UI components (components.css) stop moving too. */
+    applyVisualSettings() {
+        document.body.dataset.reducedEffects = String(Boolean(this.settings.get('reducedEffects')));
     }
 
     /** The in-game Play splash: one click goes fullscreen, then first-run setup or the menu. */

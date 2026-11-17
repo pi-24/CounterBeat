@@ -1,0 +1,14 @@
+/* ==========================================================================
+   fonts.css - self-hosted Anton, Archivo and Space Mono (SIL OFL 1.1) from the
+   installed @fontsource packages. No runtime network font: the Steam build runs
+   offline. Licences: LICENSES/font-*.txt. Imported by tokens.css.
+   Bare package specifiers (resolved by the bundler through node resolution), so
+   no install path is hard-coded. Latin subset only.
+   ========================================================================== */
+@import "@fontsource/anton/latin-400.css";
+@import "@fontsource/archivo/latin-400.css";
+@import "@fontsource/archivo/latin-600.css";
+@import "@fontsource/archivo/latin-800.css";
+@import "@fontsource/archivo/latin-900.css";
+@import "@fontsource/space-mono/latin-400.css";
+@import "@fontsource/space-mono/latin-700.css";

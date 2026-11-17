@@ -65,7 +65,7 @@
     position: absolute;
     inset: 9px;
     border-radius: 50%;
-    background: var(--c-mint);
+    background: var(--c-primary);
 }
 
 .brand__beat {
@@ -149,7 +149,7 @@
 }
 
 .nav__user-name {
-    color: var(--c-mint);
+    color: var(--c-primary);
     font-size: 0.9rem;
     font-weight: 600;
 }

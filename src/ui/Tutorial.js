@@ -25,7 +25,7 @@ export class TutorialPanel {
         this.text = el('p', 'tutorial__text');
         this.thresholds = el(
             'p', 'tutorial__thresholds mono',
-            `Arc: green ≤ ${STOP_SPEED.perfect} u/s (Perfect) · ≤ ${STOP_SPEED.good} Good · ≤ ${STOP_SPEED.loose} Loose`,
+            `Arc: Perfect zone ≤ ${STOP_SPEED.perfect} u/s (Perfect) · ≤ ${STOP_SPEED.good} Good · ≤ ${STOP_SPEED.loose} Loose`,
         );
         const actions = el('div', 'tutorial__actions');
         this.repeat = el('button', 'btn btn--ghost btn--small', 'Restart stage');

@@ -91,7 +91,7 @@
     width: 44px;
     height: 44px;
     margin-bottom: var(--s-3);
-    border-radius: 12px;
+    border-radius: 0;
     background: color-mix(in srgb, var(--c-primary) 14%, transparent);
     color: var(--c-accent);
     font-size: 1.2rem;
@@ -124,59 +124,78 @@
     align-items: center;
     gap: var(--s-1);
     padding: 0.18rem 0.6rem;
-    border-radius: 999px;
+    border-radius: 0;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
-.badge--accent {
-    background: color-mix(in srgb, var(--c-primary) 16%, transparent);
-    color: var(--c-accent);
+.badge--accent,
+.badge--acid {
+    background: var(--acid);
+    color: var(--ink);
 }
 
-.badge--mint {
-    background: var(--mix-prim-14);
-    color: var(--c-mint);
+.badge--paper {
+    border: 2px solid var(--paper);
+    color: var(--paper);
 }
 
-.badge--cyan {
-    background: var(--mix-prim-14);
-    color: var(--c-cyan);
+.badge--dim {
+    border: 2px dashed var(--dim);
+    color: var(--dim);
 }
 
-.badge--pink {
-    background: var(--mix-sec-14);
-    color: var(--c-pink);
-}
-
-/* ------------------------------------------------------------ stat tiles */
+/* ------------------------------------------------------------ stat blocks */
+/* Big-numeral stat blocks: mono caption above an Anton numeral, divided by thin rules inside a
+   thick-ruled band (results, profile, rankings). format.js emits the label then the value (DOM order = reading order). */
 .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--s-3);
+    border-top: var(--rule) solid var(--paper);
+    border-bottom: var(--rule) solid var(--paper);
+    /* each cell paints a 1px rule on its left edge; the band clips the first cell of every row */
+    overflow: hidden;
 }
 
 .stat {
-    padding: var(--s-4);
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    background: var(--c-bg-alt);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding: var(--s-2) var(--s-4);
+    background: transparent;
+}
+
+/* Nothing depends on :first/:last-child: a wrapped second row never shows a stray rule. */
+.stats > .stat {
+    box-shadow: calc(-1 * var(--rule-thin)) 0 0 var(--ink-4);
 }
 
 .stat__value {
-    font-family: var(--font-mono);
-    font-size: 1.7rem;
-    font-weight: 700;
+    font-family: var(--display);
+    font-size: 2.75rem;
+    font-weight: 400;
     color: var(--c-text);
-    line-height: 1.1;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.stat--hero .stat__value,
+.stat__value--hero {
+    font-size: 5.75rem;
+    color: var(--acid);
+}
+
+.stat--acid .stat__value {
+    color: var(--acid);
 }
 
 .stat__label {
-    margin-top: var(--s-1);
     color: var(--c-text-faint);
-    font-size: 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
@@ -307,7 +326,7 @@
 }
 
 .toast--success {
-    border-left-color: var(--c-mint);
+    border-left-color: var(--c-primary);
 }
 
 .toast--error {
@@ -315,7 +334,7 @@
 }
 
 .toast--info {
-    border-left-color: var(--c-cyan);
+    border-left-color: var(--c-primary);
 }
 
 @keyframes toast-in {
@@ -349,12 +368,12 @@
 }
 
 .notice--success {
-    border-left-color: var(--c-mint);
+    border-left-color: var(--c-primary);
     color: var(--j-perfect);
 }
 
 .notice--info {
-    border-left-color: var(--c-cyan);
+    border-left-color: var(--c-primary);
     color: var(--c-text);
 }
 
@@ -491,7 +510,7 @@
 .scope-toggle__btn {
     padding: 0.45rem 1rem;
     border: 1px solid var(--c-line);
-    border-radius: 999px;
+    border-radius: 0;
     background: var(--c-surface);
     color: var(--c-text-dim);
     font: inherit;
@@ -544,12 +563,12 @@
 }
 
 .timing__bar {
-    fill: var(--c-cyan);
+    fill: var(--c-primary);
     opacity: 0.75;
 }
 
 .timing__bar--centre {
-    fill: var(--c-mint);
+    fill: var(--c-primary);
     opacity: 1;
 }
 
@@ -569,11 +588,438 @@
 }
 
 .table__link {
-    color: var(--c-cyan);
+    color: var(--c-primary);
     font-weight: 600;
     text-decoration: none;
 }
 
 .table__link:hover {
     text-decoration: underline;
+}
+
+/* ==========================================================================
+   Direction C design-system components (shared by every screen)
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ rules */
+.rule {
+    display: block;
+    height: 0;
+    margin: var(--s-4) 0;
+    border: 0;
+    border-top: var(--rule) solid var(--paper);
+}
+
+.rule--thick {
+    border-top-width: var(--rule-thick);
+}
+
+.rule--thin {
+    border-top-width: var(--rule-thin);
+    border-top-color: var(--ink-4);
+}
+
+/* Ruled section header: Anton title on the left, mono caption on the right, thick rule under */
+.section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin: 0 0 var(--s-4);
+    padding-bottom: var(--s-2);
+    border-bottom: var(--rule-thick) solid var(--paper);
+}
+
+.section-head__title {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 1.9rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+}
+
+.section-head__meta {
+    color: var(--c-text-faint);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.section-head--thin {
+    border-bottom-width: var(--rule);
+}
+
+/* Field errors carry a leading cross as well as the dashed border */
+.field__error:not(:empty)::before {
+    content: "\00D7  ";
+}
+
+/* Small label chip (paper on ink) and acid chip */
+.tag {
+    display: inline-block;
+    padding: 0.15em 0.5em;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.tag--acid {
+    background: var(--acid);
+}
+
+/* ------------------------------------------------------------ focus slab */
+/* A menu row. Unfocused: ruled row. Focused (keyboard, pad or .is-focus): full-bleed acid slab with
+   a pointer on the left, an index counter and a bar bleeding off the right edge. Identical for
+   keyboard and pad. Markup: <button class="slab"><span class="slab__index">02</span>
+   <span class="slab__title">Quick Play</span><span class="slab__meta">6 TRACKS</span></button>
+   (an li or link works too). Hover only recolours the title, so a resting mouse never fakes focus. */
+.slab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    width: 100%;
+    margin: 0;
+    padding: var(--s-2) var(--s-4) var(--s-2) 3.5rem;
+    border: 0;
+    border-bottom: var(--rule-thin) solid var(--ink-4);
+    background: transparent;
+    color: var(--paper);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    list-style: none;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+}
+
+.slab__index {
+    flex: none;
+    width: 3.5rem;
+    margin-left: -3.5rem;
+    padding-left: 3.5rem;
+    color: var(--mute);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.slab__index:empty {
+    display: none;
+}
+
+.slab__title {
+    font-family: var(--display);
+    font-size: clamp(2.25rem, 4.5vw, 4.25rem);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    color: var(--paper);
+}
+
+.slab__meta {
+    margin-left: auto;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+    text-align: right;
+    text-transform: uppercase;
+}
+
+/* Utility rows (Settings, Credits...) drop to a single ruled line */
+.slab--small .slab__title {
+    font-size: 1.5rem;
+}
+
+.slab:hover .slab__title {
+    color: var(--acid);
+}
+
+.slab:focus {
+    outline: none;
+}
+
+.slab:focus-visible,
+.slab.is-focus,
+body[data-input="pad"] .slab:focus {
+    background: var(--acid);
+    border-color: var(--acid);
+    outline: none;
+    box-shadow: none;
+}
+
+.slab:focus-visible .slab__index,
+.slab:focus-visible .slab__title,
+.slab:focus-visible .slab__meta,
+.slab.is-focus .slab__index,
+.slab.is-focus .slab__title,
+.slab.is-focus .slab__meta,
+body[data-input="pad"] .slab:focus .slab__title,
+body[data-input="pad"] .slab:focus .slab__index,
+body[data-input="pad"] .slab:focus .slab__meta {
+    color: var(--ink);
+}
+
+/* pointer */
+.slab:focus-visible::before,
+.slab.is-focus::before,
+body[data-input="pad"] .slab:focus::before {
+    content: "";
+    position: absolute;
+    left: 1.1rem;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 0.85rem solid transparent;
+    border-bottom: 0.85rem solid transparent;
+    border-left: 1.25rem solid var(--ink);
+    transform: translateY(-50%);
+}
+
+/* bar bleeding off the right edge */
+.slab:focus-visible::after,
+.slab.is-focus::after,
+body[data-input="pad"] .slab:focus::after {
+    content: "";
+    position: absolute;
+    right: -0.6rem;
+    top: -0.6rem;
+    bottom: -0.6rem;
+    width: 0.6rem;
+    background: var(--acid);
+}
+
+/* "02 / 09" index counter shown beside a slab list */
+.slab-counter {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--dim);
+}
+
+.slab-counter b {
+    color: var(--acid);
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------ key and pad glyphs */
+.key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.9rem;
+    height: 1.9rem;
+    padding: 0 0.45rem;
+    border: 2px solid var(--paper);
+    color: var(--paper);
+    font-family: var(--body);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.key--hot {
+    background: var(--acid);
+    border-color: var(--acid);
+    color: var(--ink);
+}
+
+.pad {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 0.8rem;
+    font-weight: 900;
+}
+
+.pad--wide {
+    width: auto;
+    padding: 0 0.4rem;
+    border-radius: 0;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+/* on an acid surface the glyphs invert */
+.btn:focus-visible .key,
+.btn.is-focus .key,
+.btn--primary .key,
+.slab:focus-visible .key,
+.slab.is-focus .key,
+.key--on-acid {
+    border-color: var(--ink);
+    color: var(--ink);
+}
+
+.btn:focus-visible .pad,
+.btn.is-focus .pad,
+.btn--primary .pad,
+.slab:focus-visible .pad,
+.slab.is-focus .pad,
+.pad--on-acid {
+    background: var(--ink);
+    color: var(--acid);
+}
+
+/* ------------------------------------------------------------ prompt bar */
+/* Bottom key/pad prompt bar. Both glyph sets are in the markup; the active one follows
+   <body data-input="pad|kbm"> (GameApp sets it from the last input device). */
+.prompt-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-6);
+    min-height: 3.75rem;
+    padding: 0 var(--s-7);
+    border-top: 4px solid var(--paper);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--body);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.prompt-bar--fixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+}
+
+.prompt {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+}
+
+.prompt__glyphs {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+}
+
+.prompt__label {
+    color: var(--paper);
+    white-space: nowrap;
+}
+
+.prompt-bar--sticky {
+    position: sticky;
+    bottom: calc(-1 * var(--s-5));
+    margin: var(--s-4) calc(-1 * var(--s-5)) calc(-1 * var(--s-5));
+    padding-inline: var(--s-5);
+    min-height: 3rem;
+}
+
+.prompt-bar__right {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-left: auto;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+body[data-input="pad"] .prompt-bar [data-device="kbm"],
+body:not([data-input="pad"]) .prompt-bar [data-device="pad"] {
+    display: none !important;
+}
+
+/* ---------------------------------------------------- judgement glyphs */
+/* Shape + brightness: Perfect acid diamond, Good paper circle, Loose dim triangle, Miss grey cross */
+.shape {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.shape--perfect {
+    background: var(--j-perfect);
+    transform: rotate(45deg) scale(0.82);
+}
+
+.shape--good {
+    background: var(--j-good);
+    border-radius: 50%;
+}
+
+.shape--loose {
+    width: 0;
+    height: 0;
+    border-left: 0.5rem solid transparent;
+    border-right: 0.5rem solid transparent;
+    border-bottom: 0.9rem solid var(--j-loose);
+}
+
+.shape--miss::before,
+.shape--miss::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -6%;
+    width: 0.2rem;
+    height: 112%;
+    margin-left: -0.1rem;
+    background: var(--j-miss);
+    transform: rotate(45deg);
+}
+
+.shape--miss::after {
+    transform: rotate(-45deg);
+}
+
+.j-perfect { color: var(--j-perfect); }
+.j-good { color: var(--j-good); }
+.j-loose { color: var(--j-loose); }
+.j-miss { color: var(--j-miss); }
+
+/* ------------------------------------------------------- reduced effects */
+/* Reduced effects keeps the layout and the colours; it only stops the UI moving or lifting.
+   GameApp mirrors the setting onto <body data-reduced-effects>. */
+body[data-reduced-effects="true"] .btn,
+body[data-reduced-effects="true"] .slab,
+body[data-reduced-effects="true"] .slab__title {
+    transition: none;
+}
+
+body[data-reduced-effects="true"] .btn:focus-visible,
+body[data-reduced-effects="true"] .btn.is-focus {
+    box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    .slab,
+    .slab__title {
+        transition: none;
+    }
 }

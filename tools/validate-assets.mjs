@@ -320,6 +320,39 @@ export function validateAll({ root = ROOT, manifests } = {}) {
         }
     }
 
+    // UI design system (direction C): art.json.uiPalette must match tokens.css; fonts are self-hosted with licences
+    {
+        const ui = art?.uiPalette;
+        const tokensFile = resolve(root, 'src/styles/tokens.css');
+        if (!ui || typeof ui.colours !== 'object') err('art.json: uiPalette.colours required');
+        else {
+            for (const [name, hex] of Object.entries(ui.colours)) {
+                try { hexToRgb(hex); } catch (e) { err(`art.json uiPalette ${name}: ${e.message}`); continue; }
+                if (existsSync(tokensFile) && !new RegExp(`--${name}:\\s*${hex};`, 'i').test(readFileSync(tokensFile, 'utf8'))) {
+                    err(`tokens.css does not define --${name}: ${hex} (art.json uiPalette)`);
+                }
+            }
+            for (const [grade, j] of Object.entries(ui.judgements ?? {})) {
+                if (!(j.token in ui.colours)) err(`art.json uiPalette judgement ${grade}: unknown token ${j.token}`);
+                if (!isStr(j.shape)) err(`art.json uiPalette judgement ${grade}: shape required`);
+            }
+            if (new Set(Object.values(ui.judgements ?? {}).map((j) => j.shape)).size !== 4) err('art.json uiPalette: four judgements need four distinct shapes');
+        }
+        if (!Array.isArray(art?.fonts) || art.fonts.length < 3) err('art.json: fonts must list Anton, Archivo and Space Mono');
+        for (const f of art?.fonts ?? []) {
+            if (!isStr(f.id) || !isStr(f.name) || !isStr(f.author)) err('art.json: font needs id, name and author');
+            else checkLicence(f.licence, `font ${f.id}`);
+        }
+        const fontCss = resolve(root, 'src/styles/fonts.css');
+        if (existsSync(fontCss)) {
+            const css = readFileSync(fontCss, 'utf8');
+            if (/https?:\/\//.test(css)) err('fonts.css must not load fonts over the network (the Steam build runs offline)');
+            for (const m of css.matchAll(/url\(([^)]+)\)/g)) {
+                if (!existsSync(resolve(fontCss, '..', m[1].replace(/['"]/g, '')))) err(`fonts.css: ${m[1]} not found (run npm install)`);
+            }
+        } else err('src/styles/fonts.css missing');
+    }
+
     // CREDITS.md must list every pack and licence
     try {
         const file = resolve(root, 'CREDITS.md');

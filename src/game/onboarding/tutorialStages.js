@@ -9,8 +9,8 @@ export const REQUIRED_SUCCESSES = 5; // GDD starting value (assumption)
 export const STAGES = Object.freeze([
     Object.freeze({
         id: 'stop', title: 'STOP',
-        hint: 'Strafe with A / D, then tap the opposite key to counter-strafe. Get the arc green (20 u/s or less)',
-        failHint: 'Too fast. Tap the opposite key and let go; stop inside the green zone',
+        hint: 'Strafe with A / D, then tap the opposite key to counter-strafe. Bring the arc into the Perfect zone (20 u/s or less)',
+        failHint: 'Too fast. Tap the opposite key and let go; stop inside the Perfect zone',
         onFail: 'step',
     }),
     Object.freeze({

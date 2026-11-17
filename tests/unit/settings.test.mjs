@@ -70,7 +70,7 @@ test('settings are clamped and validated', () => {
     s.update({ musicVolume: 7, sfxVolume: -1, judgementPalette: 'bogus', bindings: { strafeLeft: 'KeyA', strafeRight: 'KeyA', fire: 'Space' } });
     assert.equal(s.get('musicVolume'), 1);
     assert.equal(s.get('sfxVolume'), 0);
-    assert.equal(s.get('judgementPalette'), 'neon');
+    assert.equal(s.get('judgementPalette'), 'default');
     assert.deepEqual(s.get('bindings'), DEFAULT_BINDINGS);
 });
 

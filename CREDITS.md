@@ -37,6 +37,12 @@
 
 - **11 crosshair shapes** - CounterBeat (generated for this project) - licence: `LICENSES/atlas-procedural-art.txt`
 
+## Fonts
+
+- **Anton** - The Anton Project Authors - licence: `LICENSES/font-anton-ofl.txt` (SIL OFL 1.1, self-hosted from @fontsource/anton)
+- **Archivo** - The Archivo Project Authors - licence: `LICENSES/font-archivo-ofl.txt` (SIL OFL 1.1, self-hosted from @fontsource/archivo)
+- **Space Mono** - The Space Mono Project Authors - licence: `LICENSES/font-space-mono-ofl.txt` (SIL OFL 1.1, self-hosted from @fontsource/space-mono)
+
 ## Images
 
 - **CounterBeat emblem** - CounterBeat (generated for this project) - licence: `LICENSES/atlas-procedural-art.txt`

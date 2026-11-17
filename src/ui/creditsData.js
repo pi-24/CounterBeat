@@ -29,6 +29,7 @@ export function buildCredits(m) {
     for (const [lic, list] of Object.entries(groupBy(m.crosshairs?.crosshairs ?? []))) {
         add('Crosshairs', `${list.length} crosshair shapes`, ART_AUTHOR, lic);
     }
+    for (const f of m.art?.fonts ?? []) add('Fonts', f.name, f.author, f.licence, f.note ?? '');
     for (const i of m.art?.images ?? []) add('Images', i.name, i.author, i.licence);
     return out;
 }

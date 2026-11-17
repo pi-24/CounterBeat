@@ -6,6 +6,7 @@
  */
 import { el } from './format.js';
 import { MENU_ITEMS, MENU_EXTRAS } from './menuConfig.js';
+import { renderPromptBar, MENU_PROMPTS } from './promptBar.js';
 
 /** @param {string} action @returns {{type:string, target:string}} */
 export function parseMenuAction(action) {
@@ -31,17 +32,24 @@ export class MainMenu {
         }
         const nav = el('nav', 'mainmenu');
         nav.setAttribute('aria-label', 'Main menu');
-        for (const item of [...MENU_ITEMS, ...MENU_EXTRAS]) {
-            const button = el('button', `mainmenu__item${MENU_EXTRAS.includes(item) ? ' mainmenu__item--minor' : ''}`);
+        const entries = [...MENU_ITEMS, ...MENU_EXTRAS];
+        entries.forEach((item, i) => {
+            const minor = MENU_EXTRAS.includes(item);
+            // C design system focus slab. The title comes first in the DOM (reading order); the
+            // decorative index is aria-hidden and placed on the left by CSS.
+            const button = el('button', `mainmenu__item slab slab--small${minor ? ' mainmenu__item--minor' : ''}`);
             button.type = 'button';
             button.dataset.menuItem = item.id;
-            button.append(el('span', 'mainmenu__label', item.label));
+            button.append(el('span', 'slab__title mainmenu__label', item.label));
             if (item.blurb) {
-                button.append(el('span', 'mainmenu__blurb', item.blurb));
+                button.append(el('span', 'slab__meta mainmenu__blurb', item.blurb));
             }
+            const index = el('span', 'slab__index', String(i + 1).padStart(2, '0'));
+            index.setAttribute('aria-hidden', 'true');
+            button.append(index);
             button.addEventListener('click', () => this.choose(item));
             nav.append(button);
-        }
+        });
         const back = el('button', 'btn btn--ghost mainmenu__back', '‹ Back');
         back.type = 'button';
         back.dataset.action = 'menu-back';
@@ -50,6 +58,9 @@ export class MainMenu {
         this.back = back;
         const firstPanel = this.menu.querySelector('.menu__panel');
         firstPanel.before(nav, back);
+        this.promptBar = renderPromptBar(document, MENU_PROMPTS, { right: 'CounterBeat' });
+        this.promptBar.classList.add('prompt-bar--sticky');
+        this.overlay.append(this.promptBar);
         this.showRoot();
     }
 
