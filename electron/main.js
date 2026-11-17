@@ -11,6 +11,7 @@ const { pathToFileURL } = require('node:url');
 const { createSteamService } = require('./steam/SteamService.js');
 const { loadSteamConfig } = require('./steam/config.js');
 const { registerSteamIpc } = require('./steam/ipc.js');
+const { registerSaveIpc } = require('./saveIo.js');
 const { windowOptions, isWindowToggle, START_PAGE, APP_SCHEME, APP_URL } = require('./windowConfig.js');
 
 const SMOKE = process.env.CB_SMOKE === '1';
@@ -96,6 +97,7 @@ ipcMain.on('cb:set-windowed', (_e, value) => {
     applyWindowed(value);
     showOnce();
 });
+registerSaveIpc(ipcMain, app.getPath('appData'));
 registerSteamIpc(ipcMain, steam, { achievements: steamConfig.achievements });
 app.on('will-quit', () => { steam.release(); setTimeout(() => process.exit(typeof process.exitCode === 'number' ? process.exitCode : 0), 1000).unref(); });
 ipcMain.on('cb:quit', () => app.quit());

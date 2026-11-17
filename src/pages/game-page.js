@@ -14,6 +14,7 @@ import { initNavigation } from '../ui/Navigation.js';
 import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
 import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
 import { GRADE_LABEL } from '../game/rules/config.js';
+import { bootCloudSave } from '../progress/cloudSave.js';
 import { settings } from '../game/Settings.js';
 import { ProgressStore } from '../game/progress/store.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
@@ -24,6 +25,8 @@ import { parseAtlasParams, atlasServices, memoryStorage, showAtlasScene, markAtl
 
 
 const platform = applyPlatform();
+// Desktop: merge the Steam Cloud save file before anything reads settings/progress.
+if (!parseAtlasParams(window.location.search)) bootCloudSave(store);
 const backend = await initNavigation('game');
 await settings.sync(backend);
 

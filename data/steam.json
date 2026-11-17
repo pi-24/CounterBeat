@@ -17,5 +17,17 @@
     "ACH_FIRST_PERFECT_STOP",
     "ACH_PERFECT_STOPS_250",
     "ACH_HEADSHOTS_100"
-  ]
+  ],
+  "cloud": {
+    "file": "counterbeat-save.json",
+    "root": "WinAppDataRoaming",
+    "subdirectory": "CounterBeat",
+    "recursive": false,
+    "platforms": [
+      "Windows"
+    ],
+    "maxFiles": 1,
+    "maxBytes": 1048576,
+    "note": "Auto-Cloud config for the Steamworks partner site; see docs/steam-cloud.md"
+  }
 }

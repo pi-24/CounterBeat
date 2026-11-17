@@ -12,5 +12,9 @@ contextBridge.exposeInMainWorld('counterbeatDesktop', {
     setWindowed: (windowed) => ipcRenderer.send('cb:set-windowed', Boolean(windowed)),
     onWindowedChange: (cb) => ipcRenderer.on('cb:windowed', (_e, value) => cb(Boolean(value))),
     steam: steam,
+    saveIO: {
+        read: () => ipcRenderer.sendSync('cb:save:read'),
+        write: (text) => ipcRenderer.sendSync('cb:save:write', text),
+    },
     quit: () => ipcRenderer.send('cb:quit'),
 });
