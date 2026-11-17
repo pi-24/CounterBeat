@@ -69,6 +69,14 @@ export class RunRecorder {
         this.startSongTime = null;
         this.lastDirection = 0;
         this.clockMs = 0;
+        /** Which device made the run: 'kbm', 'pad' or 'mixed' (null until an input arrives).  Analytics only, never validated. */
+        this.device = null;
+    }
+
+    /** @param {'kbm'|'pad'} device the device behind an input just recorded */
+    noteDevice(device) {
+        if (this.device === null) this.device = device;
+        else if (this.device !== device) this.device = 'mixed';
     }
 
     /**
@@ -158,6 +166,7 @@ export class RunRecorder {
             inputs: this.inputs,
             shots: this.shots,
             look: this.look,
+            device: this.device ?? 'kbm',
         };
     }
 }

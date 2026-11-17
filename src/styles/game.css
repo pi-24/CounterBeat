@@ -1971,3 +1971,22 @@
 .credits__cat { margin: 16px 0 6px; color: var(--c-primary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; }
 .credits__list { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
 .credits__hint { margin: 12px 0; font-size: 12px; opacity: 0.7; }
+
+/* Input-device prompts: GameApp sets <body data-input="pad|kbm">; keyboard is the default. */
+body[data-input="pad"] [data-device="kbm"],
+body:not([data-input="pad"]) [data-device="pad"] {
+    display: none !important;
+}
+
+/* Pad focus ring: a script-driven focus() does not always match :focus-visible, so the
+   ring is also tied to the pad being the active device (GameApp sets data-input="pad"). */
+body[data-input="pad"] :focus {
+    outline: 3px solid var(--c-cyan);
+    outline-offset: 2px;
+    border-color: var(--c-cyan);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--c-cyan) 45%, transparent);
+}
+
+body[data-input="pad"] input[type="range"]:focus {
+    box-shadow: none;
+}

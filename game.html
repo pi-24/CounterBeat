@@ -140,7 +140,7 @@
                         </div>
 
                         <!-- Menu ------------------------------------------------------>
-                        <div class="overlay overlay--menu" id="menuOverlay" hidden>
+                        <div class="overlay overlay--menu" id="menuOverlay" data-pad-overlay="10" hidden>
                             <button class="btn btn--ghost embed-exit" type="button" id="embedExit" hidden>‹ Website</button>
                             <button class="btn btn--ghost desktop-quit" type="button" data-desktop-quit data-desktop-only hidden>Quit</button>
                             <div class="menu">
@@ -154,7 +154,10 @@
                                 <div class="menu__panel is-active" data-panel="play">
                                     <div class="daily" id="dailyCard"></div>
                                     <div class="track-list" id="trackList"></div>
-                                    <p class="menu__hint"><kbd>T</kbd> tutorial &nbsp;&bull;&nbsp; <kbd>A</kbd> <kbd>D</kbd> strafe
+                                    <p class="menu__hint" data-device="pad"><kbd>A</kbd> select &nbsp;&bull;&nbsp; <kbd>B</kbd> back
+                                        &nbsp;&bull;&nbsp; <kbd>Start</kbd> pause &nbsp;&bull;&nbsp; right stick aims
+                                        &nbsp;&bull;&nbsp; Hard unlocks when you clear Normal on that track, Expert when you clear Hard</p>
+                                    <p class="menu__hint" data-device="kbm"><kbd>T</kbd> tutorial &nbsp;&bull;&nbsp; <kbd>A</kbd> <kbd>D</kbd> strafe
                                         &nbsp;&bull;&nbsp; mouse aims &nbsp;&bull;&nbsp; left click fires
                                         &nbsp;&bull;&nbsp; Hard unlocks when you clear Normal on that track, Expert when you clear Hard</p>
                                 </div>
@@ -316,7 +319,7 @@
                         </div>
 
                         <!-- Pause ----------------------------------------------------->
-                        <div class="overlay overlay--pause" id="pauseOverlay" hidden>
+                        <div class="overlay overlay--pause" id="pauseOverlay" data-pad-overlay="30" hidden>
                             <h2 class="overlay__title">PAUSED</h2>
                             <p class="text-dim">The mouse has been released. Click the arena or press resume to carry
                                 on.</p>
@@ -331,7 +334,7 @@
                         </div>
 
                         <!-- Results --------------------------------------------------->
-                        <div class="overlay overlay--result" id="resultOverlay" hidden>
+                        <div class="overlay overlay--result" id="resultOverlay" data-pad-overlay="40" hidden>
                             <div class="result">
                                 <h2 class="result__headline" id="resultHeadline">CHART CLEARED</h2>
                                 <p class="result__subtitle" id="resultSubtitle"></p>
@@ -361,7 +364,7 @@
                         </div>
 
                         <!-- Calibration ----------------------------------------------->
-                        <div class="overlay overlay--calibration" id="calibrationOverlay" hidden>
+                        <div class="overlay overlay--calibration" id="calibrationOverlay" data-pad-overlay="50" hidden>
                             <h2 class="overlay__title">CALIBRATE</h2>
                             <svg class="cal__ring-svg" viewBox="-50 -50 100 100" aria-hidden="true">
                                 <circle class="cal__ring-track" cx="0" cy="0" r="44"></circle>
@@ -384,7 +387,7 @@
                         </div>
 
                         <!-- Play splash: the first click goes fullscreen ---------------->
-                        <div class="overlay overlay--start" id="startOverlay" hidden>
+                        <div class="overlay overlay--start" id="startOverlay" data-pad-overlay="20" hidden>
                             <h1 class="start__title">COUNTER<span>BEAT</span></h1>
                             <p class="start__tag">Stop. Time. Aim.</p>
                             <button class="btn btn--primary start__play" type="button" data-action="start-play">Click to play</button>
@@ -392,11 +395,11 @@
                         </div>
 
                         <!-- Loading / error ------------------------------------------->
-                        <div class="overlay overlay--loading" id="loadingOverlay">
+                        <div class="overlay overlay--loading" id="loadingOverlay" data-pad-overlay="0">
                             <div class="stage__spinner" aria-hidden="true"></div>
                             <p class="text-dim" id="loadingText">Loading CounterBeat&hellip;</p>
                         </div>
-                        <div class="overlay overlay--loading" id="errorOverlay" hidden>
+                        <div class="overlay overlay--loading" id="errorOverlay" data-pad-overlay="60" hidden>
                             <h2>The game could not start</h2>
                             <p class="text-dim" id="errorMessage">Something went wrong while loading.</p>
                             <p class="text-dim">This page uses JavaScript modules and WebGL, so it must be opened through
@@ -408,7 +411,8 @@
                 <aside class="rail">
                     <section class="rail__panel">
                         <h2 class="rail__title">Controls</h2>
-                        <ul class="rail__list">
+                        <ul class="rail__list" data-device="pad" id="padControlsList"></ul>
+                        <ul class="rail__list" data-device="kbm">
                             <li><span>Strafe left</span><span class="rail__keys"><kbd>A</kbd><kbd>&larr;</kbd></span>
                             </li>
                             <li><span>Strafe right</span><span class="rail__keys"><kbd>D</kbd><kbd>&rarr;</kbd></span>
@@ -423,7 +427,16 @@
 
                     <section class="rail__panel">
                         <h2 class="rail__title">The counter-strafe</h2>
-                        <div class="cs-demo">
+                        <div class="cs-demo" data-device="pad">
+                            <p class="cs-demo__row"><span class="cs-demo__num">1</span> Hold the stick right to run right
+                            </p>
+                            <p class="cs-demo__row"><span class="cs-demo__num">2</span> Flick it left for about
+                                0.1&nbsp;s</p>
+                            <p class="cs-demo__row"><span class="cs-demo__num">3</span> Release: speed hits zero
+                            </p>
+                            <p class="cs-demo__row"><span class="cs-demo__num">4</span> Press Fire on the beat</p>
+                        </div>
+                        <div class="cs-demo" data-device="kbm">
                             <p class="cs-demo__row"><span class="cs-demo__num">1</span> Hold <kbd>D</kbd> to run right
                             </p>
                             <p class="cs-demo__row"><span class="cs-demo__num">2</span> Tap <kbd>A</kbd> for about

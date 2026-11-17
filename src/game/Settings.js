@@ -9,6 +9,8 @@
  */
 import { store } from '../core/Storage.js';
 import { sanitiseBindings } from './input/bindings.js';
+import { sanitisePadBindings } from '../input/padBindings.js';
+import { padSettingDefaults, PAD_RANGES } from '../input/gamepadConfig.js';
 import { PALETTE_IDS } from './feel/judgementPalette.js';
 import { DEFAULT_SETTINGS, VALORANT_SENS_RATIO, YAW_PER_COUNT, MOVEMENT_SCALE } from './rules/config.js';
 
@@ -18,7 +20,7 @@ const REMOTE_SAVE_DELAY_MS = 800;
 export class Settings {
     constructor(storage = store) {
         this.storage = storage;
-        this.values = { ...DEFAULT_SETTINGS, bindings: { ...DEFAULT_SETTINGS.bindings }, ...Settings.sanitise(this.storage.read(KEY, {})) };
+        this.values = { ...DEFAULT_SETTINGS, ...padSettingDefaults(), bindings: { ...DEFAULT_SETTINGS.bindings }, ...Settings.sanitise(this.storage.read(KEY, {})) };
         /** @type {Set<(values:object) => void>} */
         this.listeners = new Set();
         /** @type {import('../core/backend/Backend.js').Backend|null} */
@@ -82,7 +84,7 @@ export class Settings {
     }
 
     reset() {
-        this.values = { ...DEFAULT_SETTINGS, bindings: { ...DEFAULT_SETTINGS.bindings } };
+        this.values = { ...DEFAULT_SETTINGS, ...padSettingDefaults(), bindings: { ...DEFAULT_SETTINGS.bindings } };
         this.storage.write(KEY, this.values);
         this.scheduleRemoteSave();
         for (const listener of this.listeners) {
@@ -191,6 +193,14 @@ export class Settings {
         }
         if ('bindings' in changes) {
             out.bindings = sanitiseBindings(changes.bindings);
+        }
+        if ('padBindings' in changes) {
+            out.padBindings = sanitisePadBindings(changes.padBindings);
+        }
+        for (const [name, { min, max }] of Object.entries(PAD_RANGES)) {
+            if (name in changes) {
+                out[name] = Math.round(Settings.clamp(Number(changes[name]), min, max) * 100) / 100;
+            }
         }
         if ('audioOffset' in changes) {
             out.audioOffset = Settings.clamp(Number(changes.audioOffset), -0.25, 0.25);

@@ -6,6 +6,7 @@
  */
 import { el } from './format.js';
 import { STAGES } from '../game/onboarding/tutorialStages.js';
+import { tutorialText } from '../input/prompts.js';
 import { STOP_SPEED } from '../game/rules/rules.js';
 
 export class TutorialPanel {
@@ -14,6 +15,8 @@ export class TutorialPanel {
      * @param {{onSkip:() => void, onRepeat?:() => void}} handlers
      */
     constructor(stage, handlers) {
+        /** @type {'pad'|'kbm'} whose wording the stage text uses */
+        this.device = 'kbm';
         this.root = el('aside', 'tutorial');
         this.root.hidden = true;
         this.root.setAttribute('aria-live', 'polite');
@@ -55,7 +58,7 @@ export class TutorialPanel {
         this.title.textContent = stage
             ? `STEP ${progress.stageIndex + 1} OF ${STAGES.length}: ${stage.title}`
             : 'TUTORIAL COMPLETE';
-        this.text.textContent = stage ? (failed ? stage.failHint : stage.hint) : 'You know the loop: stop, time, aim.';
+        this.text.textContent = stage ? tutorialText(stage, this.device, failed) : 'You know the loop: stop, time, aim.';
         this.text.classList.toggle('is-fail', failed);
         const pips = [];
         for (let i = 0; i < progress.required; i += 1) {

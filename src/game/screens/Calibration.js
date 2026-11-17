@@ -66,9 +66,9 @@ export class Calibration {
         this.applyButton.hidden = true;
         this.startButton.hidden = false;
         this.status.textContent = options.auto
-            ? `Quick calibration: tap SPACE or click on every click. ${COUNT_IN} count-in beats, then ${this.measured} that count.`
+            ? `Quick calibration: tap SPACE, click or press A on every click. ${COUNT_IN} count-in beats, then ${this.measured} that count.`
             : `Current offset: ${Calibration.format(this.settings.get('audioOffset'))}. `
-                + `Press Start, then tap SPACE or click on every click. Four count-in beats, then ${this.measured} that count.`;
+                + `Press Start, then tap SPACE, click or press A on every click. Four count-in beats, then ${this.measured} that count.`;
         if (options.auto) {
             this.start();
         }
@@ -168,6 +168,15 @@ export class Calibration {
         if (Math.abs(delta) <= MAX_DELTA) {
             this.deltas.push(delta);
         }
+    }
+
+    /**
+     * A gamepad tap (the A button) during the test, timed from the pad's own
+     * timestamp like a key or click.
+     * @param {number} timeStamp performance.now()-clock instant of the press
+     */
+    padTap(timeStamp) {
+        this.onTap({ timeStamp, preventDefault() {} });
     }
 
     finish() {

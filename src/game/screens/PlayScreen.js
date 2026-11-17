@@ -19,6 +19,8 @@
 import { StopQuality } from '../progress/stars.js';
 import { Ray } from '../engine.js';
 import { APPROACH_BEATS, GRADE, SPEED_GRADE } from '../rules/config.js';
+import { GAMEPAD } from '../../input/gamepadConfig.js';
+import { inputLagSeconds, MAX_INPUT_LAG } from '../../input/inputTime.js';
 import { replayCanFailOut, modeForLevel } from '../rules/failout.js';
 import { aimScalesForLevel, coneDegrees } from '../rules/aim.js';
 import { resolveChart } from '../rules/charts.js';
@@ -51,8 +53,6 @@ const MAX_STEP = 0.05;
 const MAX_STEPS_PER_FRAME = 50;
 /** A replay's ticks are cheap to apply, so after a stall (a hidden tab) it catches up at once. */
 const MAX_REPLAY_STEPS_PER_FRAME = 5000;
-/** An input event older than this is not trusted to back-date a shot. */
-const MAX_INPUT_LAG = 0.1;
 /** Longest the run waits for shaders to compile before starting anyway. */
 const PREPARE_TIMEOUT_MS = 1500;
 /** Pause between the last bot and the results screen. */
@@ -105,6 +105,8 @@ export class PlayScreen {
         this.replaySpeed = 1;
 
         this.finished = false;
+        this.keysWereDown = false;
+        this.padWasDown = false;
         this.paused = false;
         this.wasMoving = false;
         this.lastPerfectStopAt = -Infinity;
@@ -291,7 +293,12 @@ export class PlayScreen {
         if (this.finished || this.paused || !this.conductor) {
             return;
         }
-        const { camera, hud, audio } = this.app;
+        const { camera, hud, audio, gamepad } = this.app;
+        if (gamepad && gamepad.context === 'play' && (gamepad.look.x !== 0 || gamepad.look.y !== 0)) {
+            const toRadians = Math.PI / 180;
+            const speed = this.app.settings.get('padLookSpeed');
+            camera.nudgeLook(gamepad.look.x * GAMEPAD.lookSpeedYaw * speed * dt * toRadians, gamepad.look.y * GAMEPAD.lookSpeedPitch * speed * dt * toRadians);
+        }
         const songTime = this.conductor.songPosition;
         if (this.conductor.update()) {
             feedbackBus.emit('beat', { strength: this.conductor.beatPosition % 4 < 1 ? 1 : 0.6 });
@@ -369,8 +376,17 @@ export class PlayScreen {
 
     /** @returns {number} -1, 0 or 1 from the strafe keys currently held. */
     readDirection() {
-        const { input } = this.app;
-        return strafeDirection((code) => input.isDown(code), this.app.settings.get('bindings'));
+        const { input, gamepad } = this.app;
+        const keys = strafeDirection((code) => input.isDown(code), this.app.settings.get('bindings'));
+        // Note the device on the press edge only (this runs every physics tick).
+        const padDir = gamepad ? gamepad.strafe : 0;
+        if (keys !== 0 && !this.keysWereDown) this.recorder?.noteDevice('kbm');
+        if (padDir !== 0 && !this.padWasDown) this.recorder?.noteDevice('pad');
+        this.keysWereDown = keys !== 0;
+        this.padWasDown = padDir !== 0;
+        // The pad's strafe is already digital (-1/0/1), so it joins the keys here
+        // and everything downstream (ticks, body, grading) sees one direction.
+        return gamepad ? Math.sign(keys + gamepad.strafe) : keys;
     }
 
     /**
@@ -661,10 +677,7 @@ export class PlayScreen {
                 return; // the music has not started: nothing to shoot at yet
             }
             if (inputTimeStamp !== undefined) {
-                const lag = (performance.now() - inputTimeStamp) / 1000;
-                if (lag > 0 && lag < MAX_INPUT_LAG) {
-                    target -= lag;
-                }
+                target -= inputLagSeconds(performance.now(), inputTimeStamp, MAX_INPUT_LAG);
             }
             // Bring the simulation (and the chart) up to the instant of the
             // shot, and judge it on the tick clock - exactly the time the

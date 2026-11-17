@@ -11,8 +11,8 @@
  */
 import { Scene, Vector3, Axis, Camera, FreeCamera } from '../engine.js';
 import { WORLD } from '../rules/config.js';
+import { PITCH_LIMIT, applyLookDelta } from './lookMath.js';
 
-const PITCH_LIMIT = (80 * Math.PI) / 180;
 const RECOIL_RECOVERY = 11;      // per second
 const BOB_FREQUENCY = 9.5;        // cycles per second at full speed
 const BOB_AMPLITUDE = 0.018;      // metres
@@ -112,6 +112,15 @@ export class FpsCamera {
         this.yaw += event.movementX * degrees * toRadians;
         this.pitch += event.movementY * degrees * toRadians;
         this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
+    }
+
+    /**
+     * Turns the view by a pad's right stick (the mouse path's twin).
+     * @param {number} yawRadians @param {number} pitchRadians
+     */
+    nudgeLook(yawRadians, pitchRadians) {
+        // No pointer-lock check on purpose: a pad-only player never has the lock.
+        ({ yaw: this.yaw, pitch: this.pitch } = applyLookDelta(this, yawRadians, pitchRadians, this.lookEnabled));
     }
 
     /** Points the view straight down the arena. */

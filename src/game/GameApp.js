@@ -12,6 +12,9 @@ import { practiceKeyFree } from './modes/practice.js';
 import { requestFullscreenFromGesture, lockPromptNeeded, mayRequestFullscreen } from './onboarding/startFlow.js';
 import { Hud } from './fps/Hud.js';
 import { Input } from './Input.js';
+import { GamepadInput } from '../input/GamepadInput.js';
+import { activeDevice, padControlRows } from '../input/prompts.js';
+import { MenuNavigator, domSurface } from '../input/menuFocus.js';
 import { loadStreamed } from '../audio/streamLoader.js';
 import { audio as sharedAudio } from './audio/AudioEngine.js';
 import { settings as sharedSettings } from './Settings.js';
@@ -87,6 +90,7 @@ export class GameApp {
         this.audio = sharedAudio;
         this.settings = sharedSettings;
         this.input = new Input();
+        this.setupGamepad();
         this.hud = new Hud(options.hudRoot);
         this.settingsPanel = new SettingsPanel(options.settingsForm, this.settings);
         this.calibration = new Calibration({
@@ -116,6 +120,7 @@ export class GameApp {
         mountGameSettings(options.settingsForm.querySelector('#gameSettings'), this.settings, {
             onCalibrate: () => this.calibration.open({ auto: false }),
             onTutorial: () => this.startTutorial(),
+            gamepad: this.gamepad,
         });
         this.applyAudioSettings();
         this.settings.onChange(() => this.applyAudioSettings());
@@ -200,6 +205,7 @@ export class GameApp {
                 this.current.update(dt);
             }
             this.updateLockPrompt();
+            this.updateInputDevice();
             this.scene.render();
         });
         window.addEventListener('resize', () => this.engine.resize());
@@ -297,7 +303,7 @@ export class GameApp {
             return;
         }
         const play = this.play;
-        const need = lockPromptNeeded(play, this.camera.locked);
+        const need = lockPromptNeeded(play, this.camera.locked || this.padPrimary);
         if (this.lockPrompt.hidden === need) {
             this.lockPrompt.hidden = !need;
         }
@@ -400,6 +406,112 @@ export class GameApp {
         return this.PlayScreen && this.current instanceof this.PlayScreen ? this.current : null;
     }
 
+    // ---------------------------------------------------------- gamepad ----
+
+    /**
+     * The gamepad is a second input source: it drives the menus everywhere and,
+     * when the `gamepadPlay` flag is on, play too (see input/GamepadInput.js).
+     */
+    setupGamepad() {
+        this.lastKbMouseAt = Number.NEGATIVE_INFINITY;
+        const touched = () => { this.lastKbMouseAt = performance.now(); };
+        window.addEventListener('keydown', touched, true);
+        window.addEventListener('mousedown', touched, true);
+        window.addEventListener('mousemove', (event) => {
+            if (event.movementX !== 0 || event.movementY !== 0) touched();
+        }, true);
+
+        this.gamepad = new GamepadInput({
+            getBindings: () => this.settings.get('padBindings'),
+            getDeadzone: () => this.settings.get('padDeadzone'),
+            getLookCurve: () => this.settings.get('padLookCurve'),
+            getLatencyMs: () => this.settings.get('padLatencyMs'),
+            getContext: () => {
+                const play = this.play;
+                return play && !play.replay && !play.paused && !play.finished ? 'play' : 'menu';
+            },
+        });
+        const navigator = new MenuNavigator(domSurface(document));
+        this.gamepad.on('nav', (event) => {
+            // While the calibration test is counting taps, A is a tap, not a click on Skip.
+            if (event === 'confirm' && this.calibration?.active) return;
+            navigator.handle(event);
+        });
+        this.gamepad.on('tap', ({ timeStamp }) => this.calibration?.padTap(timeStamp));
+        // The press carries the pad snapshot's own timestamp (less the player's
+        // pad latency setting), so a shot handled a frame late is timed when it
+        // was made, exactly as a mouse click is.
+        this.gamepad.on('fire', ({ timeStamp }) => {
+            const play = this.play;
+            if (!play) return;
+            play.recorder?.noteDevice('pad');
+            play.fire(undefined, timeStamp);
+        });
+        this.gamepad.on('pause', () => {
+            const play = this.play;
+            if (!play) return;
+            if (play.replay) {
+                play.togglePause();
+            } else if (play.paused) {
+                play.resume();
+            } else {
+                this.camera?.unlock();
+                play.pause();
+                this.pauseOverlay.querySelector('[data-action="resume"]')?.focus();
+            }
+        });
+        this.gamepad.on('notice', (message) => toast.info(message));
+        this.gamepad.on('connect', ({ connected }) => {
+            if (connected && !this.gamepad.playEnabled) toast.show('Controller connected: menus only (gamepad play is off in this build).');
+            else if (connected) toast.show('Controller connected.');
+        });
+        this.settings.onChange(() => this.renderPadControls());
+        this.gamepad.start();
+    }
+
+    /** Puts the active device on <body data-input> (the Controls panel and hints follow it) and in the tutorial text. */
+    updateInputDevice() {
+        const device = activeDevice({
+            padConnected: this.gamepad.connected,
+            padActiveAt: this.gamepad.lastActiveAt,
+            kbMouseAt: this.lastKbMouseAt,
+            padPlays: this.gamepad.playEnabled,
+            inPlay: Boolean(this.play),
+        });
+        if (device === this.inputDevice) return;
+        this.inputDevice = device;
+        document.body.dataset.input = device;
+        this.tutorialPanel.device = device;
+        const progress = this.play?.tutorialProgress;
+        if (progress) this.tutorialPanel.update(progress);
+        this.renderPadControls();
+    }
+
+    /** Fills the pad rows of the Controls panel from the current pad bindings. */
+    renderPadControls() {
+        const list = document.getElementById('padControlsList');
+        if (!list) return;
+        list.replaceChildren(...padControlRows(this.settings.get('padBindings')).map((row) => {
+            const item = document.createElement('li');
+            const action = document.createElement('span');
+            action.textContent = row.action;
+            const keys = document.createElement('span');
+            keys.className = 'rail__keys';
+            for (const text of row.keys) {
+                const key = document.createElement('kbd');
+                key.textContent = text;
+                keys.append(key);
+            }
+            item.append(action, keys);
+            return item;
+        }));
+    }
+
+    /** @returns {boolean} the pad, not the mouse, is what the player last touched (so no "click to lock" prompt). */
+    get padPrimary() {
+        return this.gamepad.connected && this.gamepad.playEnabled && this.gamepad.lastActiveAt > this.lastKbMouseAt;
+    }
+
     // --------------------------------------------------------- controls ----
 
     bindControls() {
@@ -425,6 +537,7 @@ export class GameApp {
             if (this.camera?.locked) {
                 if (event.button === 0 || event.button === 2) {
                     event.preventDefault();
+                    play.recorder?.noteDevice('kbm');
                     play.fire(undefined, event.timeStamp);
                 }
             } else if (onStage && event.button === 0) {
@@ -451,6 +564,7 @@ export class GameApp {
                 }
             }
             if (code === this.settings.get('bindings').fire && play && !play.paused) {
+                play.recorder?.noteDevice('kbm');
                 play.fire(undefined, event.timeStamp);
             } else if (play && play.practice && !play.paused && practiceKeyFree(code, this.settings.get('bindings'))) {
                 event.preventDefault(); // Enter must not also click a focused button
