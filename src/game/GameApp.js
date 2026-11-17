@@ -111,6 +111,7 @@ export class GameApp {
             },
             onDaily: () => this.current?.start?.(dailyChartId()),
             onTutorial: () => this.startTutorial(),
+            onCredits: () => this.openCredits(),
         });
         mountGameSettings(options.settingsForm.querySelector('#gameSettings'), this.settings, {
             onCalibrate: () => this.calibration.open({ auto: false }),
@@ -339,6 +340,16 @@ export class GameApp {
     /** Atlas screenshot hook: the first-run calibration screen, nothing saved. */
     showAtlasCalibration() {
         this.calibration.open({ auto: true });
+    }
+
+    /** The in-game Credits overlay (lazy-loaded; renders the same manifests as CREDITS.md). */
+    async openCredits() {
+        const opener = document.activeElement;
+        if (!this.credits) {
+            const [{ CreditsScreen }, { CREDITS }] = await Promise.all([import('../ui/CreditsScreen.js'), import('../ui/creditsManifest.js')]);
+            this.credits = new CreditsScreen(this.menuOverlay, CREDITS);
+        }
+        this.credits.open(opener);
     }
 
     /** Atlas screenshot hook: the settings panel (with rebinding) over the menu. */

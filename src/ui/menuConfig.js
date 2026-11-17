@@ -15,4 +15,5 @@ export const MENU_ITEMS = Object.freeze([
 /** Secondary entries that are not modes (kept out of the seven). */
 export const MENU_EXTRAS = Object.freeze([
     Object.freeze({ id: 'tutorial', label: 'Replay tutorial', action: 'tutorial' }),
+    Object.freeze({ id: 'credits', label: 'Credits', action: 'credits' }),
 ]);

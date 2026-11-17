@@ -6,77 +6,88 @@
       "name": "Dot",
       "shape": "dot",
       "colour": "#ffffff",
-      "starCost": 0
+      "starCost": 0,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-cross",
       "name": "Cross",
       "shape": "cross",
       "colour": "#49e3ff",
-      "starCost": 0
+      "starCost": 0,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-gap-cross",
       "name": "Gap cross",
       "shape": "gap-cross",
       "colour": "#ff3fb4",
-      "starCost": 4
+      "starCost": 4,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-ring",
       "name": "Ring",
       "shape": "ring",
       "colour": "#ffd23f",
-      "starCost": 6
+      "starCost": 6,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-chevron",
       "name": "Chevron",
       "shape": "chevron",
       "colour": "#7dffbb",
-      "starCost": 8
+      "starCost": 8,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-hex",
       "name": "Hex",
       "shape": "hex",
       "colour": "#ffffff",
-      "starCost": 10
+      "starCost": 10,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-diamond",
       "name": "Diamond",
       "shape": "diamond",
       "colour": "#49e3ff",
-      "starCost": 12
+      "starCost": 12,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-t-bar",
       "name": "T bar",
       "shape": "t-bar",
       "colour": "#ff3fb4",
-      "starCost": 14
+      "starCost": 14,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-square",
       "name": "Square",
       "shape": "square",
       "colour": "#ffd23f",
-      "starCost": 16
+      "starCost": 16,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-dot-ring",
       "name": "Dot ring",
       "shape": "dot-ring",
       "colour": "#7dffbb",
-      "starCost": 18
+      "starCost": 18,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
       "id": "xh-bracket",
       "name": "Bracket",
       "shape": "bracket",
       "colour": "#ffffff",
-      "starCost": 20
+      "starCost": 20,
+      "licence": "LICENSES/atlas-procedural-art.txt"
     }
   ]
 }

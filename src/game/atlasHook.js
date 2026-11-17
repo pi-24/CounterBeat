@@ -2,7 +2,7 @@
  * atlasHook.js
  *
  * Optional URL hook for automated screenshots:
- *   ?atlas_scene=<title|play|practice|results|calibration|tutorial|settings>&atlas_seed=<n>&atlas_t=<seconds>
+ *   ?atlas_scene=<title|play|practice|results|calibration|tutorial|settings|credits>&atlas_seed=<n>&atlas_t=<seconds>
  * It renders a seeded state of the real screens and must be harmless in a
  * shipped build: progress is held in memory only, no run is ever submitted and
  * nothing is written to local storage or the account.
@@ -121,6 +121,9 @@ export async function showAtlasScene(app, params) {
     } else if (params.scene === 'calibration') {
         await app.showMenu();
         app.showAtlasCalibration();
+    } else if (params.scene === 'credits') {
+        await app.showMenu();
+        await app.openCredits();
     } else if (params.scene === 'settings') {
         await app.showAtlasSettings();
     } else if (params.scene === 'play' || params.scene === 'tutorial') {

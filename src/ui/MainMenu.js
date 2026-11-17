@@ -74,6 +74,8 @@ export class MainMenu {
             this.openPanel(target);
         } else if (type === 'daily') {
             this.handlers.onDaily();
+        } else if (type === 'credits') {
+            this.handlers.onCredits?.();
         } else if (type === 'tutorial') {
             this.handlers.onTutorial();
         } else if (type === 'page') {

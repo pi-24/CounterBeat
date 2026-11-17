@@ -1,9 +1,46 @@
 {
-  "version": 1,
-  "sparkTexture": "images/spark.png",
+  "version": 2,
+  "spark": {
+    "id": "spark",
+    "name": "Hit spark",
+    "path": "images/spark.png",
+    "licence": "LICENSES/kenney-particle-pack.txt",
+    "author": "Kenney (kenney.nl) - Particle Pack, recoloured by CounterBeat",
+    "placeholder": false
+  },
   "targets": [
-    { "id": "bot", "name": "Bot", "placeholder": true, "starCost": 0, "sheet": "images/bot-sheet.png", "cellWidth": 96, "cellHeight": 128 },
-    { "id": "bot-hex", "name": "Hex Bot", "placeholder": true, "starCost": 10, "sheet": "images/bot-hex-sheet.png", "cellWidth": 96, "cellHeight": 128 },
-    { "id": "bot-chevron", "name": "Chevron Bot", "placeholder": true, "starCost": 20, "sheet": "images/bot-chevron-sheet.png", "cellWidth": 96, "cellHeight": 128 }
+    {
+      "id": "bot",
+      "name": "Bot",
+      "placeholder": false,
+      "starCost": 0,
+      "sheet": "images/bot-sheet.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/kenney-toon-characters.txt",
+      "author": "Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat"
+    },
+    {
+      "id": "bot-hex",
+      "name": "Hex Bot",
+      "placeholder": false,
+      "starCost": 10,
+      "sheet": "images/bot-hex-sheet.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/kenney-toon-characters.txt",
+      "author": "Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat"
+    },
+    {
+      "id": "bot-chevron",
+      "name": "Chevron Bot",
+      "placeholder": false,
+      "starCost": 20,
+      "sheet": "images/bot-chevron-sheet.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/kenney-toon-characters.txt",
+      "author": "Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat"
+    }
   ]
 }

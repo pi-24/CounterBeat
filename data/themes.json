@@ -1,20 +1,121 @@
 {
   "version": 1,
+  "thumbNote": "Level thumbnails (images/levels) are composites of each theme floor and wall texture made by tools/build-art.mjs, not live captures.",
   "palette": {
     "tolerance": 0.2,
     "pixelTolerance": 0.25,
     "maxOutlierFraction": 0.02,
-    "colours": ["#070b1a", "#0f1730", "#1b2547", "#49e3ff", "#ff3fb4", "#ffffff", "#ffd23f", "#ff8a2a", "#7dffbb", "#8a929c", "#3b4048", "#5a4630"]
+    "colours": [
+      "#070b1a",
+      "#0f1730",
+      "#1b2547",
+      "#49e3ff",
+      "#ff3fb4",
+      "#ffffff",
+      "#ffd23f",
+      "#ff8a2a",
+      "#7dffbb",
+      "#8a929c",
+      "#3b4048",
+      "#5a4630"
+    ]
   },
   "themes": [
-    { "id": "range", "name": "Range", "placeholder": true, "starCost": 0,
-      "floorTexture": "images/textures/floor-range.png", "wallTexture": "images/textures/wall-range.png", "thumb": "images/levels/level-1.png",
-      "sky": [0.72, 0.78, 0.86], "fog": { "colour": [0.72, 0.78, 0.86], "density": 0.012 }, "accent": [1.0, 0.54, 0.16], "ambient": 0.85, "decor": "crates" },
-    { "id": "neon", "name": "Neon", "placeholder": true, "starCost": 0,
-      "floorTexture": "images/textures/floor-neon.png", "wallTexture": "images/textures/wall-neon.png", "thumb": "images/levels/level-2.png",
-      "sky": [0.05, 0.04, 0.12], "fog": { "colour": [0.05, 0.04, 0.12], "density": 0.028 }, "accent": [0.42, 0.89, 1.0], "ambient": 0.45, "decor": "neon" },
-    { "id": "vault", "name": "Vault", "placeholder": true, "starCost": 12,
-      "floorTexture": "images/textures/floor-vault.png", "wallTexture": "images/textures/wall-vault.png", "thumb": "images/levels/level-3.png",
-      "sky": [0.03, 0.08, 0.06], "fog": { "colour": [0.03, 0.08, 0.06], "density": 0.040 }, "accent": [0.49, 1.0, 0.73], "ambient": 0.40, "decor": "racks" }
+    {
+      "id": "range",
+      "name": "Range",
+      "placeholder": false,
+      "starCost": 0,
+      "floorTexture": "images/textures/floor-range.png",
+      "wallTexture": "images/textures/wall-range.png",
+      "thumb": "images/levels/level-1.png",
+      "sky": [
+        0.72,
+        0.78,
+        0.86
+      ],
+      "fog": {
+        "colour": [
+          0.72,
+          0.78,
+          0.86
+        ],
+        "density": 0.012
+      },
+      "accent": [
+        1,
+        0.54,
+        0.16
+      ],
+      "ambient": 0.85,
+      "decor": "crates",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "author": "Kenney (kenney.nl) - Prototype Textures, recoloured by CounterBeat",
+      "thumbSource": "f9ae499926cba926ada4f8c1a255642a119fe6e87fa9762d287480cd3f334e98"
+    },
+    {
+      "id": "neon",
+      "name": "Neon",
+      "placeholder": false,
+      "starCost": 0,
+      "floorTexture": "images/textures/floor-neon.png",
+      "wallTexture": "images/textures/wall-neon.png",
+      "thumb": "images/levels/level-2.png",
+      "sky": [
+        0.05,
+        0.04,
+        0.12
+      ],
+      "fog": {
+        "colour": [
+          0.05,
+          0.04,
+          0.12
+        ],
+        "density": 0.028
+      },
+      "accent": [
+        0.42,
+        0.89,
+        1
+      ],
+      "ambient": 0.45,
+      "decor": "neon",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "author": "Kenney (kenney.nl) - Prototype Textures, recoloured by CounterBeat",
+      "thumbSource": "87ede07f067f257f27091121937a8e51fa3ae79f0e02be170a1b1244c39a5653"
+    },
+    {
+      "id": "vault",
+      "name": "Vault",
+      "placeholder": false,
+      "starCost": 12,
+      "floorTexture": "images/textures/floor-vault.png",
+      "wallTexture": "images/textures/wall-vault.png",
+      "thumb": "images/levels/level-3.png",
+      "sky": [
+        0.03,
+        0.08,
+        0.06
+      ],
+      "fog": {
+        "colour": [
+          0.03,
+          0.08,
+          0.06
+        ],
+        "density": 0.04
+      },
+      "accent": [
+        0.49,
+        1,
+        0.73
+      ],
+      "ambient": 0.4,
+      "decor": "racks",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "author": "Kenney (kenney.nl) - Prototype Textures, recoloured by CounterBeat",
+      "thumbSource": "92b23eba9aaf439d5798e6a8830713f080ce32dcb699dab01ab28a444295a123"
+    }
   ]
 }

@@ -5,10 +5,12 @@
  * placeholder flag, referenced files, PNG format and palette conformity.
  * Exit code 1 on any error.  Also importable (validateAll) for tests.
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { buildCredits, creditsMarkdown } from '../src/ui/creditsData.js';
 import { resolve, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -115,20 +117,52 @@ export function paletteDistance(image, palette) {
     return paletteStats(image, palette).mean;
 }
 
+/** Hash of the textures a level thumbnail is derived from (tools/build-art.mjs buildThumbs). */
+export function thumbSourceHash(root, theme) {
+    const h = createHash('sha256');
+    for (const f of [theme.floorTexture, theme.wallTexture]) { const file = resolve(root, 'public', f); if (existsSync(file)) h.update(readFileSync(file)); }
+    return h.digest('hex');
+}
+
 // -------------------------------------------------------------- validation
 const isStr = (v) => typeof v === 'string' && v.length > 0;
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isColour = (v) => Array.isArray(v) && v.length === 3 && v.every((n) => isNum(n) && n >= 0 && n <= 1);
 
 /** @returns {string[]} errors */
+const IMG_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i;
+
+/** Image references that actually load: url(), <img src>, import specifiers. Comments are ignored. */
+export function imageRefs(text) {
+    const clean = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*\/\/.*$/gm, '');
+    const out = [];
+    const pats = [
+        /url\(\s*['"]?([^)'"\s]+)/gi,
+        /<img\b[^>]*?\ssrc\s*=\s*['"]([^'"]+)['"]/gi,
+        /\bimport\s*(?:[^'"()]*?\bfrom\s*)?\(?\s*['"]([^'"]+)['"]/g,
+    ];
+    for (const re of pats) for (const m of clean.matchAll(re)) if (IMG_EXT.test(m[1].split(/[?#]/)[0])) out.push(m[1]);
+    return out;
+}
+
+/** Resolve a reference to a public-relative path (the manifest form); null for external/data URLs. */
+export function canonicalImageRef(raw, fromDir, root) {
+    const r = raw.split(/[?#]/)[0];
+    if (/^(https?:|data:)/i.test(r)) return null;
+    let abs = r.startsWith('/') ? resolve(root, 'public', r.slice(1)) : resolve(fromDir, r);
+    let rel = abs.slice(root.length + 1).split('\\').join('/');
+    if (rel.startsWith('public/')) rel = rel.slice(7);
+    return rel;
+}
+
 export function validateAll({ root = ROOT, manifests } = {}) {
     const errors = [];
     const err = (m) => errors.push(m);
     const load = (n) => manifests?.[n.replace('.json', '')] ?? loadManifest(n, root);
-    let tracks, themes, targets, crosshairs;
+    let tracks, themes, targets, crosshairs, art;
     try {
         tracks = load('tracks.json'); themes = load('themes.json');
-        targets = load('targets.json'); crosshairs = load('crosshairs.json');
+        targets = load('targets.json'); crosshairs = load('crosshairs.json'); art = load('art.json');
     } catch (e) { return [`cannot read manifests: ${e.message}`]; }
 
     const publicFile = (rel, what) => {
@@ -179,7 +213,14 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     else { try { palette.colours.forEach(hexToRgb); } catch (e) { err(e.message); } }
 
     const isPow2 = (n) => n > 0 && (n & (n - 1)) === 0;
-    const checkImage = (rel, what, { pow2 = false } = {}) => {
+    const referenced = new Set();
+    const checkLicence = (lic, what) => {
+        if (!isStr(lic)) err(`${what}: missing licence path`);
+        else if (!existsSync(resolve(root, lic))) err(`${what}: licence file ${lic} not found`);
+    };
+    const checkImage = (rel, what, { pow2 = false, licence } = {}) => {
+        if (isStr(rel)) referenced.add(rel.split('\\').join('/'));
+        checkLicence(licence, what);
         const full = publicFile(rel, what);
         if (!full) return;
         if (extname(full).toLowerCase() !== '.png') { err(`${what}: ${rel} must be a PNG`); return; }
@@ -202,7 +243,8 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     checkIds(themes.themes, 'themes');
     if ((themes.themes ?? []).length < 3) err('themes: need at least 3');
     for (const t of themes.themes ?? []) {
-        for (const f of ['floorTexture', 'wallTexture', 'thumb']) checkImage(t[f], `theme ${t.id} ${f}`, { pow2: f !== 'thumb' });
+        if (t.thumbSource !== thumbSourceHash(root, t)) err(`theme ${t.id}: thumb is stale (textures changed); run node tools/build-art.mjs`);
+        for (const f of ['floorTexture', 'wallTexture', 'thumb']) checkImage(t[f], `theme ${t.id} ${f}`, { pow2: f !== 'thumb', licence: t.licence });
         if (!isColour(t.sky)) err(`theme ${t.id}: sky must be [r,g,b] 0..1`);
         if (!isColour(t.accent)) err(`theme ${t.id}: accent must be [r,g,b] 0..1`);
         if (!isColour(t.fog?.colour) || !isNum(t.fog?.density)) err(`theme ${t.id}: fog needs colour and density`);
@@ -214,9 +256,9 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     // targets
     checkIds(targets.targets, 'targets');
     if ((targets.targets ?? []).length < 3) err('targets: need at least 3 skins');
-    checkImage(targets.sparkTexture, 'sparkTexture');
+    checkImage(targets.spark?.path, 'spark', { licence: targets.spark?.licence });
     for (const t of targets.targets ?? []) {
-        checkImage(t.sheet, `target ${t.id} sheet`);
+        checkImage(t.sheet, `target ${t.id} sheet`, { licence: t.licence });
         if (!isNum(t.cellWidth) || !isNum(t.cellHeight)) err(`target ${t.id}: cellWidth/cellHeight required`);
         if (typeof t.placeholder !== 'boolean') err(`target ${t.id}: placeholder flag must be boolean`);
     }
@@ -227,7 +269,63 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     for (const c of crosshairs.crosshairs ?? []) {
         if (!isStr(c.shape)) err(`crosshair ${c.id}: missing shape`);
         if (!/^#[0-9a-f]{6}$/i.test(c.colour ?? '')) err(`crosshair ${c.id}: colour must be #rrggbb`);
+        checkLicence(c.licence, `crosshair ${c.id}`);
     }
+
+    // other images (emblem, hero, ...)
+    for (const p of art?.packs ?? []) {
+        if (!isStr(p.id) || !isStr(p.name) || !isStr(p.author)) err('art.json: pack needs id, name and author');
+        else if (!isStr(p.licence) || !existsSync(resolve(root, p.licence))) err(`art pack ${p.id}: licence file "${p.licence}" does not exist`);
+    }
+    {
+        const known = new Set((art?.packs ?? []).map((p) => p.licence));
+        const used = [...(themes?.themes ?? []), ...(targets?.targets ?? []), targets?.spark, ...(crosshairs?.crosshairs ?? []), ...(art?.images ?? [])];
+        for (const e of used) {
+            if (e?.licence && /^LICENSES\/kenney-/.test(e.licence) && !known.has(e.licence)) err(`${e.id}: pack licence ${e.licence} is not listed in art.json packs`);
+        }
+    }
+    if (!Array.isArray(art?.images)) err('art.json: images must be an array');
+    for (const i of art?.images ?? []) {
+        if (!isStr(i.id) || !isStr(i.name)) err('art.json: image needs id and name');
+        checkImage(i.path, `art ${i.id}`, { licence: i.licence });
+    }
+
+    // every image under public/ must be in a manifest; HTML, CSS and src/ may not
+    // reference any image (url(), <img>, import) that is not a manifest entry.
+    const walk = (dir, base) => {
+        if (!existsSync(dir)) return [];
+        return readdirSync(dir).flatMap((n) => {
+            const full = resolve(dir, n); const rel = `${base}${n}`;
+            return statSync(full).isDirectory() ? walk(full, `${rel}/`) : [rel];
+        });
+    };
+    const scanFiles = (dir) => {
+        if (!existsSync(dir)) return [];
+        return readdirSync(dir).flatMap((n) => {
+            const full = resolve(dir, n);
+            if (statSync(full).isDirectory()) return n === 'node_modules' ? [] : scanFiles(full);
+            return /\.(html|css|js|mjs)$/i.test(n) ? [full] : [];
+        });
+    };
+    for (const f of walk(resolve(root, 'public'), '')) {
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(f) && !referenced.has(f)) err(`image public/${f} is not in any manifest`);
+    }
+
+    const sources = [...scanFiles(resolve(root, 'src')), ...readdirSync(root).filter((n) => /\.html$/i.test(n)).map((n) => resolve(root, n))];
+    for (const file of sources) {
+        const rel = file.slice(root.length + 1);
+        for (const raw of imageRefs(readFileSync(file, 'utf8'))) {
+            const ref = canonicalImageRef(raw, resolve(file, '..'), root);
+            if (ref && !referenced.has(ref)) err(`${rel} references image ${raw} which is not in any manifest`);
+        }
+    }
+
+    // CREDITS.md must list every pack and licence
+    try {
+        const file = resolve(root, 'CREDITS.md');
+        if (!existsSync(file)) err('CREDITS.md missing; run node tools/gen-credits.mjs');
+        else if (readFileSync(file, 'utf8') !== creditsMarkdown(buildCredits({ tracks, themes, targets, crosshairs, art }))) err('CREDITS.md is stale; run node tools/gen-credits.mjs');
+    } catch (e) { err(`CREDITS.md check failed: ${e.message}`); }
     return errors;
 }
 

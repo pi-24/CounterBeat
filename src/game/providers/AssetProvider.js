@@ -17,11 +17,11 @@ export function indexById(list, what) {
 
 export class AssetProvider {
     /**
-     * @param {{ sparkTexture:string }} targetsManifest
+     * @param {{ spark:{path:string} }} targetsManifest
      * @param {{ sfx:Record<string,string[]>, menuMusic:{key:string,audio:string[]} }} tracksManifest
      */
     constructor(targetsManifest, tracksManifest) {
-        this.sparkUrl = targetsManifest.sparkTexture;
+        this.sparkUrl = targetsManifest.spark.path;
         this.sfx = tracksManifest.sfx;
         this.menuMusic = tracksManifest.menuMusic;
     }

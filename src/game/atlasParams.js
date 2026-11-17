@@ -2,7 +2,7 @@
  * atlasParams.js - the atlas URL parameters, in a module with no imports so the page's
  * first script can read them without pulling in the rest of the game.
  */
-export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'practice', 'calibration', 'tutorial', 'settings']);
+export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'practice', 'calibration', 'tutorial', 'settings', 'credits']);
 
 /**
  * @param {string} search a location.search string

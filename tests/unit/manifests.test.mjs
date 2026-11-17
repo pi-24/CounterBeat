@@ -47,7 +47,7 @@ test('manifest tracks match the rules TRACKS and arenas', () => {
 test('providers resolve from the manifest, so swapping is a manifest edit', () => {
     const { x } = providers();
     x.tracks.tracks[0].audio = ['audio/other.ogg'];
-    x.targets.sparkTexture = 'images/other.png';
+    x.targets.spark.path = 'images/other.png';
     assert.deepEqual(new TrackProvider(x.tracks).musicUrls(x.tracks.tracks[0].id), ['audio/other.ogg']);
     assert.equal(new AssetProvider(x.targets, x.tracks).spark(), 'images/other.png');
 });

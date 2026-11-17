@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "images": [
+    {
+      "id": "emblem",
+      "name": "CounterBeat emblem",
+      "path": "images/emblem.png",
+      "licence": "LICENSES/atlas-procedural-art.txt",
+      "author": "CounterBeat (generated for this project)",
+      "usage": "Home page hero and icon"
+    }
+  ],
+  "packs": [
+    {
+      "id": "toon-characters",
+      "name": "Kenney - Toon Characters (kenney.nl)",
+      "author": "Kenney (kenney.nl)",
+      "licence": "LICENSES/kenney-toon-characters.txt",
+      "note": "CC0 1.0, recoloured to the CounterBeat palette"
+    },
+    {
+      "id": "particle-pack",
+      "name": "Kenney - Particle Pack (kenney.nl)",
+      "author": "Kenney (kenney.nl)",
+      "licence": "LICENSES/kenney-particle-pack.txt",
+      "note": "CC0 1.0, recoloured to the CounterBeat palette"
+    },
+    {
+      "id": "prototype-textures",
+      "name": "Kenney - Prototype Textures (kenney.nl)",
+      "author": "Kenney (kenney.nl)",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "note": "CC0 1.0, recoloured to the CounterBeat palette"
+    }
+  ]
+}
