@@ -60,3 +60,53 @@ screenshots, cut list runtime and short-description length).
 2. Replace the App ID in `data/steam.json`, and set up achievements and Auto-Cloud (see `docs/steam-cloud.md`).
 3. Decide price and release date, answer the age-rating questionnaire, finalise the store text.
 4. Approve the capsule art or replace it.
+
+## Local depot build (Atlas, no upload)
+
+```
+npm run depot          # vite build + electron-builder + stage into release/depot/
+npm run depot:stage    # re-stage an existing release/win-unpacked only
+```
+
+`tools/build-depot.mjs` writes (all under `release/depot/`, git-ignored):
+
+- `content/` - the Windows game files (the electron-builder `win-unpacked` output).
+- `scripts/app_build_<APPID>.vdf` and `scripts/depot_build_<DEPOTID>.vdf` - generated from the App ID in `data/steam.json`.
+  The depot ID is `depotId` in `data/steam.json` if you set it, otherwise App ID + 1 (Steam's default); set `depotId` if the partner site shows another one. The unpacked folder and exe name are read from `electron-builder.json` (`directories.output`, `productName`). `SetLive` is left empty,
+  so an uploaded build never goes live by itself.
+
+It never runs `steamcmd`, never talks to Steam and never needs a login.
+
+## What only the creator can do
+
+Atlas does not do, and has no way to do, any of these. Nothing is uploaded, published, priced or released without you.
+
+1. **Steamworks account.** Create the partner account and sign the Steamworks agreement.
+2. **Tax and bank forms.** Complete the tax interview and bank/payment details in the Steamworks partner site.
+3. **Steam Direct fee.** Pay the Steam Direct app fee for the game.
+4. **App ID hand-over.** Create the app, then put the real App ID in `data/steam.json` (and set `appIdIsPlaceholder` to `false`).
+   Never put keys, passwords, Steam Guard codes or publisher keys in the repo or in chat; only the numeric App ID is needed.
+5. **Music choice (S5).** Pick the free / royalty-free tracks by ear from Atlas's shortlist and handle any download or sign-up.
+6. **Price, release date, store text (S6).** Decide all three, answer the age-rating questionnaire, and finalise the store text.
+7. **Run every upload.** Uploading, setting a build live, publishing the store page, pricing and release are yours:
+   - Upload a staged depot with `steamcmd`, only through the guarded script below.
+   - Setting a build live, publishing the store page, pricing and the release button are done by hand in the Steamworks partner site.
+   There is no script for those last four.
+
+### The guarded upload script
+
+```
+npm run depot
+node tools/steam-upload.mjs --i-am-the-creator-approving --steam-user=<your Steam login>
+```
+
+`tools/steam-upload.mjs` is the only script in the repo that calls `steamcmd`. It exits non-zero and does nothing unless:
+
+- the flag `--i-am-the-creator-approving` is given,
+- it is not running in CI (`CI`, `GITHUB_ACTIONS` and similar are set),
+- stdin and stdout are a real terminal (piped or redirected runs are refused),
+- the cheap checks pass first, so you are never asked to type for a run that would fail: the App ID in `data/steam.json` is no longer the placeholder 480, `--steam-user=<login>` is given and a depot has been staged (`npm run depot`),
+- and you type `UPLOAD` at the prompt.
+
+`steamcmd` asks for your password itself. `tests/unit/release-guard.test.mjs` checks that the guard rejects non-interactive runs
+and that no other script, npm script or workflow can launch `steamcmd`.
