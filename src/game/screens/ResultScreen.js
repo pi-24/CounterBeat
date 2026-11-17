@@ -10,7 +10,7 @@ import { resolveChart, DIFFICULTIES, TRACKS } from '../rules/charts.js';
 import { Showcase } from '../fps/Showcase.js';
 import { el } from '../../ui/format.js';
 import { GRADE_ICONS } from '../feel/judgementPalette.js';
-import { themeProvider } from '../providers/index.js';
+import { themeProvider, feedbackBus } from '../providers/index.js';
 import { awardsStars } from '../progress/stars.js';
 import { newlyUnlocked } from '../progress/unlocks.js';
 import { buildResultsView, renderHistogram } from '../../ui/Results.js';
@@ -50,6 +50,13 @@ export class ResultScreen {
     /** Records the run's stars in the local progress store (never sent to the server). */
     recordStars() {
         const progress = this.app.services.progress;
+        if (!this.isReplay && !this.level.tutorial) {
+            const r = this.record;
+            feedbackBus.emit('runComplete', {
+                mode: this.runMode, difficulty: r.difficulty, rank: r.rank, completed: r.completed,
+                passed: r.passed === true, fullCombo: r.completed === true && r.missed === 0,
+            });
+        }
         const run = {
             mode: this.runMode, trackId: this.level.trackId, difficulty: this.record.difficulty, speed: this.runSpeed,
         };
@@ -59,6 +66,7 @@ export class ResultScreen {
         }
         const prev = progress.starsFor(run.trackId, run.difficulty);
         const { before, total } = progress.record(run, { ...this.record, ...this.stopQuality });
+        feedbackBus.emit('starsChanged', { total });
         const best = progress.starsFor(run.trackId, run.difficulty);
         const groups = {
             theme: [...themeProvider.themes.values()],

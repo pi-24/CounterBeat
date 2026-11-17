@@ -19,7 +19,9 @@ import { MenuScreen } from './screens/MenuScreen.js';
 import { SettingsPanel } from './screens/SettingsPanel.js';
 import { Calibration } from './screens/Calibration.js';
 import { SongLibrary } from './library/SongLibrary.js';
-import { assets, themeProvider } from './providers/index.js';
+import { assets, themeProvider, feedbackBus } from './providers/index.js';
+import { AchievementTracker } from '../progress/AchievementTracker.js';
+import achievementsManifest from '../../data/achievements.json';
 import { CosmeticsPanel } from './screens/CosmeticsPanel.js';
 import { toast } from '../ui/Toast.js';
 import { store } from '../core/Storage.js';
@@ -54,6 +56,7 @@ export class GameApp {
      * @param {GameServices} options.services
      * @param {{chartId:string, log:object}} [options.replay] open this replay first
      * @param {{clicked:boolean}} [options.early] the page's early Play splash state
+     * @param {boolean} [options.achievements] Steam achievements on/off (default: on unless skipStart)
      * @param {boolean} [options.skipStart] no Play splash (screenshot hook and replay links)
      * @param {{read:Function, write:Function}} [options.storage] holds the first-run flag
      */
@@ -69,6 +72,15 @@ export class GameApp {
         this.early = options.early ?? { clicked: false };
         this.skipStart = Boolean(options.skipStart);
         this.storage = options.storage ?? store;
+        // Steam achievements (desktop build; pending while Steam is absent). Off for atlas/replay links.
+        this.achievements = options.achievements ?? !this.skipStart
+            ? new AchievementTracker(feedbackBus, this.storage, () => globalThis.counterbeatDesktop?.steam ?? null, achievementsManifest.achievements)
+            : null;
+        if (this.achievements) {
+            window.addEventListener('counterbeat-steam-ready', () => this.achievements.flush());
+            window.addEventListener('pagehide', () => this.achievements.persist());
+            document.addEventListener('visibilitychange', () => document.hidden && this.achievements.persist());
+        }
         this.startOverlay = document.getElementById('startOverlay');
         this.lockPrompt = document.getElementById('lockPrompt');
 

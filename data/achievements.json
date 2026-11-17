@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "note": "Single source for Steam achievements. trigger.event is a FeedbackBus event name. Without trigger.field the achievement counts matching events (payload must equal every trigger.where entry) until threshold; with trigger.field it unlocks when payload[field] >= threshold. Steam API names must also be listed in data/steam.json.",
+  "achievements": [
+    { "id": "first_clear", "steamApiName": "ACH_FIRST_CLEAR", "name": "First Clear", "description": "Pass a chart.", "trigger": { "event": "runComplete", "where": { "passed": true }, "threshold": 1 } },
+    { "id": "stars_10", "steamApiName": "ACH_STARS_10", "name": "Rising Star", "description": "Earn 10 stars.", "trigger": { "event": "starsChanged", "field": "total", "threshold": 10 } },
+    { "id": "stars_25", "steamApiName": "ACH_STARS_25", "name": "Constellation", "description": "Earn 25 stars.", "trigger": { "event": "starsChanged", "field": "total", "threshold": 25 } },
+    { "id": "stars_40", "steamApiName": "ACH_STARS_40", "name": "Night Sky", "description": "Earn 40 stars.", "trigger": { "event": "starsChanged", "field": "total", "threshold": 40 } },
+    { "id": "campaign_complete", "steamApiName": "ACH_CAMPAIGN_COMPLETE", "name": "Full Spectrum", "description": "Earn all 54 campaign stars.", "trigger": { "event": "starsChanged", "field": "total", "threshold": 54 } },
+    { "id": "first_s_rank", "steamApiName": "ACH_FIRST_S_RANK", "name": "S-Rank", "description": "Finish a chart with an S rank.", "trigger": { "event": "runComplete", "where": { "rank": "S" }, "threshold": 1 } },
+    { "id": "full_combo", "steamApiName": "ACH_FULL_COMBO", "name": "Flawless", "description": "Finish a chart without a single miss.", "trigger": { "event": "runComplete", "where": { "completed": true, "fullCombo": true }, "threshold": 1 } },
+    { "id": "hard_clear", "steamApiName": "ACH_HARD_CLEAR", "name": "Tight Windows", "description": "Pass a chart on Hard.", "trigger": { "event": "runComplete", "where": { "difficulty": "hard", "passed": true }, "threshold": 1 } },
+    { "id": "expert_clear", "steamApiName": "ACH_EXPERT_CLEAR", "name": "Expert", "description": "Pass a chart on Expert.", "trigger": { "event": "runComplete", "where": { "difficulty": "expert", "passed": true }, "threshold": 1 } },
+    { "id": "tutorial_complete", "steamApiName": "ACH_TUTORIAL_COMPLETE", "name": "Fundamentals", "description": "Complete all three tutorial stages: Stop, Time, Aim.", "trigger": { "event": "tutorialComplete", "threshold": 1 } },
+    { "id": "practice_loop", "steamApiName": "ACH_PRACTICE_LOOP", "name": "Again and Again", "description": "Finish a Practice loop pass.", "trigger": { "event": "practiceLoopPass", "threshold": 1 } },
+    { "id": "first_perfect_stop", "steamApiName": "ACH_FIRST_PERFECT_STOP", "name": "Click", "description": "Land your first perfect stop.", "trigger": { "event": "perfectStop", "threshold": 1 } },
+    { "id": "perfect_stops_250", "steamApiName": "ACH_PERFECT_STOPS_250", "name": "Dead Stop", "description": "Land 250 perfect stops.", "trigger": { "event": "perfectStop", "threshold": 250 } },
+    { "id": "headshots_100", "steamApiName": "ACH_HEADSHOTS_100", "name": "Head Hunter", "description": "Land 100 headshots.", "trigger": { "event": "hit", "where": { "headshot": true }, "threshold": 100 } }
+  ]
+}

@@ -359,6 +359,7 @@ export class PlayScreen {
             if (this.practice && this.section && !this.atlas) {
                 // Loop: keep this pass's stats, then rewind in place (no scene rebuild).
                 this.loopPasses = recordLoopPass(this.loopPasses, this.scorer);
+                feedbackBus.emit('practiceLoopPass', { passes: this.loopPasses.length });
                 this.resetPass();
                 return;
             }
@@ -598,6 +599,7 @@ export class PlayScreen {
         }
         if (result === 'complete') {
             this.clearedAt = this.conductor.songPosition; // wind the run down
+            feedbackBus.emit('tutorialComplete', {});
         }
         this.app.tutorialPanel.update(progress, this.tutorialFailed);
     }
@@ -963,6 +965,7 @@ export class PlayScreen {
     endPractice() {
         if (this.section && this.scorer.judged > 0) {
             this.loopPasses = recordLoopPass(this.loopPasses, this.scorer);
+            feedbackBus.emit('practiceLoopPass', { passes: this.loopPasses.length });
         }
         this.finish(true);
     }

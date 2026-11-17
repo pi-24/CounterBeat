@@ -273,6 +273,7 @@ async function boot() {
             early,
             replay,
             skipStart: Boolean(atlasParams),
+            achievements: !atlasParams,
             storage: atlasParams ? memoryStorage() : undefined,
             canvas,
             stage,
