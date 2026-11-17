@@ -20,7 +20,7 @@ import { ProgressStore } from '../game/progress/store.js';
 import { formatScore, formatAccuracy, el } from '../ui/format.js';
 import { toast } from '../ui/Toast.js';
 import { early } from './game-early.js';
-import { parseAtlasParams, atlasServices, memoryStorage, showAtlasScene, markAtlasReady } from '../game/atlasHook.js';
+import { parseAtlasParams, parseAtlasClean, atlasServices, memoryStorage, showAtlasScene, markAtlasReady } from '../game/atlasHook.js';
 
 
 
@@ -289,7 +289,7 @@ async function boot() {
                 calibration: document.getElementById('calibrationOverlay'),
             },
             settingsForm: document.getElementById('settingsForm'),
-            services: atlasParams ? atlasServices(services) : services,
+            services: atlasParams ? atlasServices(services, { clean: parseAtlasClean(window.location.search) }) : services,
         });
         await app.boot();
         if (atlasParams) {

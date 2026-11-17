@@ -73,3 +73,27 @@ test('markAtlasReady still signals when a step fails or is missing', async () =>
     assert.equal(globalThis.window.__atlasReady, true);
     delete globalThis.window;
 });
+
+test('atlas_clean is opt-in and only changes the guest wording', async () => {
+    const { parseAtlasClean } = await import('../../src/game/atlasHook.js');
+    assert.equal(parseAtlasClean('?atlas_scene=play'), false);
+    assert.equal(parseAtlasClean('?atlas_scene=play&atlas_clean=1'), true);
+    assert.equal(parseAtlasClean('?atlas_clean=0'), false);
+    assert.equal(atlasServices({}).isLoggedIn(), false);
+    assert.equal(atlasServices({}, { clean: true }).isLoggedIn(), true);
+    // still saves and submits nothing in clean mode
+    const clean = atlasServices({ onRunComplete: () => assert.fail('submitted') }, { clean: true });
+    assert.equal(clean.startRun('t:neon:normal'), null);
+    assert.equal((await clean.onRunComplete({ score: 5 })).saved, false);
+});
+
+test('the play scene bot records a real, clean run of the chart it shows', async () => {
+    const { atlasBotLog, atlasChartId } = await import('../../src/game/atlasHook.js');
+    for (const seed of [0, 1, 2, 3]) {
+        const log = await atlasBotLog(atlasChartId(seed));
+        assert.ok(log, 'bot log');
+        assert.equal(log.chartId, atlasChartId(seed));
+        assert.ok(log.shots.length > 40, 'it fires at the notes');
+        assert.ok(log.ticks.length > 1000);
+    }
+});

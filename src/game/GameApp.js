@@ -365,9 +365,9 @@ export class GameApp {
     }
 
     /** Atlas screenshot hook: a play screen on a frozen, caller-driven clock. No audio, no results. */
-    async switchToAtlasPlay(chartId, clock) {
+    async switchToAtlasPlay(chartId, clock, extra = {}) {
         await this.ready3d;
-        return this.switchTo(new this.PlayScreen(this, chartId, { mode: 'quickPlay', atlas: clock }));
+        return this.switchTo(new this.PlayScreen(this, chartId, { mode: 'quickPlay', atlas: clock, ...extra }));
     }
 
     /** Atlas screenshot hook: a practice play screen on a caller-driven clock (loop set, no audio, nothing saved). */

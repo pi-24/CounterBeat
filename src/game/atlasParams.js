@@ -24,3 +24,13 @@ export function parseAtlasParams(search) {
         t: Math.min(30, Math.max(0, num('atlas_t', 8))),
     };
 }
+
+/**
+ * Store-capture switch (?atlas_clean=1): drops the web-only guest wording and the placeholder-music
+ * tag so a Steam store screenshot shows the desktop game as it will ship. Off by default.
+ * @param {string} search a location.search string
+ * @returns {boolean}
+ */
+export function parseAtlasClean(search) {
+    return new URLSearchParams(search).get('atlas_clean') === '1';
+}

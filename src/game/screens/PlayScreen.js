@@ -75,6 +75,9 @@ export class PlayScreen {
         this.initialTutorialProgress = options.tutorialProgress ?? null;
         /** {t:number} clock driven by the atlas screenshot hook (no audio, never finishes into results). */
         this.atlas = options.atlas ?? null;
+        /** Atlas store captures only: a scripted run shown as live play (no REPLAY tag), optionally without the placeholder-music tag. */
+        this.atlasDemo = Boolean(options.atlas && options.replay);
+        this.atlasClean = Boolean(options.atlasClean);
         /** Seconds added to the atlas clock so captures start just before the first note (0 outside atlas). */
         this.leadInOffset = 0;
         /** 'campaign' | 'quickPlay' | 'daily' | 'ranked' - decides fail-out with the difficulty. */
@@ -182,9 +185,9 @@ export class PlayScreen {
         camera.update(Arena.toWorldX(this.body.x), 0, 0);
 
         hud.show();
-        const placeholderTag = this.level.trackId && !this.level.custom && trackProvider.isPlaceholder(this.level.trackId)
+        const placeholderTag = !this.atlasClean && this.level.trackId && !this.level.custom && trackProvider.isPlaceholder(this.level.trackId)
             ? ' · placeholder music' : '';
-        hud.setLevel(`${this.replay ? `REPLAY · ${this.level.name}` : this.level.name}${placeholderTag}`, this.level.bpm);
+        hud.setLevel(`${this.replay && !this.atlasDemo ? `REPLAY · ${this.level.name}` : this.level.name}${placeholderTag}`, this.level.bpm);
         hud.buildLanes(this.lanes.count);
         hud.applyCrosshair(settings);
         hud.applyVisibility(settings);

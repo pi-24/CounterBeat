@@ -10,9 +10,9 @@
 import { resolveChart, TRACKS } from './rules/charts.js';
 import { BeatMap } from './rules/BeatMap.js';
 import { ProgressStore } from './progress/store.js';
-import { ATLAS_SCENES, parseAtlasParams } from './atlasParams.js';
+import { ATLAS_SCENES, parseAtlasParams, parseAtlasClean } from './atlasParams.js';
 
-export { ATLAS_SCENES, parseAtlasParams };
+export { ATLAS_SCENES, parseAtlasParams, parseAtlasClean };
 
 /** @returns {{write:Function, read:Function, remove:Function, writes:number}} storage that keeps nothing */
 export function memoryStorage() {
@@ -29,12 +29,13 @@ export function memoryStorage() {
  * Services for an atlas scene: in-memory progress, no account, and a
  * run-complete handler that saves and submits nothing.
  * @param {object} base the page's real services (only the read-only parts are reused)
+ * @param {{clean?: boolean}} [options] clean: store-capture wording (no guest notice)
  */
-export function atlasServices(base) {
+export function atlasServices(base, options = {}) {
     return {
         progress: new ProgressStore(memoryStorage()),
-        getPlayerName: () => 'Guest',
-        isLoggedIn: () => false,
+        getPlayerName: () => (options.clean ? 'Player' : 'Guest'),
+        isLoggedIn: () => Boolean(options.clean),
         hasPassed: () => false,
         getPersonalBest: () => 0,
         startRun: () => null,
@@ -73,6 +74,22 @@ export function syntheticRun(seed) {
         },
         stopQuality: { stopShots: notes, stopGood: notes },
     };
+}
+
+/**
+ * A scripted run of a chart (the same bot the replay validator tests use), as a RunRecorder log, so a
+ * screenshot shows live score, combo and accuracy. Loaded on demand: it only ever runs for ?atlas_scene=play.
+ * @param {string} chartId
+ * @returns {Promise<object|null>} null when the bot cannot run (the scene then shows the idle chart)
+ */
+export async function atlasBotLog(chartId) {
+    try {
+        const { playAndRecord } = await import('../../tools/lib/scripted-player.mjs');
+        return playAndRecord(resolveChart(chartId), { mode: 'quickPlay', reaction: 0.03 }).log;
+    } catch (error) {
+        console.warn('atlas bot unavailable', error);
+        return null;
+    }
 }
 
 /** The looped section (in beats) a practice screenshot shows. */
@@ -128,7 +145,11 @@ export async function showAtlasScene(app, params) {
         await app.showAtlasSettings();
     } else if (params.scene === 'play' || params.scene === 'tutorial') {
         const clock = { t: 0 };
-        await app.switchToAtlasPlay(params.scene === 'tutorial' ? 'tutorial' : atlasChartId(params.seed), clock);
+        const tutorial = params.scene === 'tutorial';
+        const chartId = tutorial ? 'tutorial' : atlasChartId(params.seed);
+        const replay = tutorial ? null : await atlasBotLog(chartId);
+        const atlasClean = parseAtlasClean(window.location.search);
+        await app.switchToAtlasPlay(chartId, clock, replay ? { replay, atlasClean } : { atlasClean });
         const step = 1 / 30; // at most 900 coarse updates
         while (clock.t < params.t) {
             clock.t += step;
