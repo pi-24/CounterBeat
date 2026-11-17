@@ -12,6 +12,8 @@ export interface SteamBridge {
     getPlayerName(): Promise<string | null>;
     unlockAchievement(name: string): Promise<boolean>;
     isAchievementUnlocked(name: string): Promise<boolean>;
+    /** Hex auth session ticket for ranked sign-in, or null when Steam is unavailable. */
+    getAuthTicket(): Promise<string | null>;
 }
 declare global {
     interface Window {

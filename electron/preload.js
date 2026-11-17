@@ -3,7 +3,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 // Sandboxed preloads cannot require local files, so this list is duplicated from
 // electron/steam/NullSteamService.js API_METHODS; tests/unit/steam-init.test.mjs enforces parity.
-const STEAM_METHODS = ['getStatus', 'getPlayerName', 'unlockAchievement', 'isAchievementUnlocked'];
+const STEAM_METHODS = ['getStatus', 'getPlayerName', 'unlockAchievement', 'isAchievementUnlocked', 'getAuthTicket'];
 const steam = {};
 for (const m of STEAM_METHODS) steam[m] = (arg) => ipcRenderer.invoke(`cb:steam:${m}`, arg);
 

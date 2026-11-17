@@ -25,6 +25,14 @@ class SteamService {
     isAchievementUnlocked(name) {
         try { return Boolean(this.client.achievement.isActivated(String(name))); } catch { return false; }
     }
+    /** Auth session ticket as hex (identity only; verified server-side), or null. */
+    getAuthTicket() {
+        try {
+            const t = this.client.auth.getSessionTicket();
+            const bytes = t && typeof t.getBytes === 'function' ? t.getBytes() : null;
+            return bytes && bytes.length ? Buffer.from(bytes).toString('hex') : null;
+        } catch { return null; }
+    }
     /** steamworks.js 0.4 has no teardown API (it runs its own callback loop); drop our reference and mark unavailable. */
     release() {
         this.available = false;

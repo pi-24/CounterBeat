@@ -236,6 +236,20 @@ anything in `src/game/rules/`.
    commands whenever `src/game/rules/` changes, or the server will reject
    runs played with newer rules.
 
+   For Steam ranked sign-in (AC32) also set two function secrets, so the
+   desktop build's session tickets can be verified:
+
+   ```bash
+   supabase secrets set STEAM_WEB_API_SECRET=<publisher Web API key> STEAM_APP_ID=<app id>
+   ```
+
+   These live only in the function environment — never in `src/`, the
+   preload or the shipped bundle (`tests/unit/steam-ticket.test.mjs`
+   scans for them). Without them, desktop ranked submissions are
+   rejected and web submissions keep working unchanged. Apply
+   `supabase/migrations/0007_steam_id.sql` for the `profiles.steam_id`
+   link column.
+
 4. Auth settings (Authentication → URL Configuration): set **Site URL** to
    your deployed origin (e.g. `https://counterbeat.vercel.app`) and add
    `https://counterbeat.vercel.app/**` and `http://localhost:5173/**` to

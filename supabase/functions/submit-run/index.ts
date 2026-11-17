@@ -31,6 +31,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { resolveChart, dailyDate } from '../_shared/rules/charts.js';
 import { validateRun, logDuration } from '../_shared/rules/validateRun.js';
 import { canSubmitRankedRun } from '../_shared/net/submit.js';
+import { authenticateSteamIdentity } from '../_shared/steamAuth.js';
 import { TIMING_BUCKETS } from '../_shared/rules/Scorer.js';
 
 /** A replay log is a few thousand numbers; anything far bigger is not one (60,000 ticks fit). */
@@ -137,7 +138,7 @@ Deno.serve(async (request) => {
     }
 
     let payload: {
-        action?: string; chartId?: unknown; token?: unknown;
+        action?: string; chartId?: unknown; token?: unknown; desktop?: unknown; steamTicket?: unknown;
         record?: Record<string, unknown>; log?: Record<string, unknown>;
     };
     try {
@@ -151,6 +152,36 @@ Deno.serve(async (request) => {
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    // Steam identity (AC32): authenticates who is playing only. record/log are
+    // never passed in, and the replay/hash/rules checks below are unchanged.
+    // The Web API secret comes from the function's own environment.
+    const identity = await authenticateSteamIdentity(payload, {
+        apiKey: Deno.env.get('STEAM_WEB_API_SECRET'), appId: Deno.env.get('STEAM_APP_ID'),
+    });
+    if (!identity.ok) {
+        return payload.action === 'start' ? json({ error: identity.reason }, 401) : json({ accepted: false, reason: identity.reason }, 200);
+    }
+    if (!identity.steamId) {
+        // Server-side signal: a profile already linked to Steam may not submit without a ticket.
+        const { data: linked } = await admin.from('profiles').select('steam_id').eq('id', user.id).maybeSingle();
+        if (linked?.steam_id) {
+            const reason = 'Steam ticket required for this account';
+            return payload.action === 'start' ? json({ error: reason }, 401) : json({ accepted: false, reason }, 200);
+        }
+    }
+    if (identity.steamId) {
+        const { data: prof } = await admin.from('profiles').select('steam_id').eq('id', user.id).maybeSingle();
+        if (prof?.steam_id && prof.steam_id !== identity.steamId) {
+            return json({ accepted: false, reason: 'this account is linked to a different Steam account' }, 200);
+        }
+        if (!prof?.steam_id) {
+            const { error: linkError } = await admin.from('profiles').update({ steam_id: identity.steamId }).eq('id', user.id);
+            if (linkError) {
+                return json({ accepted: false, reason: 'this Steam account is linked to another profile' }, 200);
+            }
+        }
+    }
 
     // ---- start: issue a token for a ranked run ----------------------------
     if (payload.action === 'start') {

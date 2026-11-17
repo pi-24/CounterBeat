@@ -11,6 +11,7 @@
  *
  * The schema is in supabase/migrations; the function in supabase/functions.
  */
+import { buildSubmitBody } from '../../net/rankedSubmit.js';
 import { createClient } from '@supabase/supabase-js';
 
 /** Everything on a run row except the replay log, which is fetched on demand. */
@@ -192,8 +193,13 @@ export class SupabaseBackend {
         }
         const previous = await this.personalBest(this.user.id, record.chartId);
 
+        const built = await buildSubmitBody(record, log, token);
+        if (!built.ok) {
+            return { saved: false, accepted: false, rejected: true, reason: built.reason,
+                score: record.score, personalBest: false };
+        }
         const { data, error } = await this.client.functions.invoke('submit-run', {
-            body: { record, log, token },
+            body: built.body,
         });
         if (error) {
             return SupabaseBackend.submitFailure(error, record);
