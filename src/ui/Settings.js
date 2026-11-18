@@ -77,6 +77,7 @@ export function mountGameSettings(host, settings, handlers = {}) {
     const paletteRow = el('div', 'settings__row');
     const paletteLabel = el('label', 'settings__label', 'Judgement palette');
     const select = document.createElement('select');
+    select.className = 'settings__select';
     select.name = 'judgementPalette';
     select.id = 'set-judgementPalette';
     paletteLabel.htmlFor = select.id;

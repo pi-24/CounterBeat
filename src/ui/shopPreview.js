@@ -6,6 +6,8 @@
  * The frame ranges match TargetField (idle 0-3, hit 4-5, death 6-9).
  */
 
+import { PALETTE } from './palette.js';
+
 export const BOT_FRAMES = Object.freeze({ idle: [0, 3], hit: [4, 5], death: [6, 9] });
 export const IDLE_FRAME_MS = 170;
 export const HIT_FRAME_MS = 90;
@@ -48,7 +50,7 @@ export const CROSSHAIR_SHAPES = Object.freeze(['dot', 'cross', 'gap-cross', 'rin
  * @returns {string} SVG markup, 100 x 100 viewBox
  */
 export function crosshairSvg(shape, colour) {
-    const c = /^#[0-9a-f]{3,8}$/i.test(colour) ? colour : '#ffffff';
+    const c = /^#[0-9a-f]{3,8}$/i.test(colour) ? colour : PALETTE.secondary;
     const stroke = `fill="none" stroke="${c}" stroke-width="4" stroke-linecap="square"`;
     const parts = {
         dot: `<circle cx="50" cy="50" r="7" fill="${c}"/>`,

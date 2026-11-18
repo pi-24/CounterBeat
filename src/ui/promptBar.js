@@ -97,3 +97,46 @@ export const PANEL_PROMPTS = Object.freeze([
     { label: 'Select', keys: ['ENTER'], pad: ['A'] },
     { label: 'Back', keys: ['ESC'], pad: ['B'] },
 ]);
+
+/**
+ * Prompt rows for the in-game overlays (pause, help, results, calibration), keyed by the value of the
+ * overlay's `data-prompts` attribute. Only prompts that exist on both a keyboard and a pad, so
+ * neither device is shown a dead row.
+ */
+export const OVERLAY_PROMPTS = Object.freeze({
+    pause: Object.freeze([
+        { label: 'Navigate', keys: ['W', 'S'], pad: ['D-PAD'] },
+        { label: 'Select', keys: ['ENTER'], pad: ['A'] },
+        { label: 'Help', keys: ['H'], pad: ['Y'] },
+    ]),
+    help: Object.freeze([
+        { label: 'Scroll', keys: ['W', 'S'], pad: ['D-PAD'] },
+        { label: 'Close', keys: ['ESC'], pad: ['B'] },
+    ]),
+    result: Object.freeze([
+        { label: 'Navigate', keys: ['W', 'S'], pad: ['D-PAD'] },
+        { label: 'Select', keys: ['ENTER'], pad: ['A'] },
+    ]),
+    calibration: Object.freeze([
+        { label: 'Navigate', keys: ['W', 'S'], pad: ['D-PAD'] },
+        { label: 'Select', keys: ['ENTER'], pad: ['A'] },
+    ]),
+});
+
+/**
+ * Appends the matching prompt bar to every `[data-prompts]` element under `root` (once).
+ * @param {{querySelectorAll:Function, createElement:Function}} root a Document (or any root with createElement via ownerDocument)
+ * @returns {number} bars added
+ */
+export function mountOverlayPrompts(root) {
+    let added = 0;
+    for (const host of root.querySelectorAll('[data-prompts]')) {
+        const items = OVERLAY_PROMPTS[host.dataset.prompts];
+        if (!items || host.querySelector?.(':scope > .prompt-bar')) continue;
+        const bar = renderPromptBar(root, items, { right: 'CounterBeat' });
+        bar.classList.add('prompt-bar--overlay');
+        host.append(bar);
+        added += 1;
+    }
+    return added;
+}

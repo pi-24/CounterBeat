@@ -75,11 +75,11 @@
                 <div id="beatCue" class="hud__beat-cue" hidden></div>
                 <div id="perfectFlash" class="hud__perfect-flash"></div>
                 <svg id="crosshair" class="hud__crosshair" viewBox="-40 -40 80 80">
-                    <line x1="-4" y1="0" x2="-11" y2="0" stroke="#e2ff1f" stroke-width="2"></line>
-                    <line x1="4" y1="0" x2="11" y2="0" stroke="#e2ff1f" stroke-width="2"></line>
-                    <line x1="0" y1="-4" x2="0" y2="-11" stroke="#e2ff1f" stroke-width="2"></line>
-                    <line x1="0" y1="4" x2="0" y2="11" stroke="#e2ff1f" stroke-width="2"></line>
-                    <circle cx="0" cy="0" r="0" fill="#e2ff1f"></circle>
+                    <line x1="-4" y1="0" x2="-11" y2="0" stroke="currentColor" stroke-width="2"></line>
+                    <line x1="4" y1="0" x2="11" y2="0" stroke="currentColor" stroke-width="2"></line>
+                    <line x1="0" y1="-4" x2="0" y2="-11" stroke="currentColor" stroke-width="2"></line>
+                    <line x1="0" y1="4" x2="0" y2="11" stroke="currentColor" stroke-width="2"></line>
+                    <circle cx="0" cy="0" r="0" fill="currentColor"></circle>
                 </svg>
                 <svg id="hitmarker" class="hud__hitmarker" viewBox="-20 -20 40 40">
                     <line x1="-15" y1="-15" x2="-6" y2="-6"></line>
@@ -246,15 +246,15 @@
                             <div class="settings__crosshair">
                                 <svg id="crosshairPreview" class="settings__preview" viewBox="-40 -40 80 80"
                                     aria-label="Crosshair preview">
-                                    <line x1="-4" y1="0" x2="-11" y2="0" stroke="#e2ff1f" stroke-width="2">
+                                    <line x1="-4" y1="0" x2="-11" y2="0" stroke="currentColor" stroke-width="2">
                                     </line>
-                                    <line x1="4" y1="0" x2="11" y2="0" stroke="#e2ff1f" stroke-width="2">
+                                    <line x1="4" y1="0" x2="11" y2="0" stroke="currentColor" stroke-width="2">
                                     </line>
-                                    <line x1="0" y1="-4" x2="0" y2="-11" stroke="#e2ff1f" stroke-width="2">
+                                    <line x1="0" y1="-4" x2="0" y2="-11" stroke="currentColor" stroke-width="2">
                                     </line>
-                                    <line x1="0" y1="4" x2="0" y2="11" stroke="#e2ff1f" stroke-width="2">
+                                    <line x1="0" y1="4" x2="0" y2="11" stroke="currentColor" stroke-width="2">
                                     </line>
-                                    <circle cx="0" cy="0" r="0" fill="#e2ff1f"></circle>
+                                    <circle cx="0" cy="0" r="0" fill="currentColor"></circle>
                                 </svg>
                                 <div class="settings__crosshair-fields">
                                     <div class="settings__row">
@@ -300,7 +300,7 @@
         </div>
 
         <!-- Pause ----------------------------------------------------->
-        <div class="overlay overlay--pause" id="pauseOverlay" data-pad-overlay="30" hidden>
+        <div class="overlay overlay--pause" id="pauseOverlay" data-prompts="pause" data-pad-overlay="30" hidden>
             <h2 class="overlay__title">PAUSED</h2>
             <p class="text-dim">The mouse has been released. Click the arena or press resume to carry on.</p>
         <div class="overlay__actions">
@@ -314,7 +314,7 @@
         </div>
 
         <!-- Help: controls and the counter-strafe (replaces the old page sidebars) ---->
-        <div class="overlay overlay--help" id="helpOverlay" data-pad-overlay="45" role="dialog" aria-modal="false" aria-labelledby="helpTitle" hidden>
+        <div class="overlay overlay--help" id="helpOverlay" data-prompts="help" data-pad-overlay="45" role="dialog" aria-modal="false" aria-labelledby="helpTitle" hidden>
             <div class="help">
                 <div class="section-head">
                     <h2 class="section-head__title" id="helpTitle">Help</h2>
@@ -360,7 +360,7 @@
         </div>
 
         <!-- Results --------------------------------------------------->
-        <div class="overlay overlay--result" id="resultOverlay" data-pad-overlay="40" hidden>
+        <div class="overlay overlay--result" id="resultOverlay" data-prompts="result" data-pad-overlay="40" hidden>
             <div class="result">
                 <div class="result__main">
                     <header class="result__head">
@@ -425,7 +425,7 @@
         </div>
 
         <!-- Calibration ----------------------------------------------->
-        <div class="overlay overlay--calibration" id="calibrationOverlay" data-pad-overlay="50" hidden>
+        <div class="overlay overlay--calibration" id="calibrationOverlay" data-prompts="calibration" data-pad-overlay="50" hidden>
             <h2 class="overlay__title">CALIBRATE</h2>
             <svg class="cal__ring-svg" viewBox="-50 -50 100 100" aria-hidden="true">
                 <circle class="cal__ring-track" cx="0" cy="0" r="44"></circle>

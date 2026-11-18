@@ -274,13 +274,13 @@
 }
 
 .table__num {
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     text-align: right;
 }
 
 .table__rank {
     width: 4rem;
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-weight: 700;
     color: var(--c-text-faint);
 }
@@ -501,7 +501,7 @@
     gap: var(--s-3);
     margin: var(--s-3) 0 0;
     color: var(--c-text-faint);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -593,7 +593,7 @@
 
 .timing__label {
     fill: var(--c-text-faint);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 11px;
 }
 
@@ -946,6 +946,20 @@ body[data-input="pad"] .slab:focus::after {
     margin: var(--s-4) calc(-1 * var(--s-5)) calc(-1 * var(--s-5));
     padding-inline: var(--s-5);
     min-height: 3rem;
+}
+
+.prompt-bar--overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    text-align: left;
+}
+
+/* leave room so centred overlay content never sits under the bar */
+.overlay:has(> .prompt-bar--overlay) {
+    padding-bottom: calc(3.75rem + var(--s-5));
 }
 
 .prompt-bar__right {

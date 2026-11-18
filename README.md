@@ -42,7 +42,8 @@ Other scripts:
 npm run build        # production build to dist/
 npm run preview      # serve dist/ on http://localhost:4173
 npm run simulate     # play every chart with scripted bots and print scores
-npm test             # replay-validator + beat-detector suites (must say "all good")
+npm test             # design check, validators, build, unit tests, desktop smoke test
+npm run check:design # design-consistency check only (colours, fonts, tokens.css on every page)
 npm run sync-rules   # copy src/game/rules into the edge function (run before deploying it)
 ```
 
@@ -50,6 +51,28 @@ The beat-detector test needs the raw WAVs: `cd tools/asset-tools && python3
 gen_audio.py` renders every track and effect into `audio_raw/` (numpy, and
 scipy if present). Encode with ffmpeg into `public/audio/` as `.ogg` and
 `.mp3`.
+
+## How to play
+
+1. Press **Play** on the home page (or launch the desktop app). The game goes fullscreen and takes the mouse.
+2. First run: calibrate (skippable), then the three-step tutorial (Stop, Time, Aim; Skip is always visible).
+3. Pick a track and difficulty. **Strafe** with A / D (or the pad's left stick), **counter-strafe** by tapping the
+   opposite key until the speed arc turns acid, then **fire on the beat** as the approach ring closes on the bot.
+4. Judgements read by shape and brightness, never colour alone: Perfect = acid diamond, Good = paper circle,
+   Loose = dim triangle, Miss = grey cross.
+5. Esc or P pauses (R restarts, Q leaves to song select, H opens Help). Menus use W / S, Enter, Esc and
+   Q / E for difficulty; the bar along the bottom of every screen shows the keys or pad buttons for the device in use.
+6. Finish a chart to earn stars and coins; spend coins in the Shop on the other bots, crosshairs, arena themes and skins.
+
+## Design system
+
+The whole game and the website follow UI direction C ("Bold Editorial", `docs/design/ui-direction-c.html`):
+ink, paper, one acid accent, thick rules, flat fills, no glows. `src/styles/tokens.css` is the only place colours
+and font families are defined (`--ink`, `--paper`, `--acid`, `--display`, `--body`, `--mono`). Every other stylesheet,
+inline style and html page uses those tokens, and every html page links `tokens.css` first.
+`node tools/check-design-consistency.mjs` (part of `npm test`) fails on any raw hex / rgb / named colour,
+any other font family, or a page without `tokens.css`. Exempt: the 3D scene constants in `src/game/fps`,
+the JS mirror `src/ui/palette.js` (kept equal to the tokens by a unit test) and the rules data default.
 
 ## Project layout
 

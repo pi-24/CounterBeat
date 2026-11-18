@@ -20,7 +20,8 @@
     "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
     "test:desktop": "node --test tests/desktop/smoke.test.mjs",
     "check:store": "node tools/check-store-assets.mjs",
-    "test": "node tools/chart-hash.mjs --verify && node tools/chart-stats.mjs && node tools/validate-tracks.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run build && node --test \"tests/unit/**/*.test.mjs\" tests/desktop/smoke.test.mjs"
+    "check:design": "node tools/check-design-consistency.mjs",
+    "test": "node tools/check-design-consistency.mjs && node tools/chart-hash.mjs --verify && node tools/chart-stats.mjs && node tools/validate-tracks.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run build && node --test \"tests/unit/**/*.test.mjs\" tests/desktop/smoke.test.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

@@ -171,13 +171,13 @@
 
 .level-pick__key {
     color: var(--c-accent);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 0.75rem;
     font-weight: 700;
 }
 
 .level-pick__name {
-    font-family: var(--font-display);
+    font-family: var(--display);
     font-size: 1.15rem;
     font-weight: 700;
 }
@@ -190,13 +190,13 @@
 .level-pick__meta {
     margin-top: var(--s-2);
     color: var(--c-text-faint);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 0.72rem;
 }
 
 .level-pick__foot {
     color: var(--c-primary);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 0.75rem;
 }
 
@@ -1104,6 +1104,7 @@
 .hud__crosshair {
     width: 80px;
     height: 80px;
+    color: var(--acid);
     filter: drop-shadow(0 0 1px var(--mix-shade-90));
 }
 
@@ -1530,7 +1531,7 @@
     border-radius: 50%;
     background: var(--mix-prim-14);
     color: var(--c-primary);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 0.78rem;
     font-weight: 700;
 }
@@ -1701,7 +1702,7 @@
     border-radius: var(--radius);
     background: var(--c-surface-2);
     color: var(--c-text-dim);
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: 0.78rem;
 }
 
@@ -1745,7 +1746,7 @@
 }
 
 .song__name {
-    font-family: var(--font-display);
+    font-family: var(--display);
     font-size: 1.05rem;
     font-weight: 700;
 }
@@ -2079,16 +2080,10 @@ body:not([data-input="pad"]) [data-device="pad"] {
 }
 
 /* Pad focus ring: a script-driven focus() does not always match :focus-visible, so the
-   ring is also tied to the pad being the active device (GameApp sets data-input="pad"). */
+   ring is also tied to the pad being the active device (GameApp sets data-input="pad"). Flat, same as :focus-visible: no glow. */
 body[data-input="pad"] :focus {
-    outline: 3px solid var(--c-primary);
-    outline-offset: 2px;
-    border-color: var(--c-primary);
-    box-shadow: 0 0 14px color-mix(in srgb, var(--c-primary) 45%, transparent);
-}
-
-body[data-input="pad"] input[type="range"]:focus {
-    box-shadow: none;
+    outline: var(--rule) solid var(--acid);
+    outline-offset: 3px;
 }
 
 /* ==========================================================================
@@ -2986,6 +2981,7 @@ body[data-input="pad"] .trow:focus {
 }
 
 .settings__number,
+.settings__select,
 .settings__colour,
 .settings__preview {
     border: var(--rule) solid var(--paper);
@@ -2993,7 +2989,26 @@ body[data-input="pad"] .trow:focus {
     background: var(--ink);
 }
 
+/* the crosshair preview draws in currentColor until the script sets the chosen colour */
+.settings__preview {
+    color: var(--acid);
+}
+
+.settings__number,
+.settings__select {
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color-scheme: dark;
+}
+
+.settings__select {
+    padding: 0.35rem 0.5rem;
+    border-radius: 0;
+}
+
 .settings__number:focus-visible,
+.settings__select:focus-visible,
 .settings__colour:focus-visible {
     outline: 3px solid var(--acid);
     outline-offset: 2px;

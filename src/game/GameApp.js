@@ -30,6 +30,7 @@ import { CosmeticsPanel } from './screens/CosmeticsPanel.js';
 import { toast } from '../ui/Toast.js';
 import { store } from '../core/Storage.js';
 import { MainMenu } from '../ui/MainMenu.js';
+import { mountOverlayPrompts } from '../ui/promptBar.js';
 import { HelpOverlay } from '../ui/HelpOverlay.js';
 import { isDesktop } from '../platform/platform.js';
 import { TutorialPanel } from '../ui/Tutorial.js';
@@ -72,6 +73,7 @@ export class GameApp {
         this.services = options.services;
         this.menuOverlay = options.overlays.menu;
         this.pauseOverlay = options.overlays.pause;
+        mountOverlayPrompts(document); // the same bottom prompt bar as the menus, on pause / help / results / calibration
         this.resultOverlay = options.overlays.result;
         this.loadingOverlay = options.overlays.loading;
         /** Set by the page when the Play splash was clicked before this module finished loading. */
