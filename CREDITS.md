@@ -6,7 +6,6 @@
 
 - **Kenney - Particle Pack (kenney.nl)** - Kenney (kenney.nl) - licence: `LICENSES/kenney-particle-pack.txt` (CC0 1.0, recoloured to the CounterBeat palette)
 - **Kenney - Prototype Textures (kenney.nl)** - Kenney (kenney.nl) - licence: `LICENSES/kenney-prototype-textures.txt` (CC0 1.0, recoloured to the CounterBeat palette)
-- **Kenney - Toon Characters (kenney.nl)** - Kenney (kenney.nl) - licence: `LICENSES/kenney-toon-characters.txt` (CC0 1.0, recoloured to the CounterBeat palette)
 
 ## Music
 
@@ -25,9 +24,21 @@
 
 ## Target skins
 
-- **Bot** - Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat - licence: `LICENSES/kenney-toon-characters.txt`
-- **Hex Bot** - Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat - licence: `LICENSES/kenney-toon-characters.txt`
-- **Chevron Bot** - Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat - licence: `LICENSES/kenney-toon-characters.txt`
+- **PULSE Range Issue** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **PULSE Crimson Ops** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **PULSE Arctic** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **WOOFER Boombox** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **WOOFER Midnight Disco** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **WOOFER Mint Bass** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **IRIS Watcher** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **IRIS Ember** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **IRIS Ghost White** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **BULLSEYE Hi-Vis** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **BULLSEYE Cobalt** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **BULLSEYE Hazard Lime** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **PHANTOM Cyan Signal** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **PHANTOM Solar** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
+- **PHANTOM Toxic** - CounterBeat (Atlas-generated, CC0) - licence: `LICENSES/atlas-bot-sprites.txt`
 
 ## Effects
 

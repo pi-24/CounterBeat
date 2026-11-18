@@ -22,7 +22,7 @@ test('validator fails on missing licence, unknown image and stale credits', () =
     delete m.targets.targets[0].licence;
     const errs = validateAll({ manifests: m });
     assert.ok(errs.some((e) => /theme range.*licence file/.test(e)));
-    assert.ok(errs.some((e) => /target bot.*missing licence/.test(e)));
+    assert.ok(errs.some((e) => /target pulse-range-issue.*missing licence/.test(e)));
     assert.ok(errs.some((e) => /CREDITS.md is stale/.test(e)));
     const m2 = all();
     m2.art.images = [];

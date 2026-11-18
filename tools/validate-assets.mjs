@@ -218,7 +218,7 @@ export function validateAll({ root = ROOT, manifests } = {}) {
         if (!isStr(lic)) err(`${what}: missing licence path`);
         else if (!existsSync(resolve(root, lic))) err(`${what}: licence file ${lic} not found`);
     };
-    const checkImage = (rel, what, { pow2 = false, licence } = {}) => {
+    const checkImage = (rel, what, { pow2 = false, licence, extraColours = [] } = {}) => {
         if (isStr(rel)) referenced.add(rel.split('\\').join('/'));
         checkLicence(licence, what);
         const full = publicFile(rel, what);
@@ -227,7 +227,7 @@ export function validateAll({ root = ROOT, manifests } = {}) {
         try {
             const img = decodePng(readFileSync(full));
             if (palette?.colours && isNum(palette.tolerance) && isNum(palette.pixelTolerance) && isNum(palette.maxOutlierFraction)) {
-                const st = paletteStats(img, palette.colours, palette.pixelTolerance);
+                const st = paletteStats(img, [...palette.colours, ...extraColours], palette.pixelTolerance);
                 if (st.mean > palette.tolerance) err(`${what}: ${rel} off-palette (mean distance ${st.mean.toFixed(3)} > ${palette.tolerance})`);
                 if (st.outlierFraction > palette.maxOutlierFraction) {
                     err(`${what}: ${rel} has ${(st.outlierFraction * 100).toFixed(1)}% pixels beyond ${palette.pixelTolerance} of the palette (max ${palette.maxOutlierFraction * 100}%)`);
@@ -258,7 +258,8 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     if ((targets.targets ?? []).length < 3) err('targets: need at least 3 skins');
     checkImage(targets.spark?.path, 'spark', { licence: targets.spark?.licence });
     for (const t of targets.targets ?? []) {
-        checkImage(t.sheet, `target ${t.id} sheet`, { licence: t.licence });
+        if (t.skinPalette !== undefined && !(Array.isArray(t.skinPalette) && t.skinPalette.every((c) => isStr(c) && /^#[0-9a-fA-F]{6}$/.test(c)))) err(`target ${t.id}: skinPalette must be a list of #rrggbb colours`);
+        checkImage(t.sheet, `target ${t.id} sheet`, { licence: t.licence, extraColours: Array.isArray(t.skinPalette) ? t.skinPalette : [] });
         if (!isNum(t.cellWidth) || !isNum(t.cellHeight)) err(`target ${t.id}: cellWidth/cellHeight required`);
         if (typeof t.placeholder !== 'boolean') err(`target ${t.id}: placeholder flag must be boolean`);
     }

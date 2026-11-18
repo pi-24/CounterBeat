@@ -9,7 +9,6 @@
  *   node tools/build-art.mjs [--licences]
  *
  * Sources (licence text copied to LICENSES/kenney-<pack>.txt with --licences):
- *   toon-characters   Robot/PNG/Poses -> bot-sheet, bot-hex-sheet, bot-chevron-sheet
  *   particle-pack     star_04         -> spark.png
  *   prototype-textures                -> textures/floor-*.png, wall-*.png
  */
@@ -46,112 +45,6 @@ const ramp = (stops, t) => {
     }
     return stops[stops.length - 1][1];
 };
-
-// ------------------------------------------------------------------ bots
-const FW = 96; const FH = 128; const COLS = 5;
-const VARIANTS = {
-    bot: { accent: C('#49e3ff'), eye: C('#ffd23f'), gem: C('#ff3fb4'), mark: null },
-    'bot-hex': { accent: C('#ff3fb4'), eye: C('#ffffff'), gem: C('#49e3ff'), mark: 'hex' },
-    'bot-chevron': { accent: C('#ffd23f'), eye: C('#ff8a2a'), gem: C('#ffffff'), mark: 'chevron' },
-};
-
-function hsv(r, g, b) {
-    const mx = Math.max(r, g, b); const mn = Math.min(r, g, b); const d = mx - mn;
-    let h = 0;
-    if (d) h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return { h: h * 60, s: mx ? d / mx : 0 };
-}
-
-/** Recolours a robot pose: flat navy body, accent trim, white highlights, palette eye and gem. */
-function recolour(pose, v, { flash = 0, alpha = 1, shift = 0 } = {}) {
-    const out = new Uint8Array(FW * FH * 4);
-    for (let y = 0; y < FH; y++) {
-        const sy = y - shift;
-        if (sy < 0 || sy >= FH) continue;
-        for (let x = 0; x < FW; x++) {
-            const s = (sy * FW + x) * 4; const o = (y * FW + x) * 4;
-            if (pose.data[s + 3] < 8) continue;
-            const r = pose.data[s]; const g = pose.data[s + 1]; const b = pose.data[s + 2];
-            const { h, s: sat } = hsv(r, g, b);
-            let col;
-            if (sat > 0.5 && h >= 30 && h <= 75) col = v.eye;
-            else if (sat > 0.35 && (h >= 300 || h <= 25)) col = v.gem;
-            else {
-                const lum = Math.min(1, (0.299 * r + 0.587 * g + 0.114 * b) / 255 + flash);
-                col = lum < 0.2 ? NAVY0 : lum < 0.5 ? NAVY2 : lum < 0.68 ? v.accent : WHITE;
-                if (flash > 0.3 && lum > 0.3) col = lum > 0.85 ? WHITE : v.accent; // hit flash: accent-lit body, white only on highlights
-            }
-            out[o] = col[0]; out[o + 1] = col[1]; out[o + 2] = col[2];
-            out[o + 3] = Math.round(pose.data[s + 3] * alpha);
-        }
-    }
-    return out;
-}
-
-/** Scanline polygon fill into a layer (alpha 255 where filled). */
-function fillPoly(layer, pts) {
-    const ys = pts.map((p) => p[1]);
-    for (let y = Math.max(0, Math.floor(Math.min(...ys))); y <= Math.min(FH - 1, Math.ceil(Math.max(...ys))); y++) {
-        for (let x = 0; x < FW; x++) {
-            let inside = false;
-            for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-                const [xi, yi] = pts[i]; const [xj, yj] = pts[j];
-                if ((yi > y + 0.5) !== (yj > y + 0.5) && x + 0.5 < ((xj - xi) * (y + 0.5 - yi)) / (yj - yi) + xi) inside = !inside;
-            }
-            if (inside) layer[(y * FW + x) * 4 + 3] = 255;
-        }
-    }
-}
-
-const hexPts = (r, cy) => Array.from({ length: 6 }, (_, i) => [49 + r * Math.cos((i * Math.PI) / 3 + Math.PI / 6), cy + r * Math.sin((i * Math.PI) / 3 + Math.PI / 6)]);
-
-/** Marking layer: a hexagon ring round the eye, or a pair of chevrons on the torso. */
-function markLayer(kind, shift) {
-    const layer = new Uint8Array(FW * FH * 4);
-    if (kind === 'hex') {
-        fillPoly(layer, hexPts(17, 66 + shift));
-        const inner = new Uint8Array(layer.length);
-        fillPoly(inner, hexPts(14, 66 + shift));
-        for (let i = 3; i < layer.length; i += 4) if (inner[i]) layer[i] = 0;
-    } else {
-        for (const dy of [0, 7]) {
-            fillPoly(layer, [[38, 104 + shift + dy], [48, 110 + shift + dy], [58, 104 + shift + dy], [58, 108 + shift + dy], [48, 114 + shift + dy], [38, 108 + shift + dy]]);
-        }
-    }
-    return layer;
-}
-
-function buildBotSheet(name, v) {
-    const pose = (n) => load(`toon-characters/Robot/PNG/Poses/character_robot_${n}.png`);
-    const frame = (p, opts = {}, marked = true) => {
-        const buf = recolour(p, v, opts);
-        if (marked && v.mark) {
-            const layer = markLayer(v.mark, opts.shift ?? 0);
-            const c = opts.flash > 0.3 ? WHITE : v.mark === 'hex' ? WHITE : v.accent;
-            for (let i = 0; i < buf.length; i += 4) {
-                if (layer[i + 3] && buf[i + 3] > 200) { buf[i] = c[0]; buf[i + 1] = c[1]; buf[i + 2] = c[2]; }
-            }
-        }
-        return buf;
-    };
-    const idle = pose('idle');
-    const frames = [
-        ...[0, -1, -2, -1].map((shift) => frame(idle, { shift })),            // 0-3 idle bob
-        frame(idle, { flash: 0.85, shift: -2 }),                               // 4-5 hit flash
-        frame(idle, { flash: 0.25, shift: -1 }),
-        frame(pose('fall'), { alpha: 0.95 }, false),                           // 6-9 collapse and fade
-        frame(pose('fallDown'), { alpha: 0.8 }, false),
-        frame(pose('down'), { alpha: 0.5 }, false),
-        frame(pose('down'), { alpha: 0.15 }, false),
-    ];
-    const rows = Math.ceil(frames.length / COLS);
-    const sheet = new Uint8Array(FW * COLS * FH * rows * 4);
-    frames.forEach((f, i) => {
-        const ox = (i % COLS) * FW; const oy = Math.floor(i / COLS) * FH;
-        for (let y = 0; y < FH; y++) sheet.set(f.subarray(y * FW * 4, (y + 1) * FW * 4), ((oy + y) * FW * COLS + ox) * 4);
-    });
-    save(`${name}-sheet.png`, { width: FW * COLS, height: FH * rows, data: sheet });
-}
 
 // ----------------------------------------------------------------- spark
 function buildSpark() {
@@ -236,7 +129,7 @@ function buildThumbs() {
 }
 
 function copyLicences() {
-    for (const pack of ['toon-characters', 'particle-pack', 'prototype-textures']) {
+    for (const pack of ['particle-pack', 'prototype-textures']) {
         const from = resolve(SRC, pack, 'License.txt');
         if (!existsSync(from)) continue;
         mkdirSync(resolve(ROOT, 'LICENSES'), { recursive: true });
@@ -244,7 +137,6 @@ function copyLicences() {
     }
 }
 
-for (const [name, v] of Object.entries(VARIANTS)) buildBotSheet(name, v);
 buildSpark();
 buildTextures();
 buildThumbs();

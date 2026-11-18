@@ -27,7 +27,7 @@ test('counts and star-cost fields', () => {
     const { x } = providers();
     assert.ok(x.crosshairs.crosshairs.length >= 10);
     assert.equal(x.themes.themes.length, 3);
-    assert.equal(x.targets.targets.length, 3);
+    assert.equal(x.targets.targets.length, 15);
     for (const e of [...x.crosshairs.crosshairs, ...x.themes.themes, ...x.targets.targets]) assert.equal(typeof e.starCost, 'number');
 });
 
@@ -56,7 +56,7 @@ test('provider lookups and unlock filtering', () => {
     const { themes, tracks, assets } = providers();
     assert.throws(() => themes.theme('nope'));
     assert.throws(() => tracks.musicUrls('nope'));
-    assert.equal(themes.target('missing').id, 'bot');
+    assert.equal(themes.target('missing').id, 'pulse-range-issue');
     assert.equal(themes.resolveArena({ theme: 'neon', accent: [1, 0, 0] }).accent[0], 1);
     assert.ok(themes.unlocked('crosshairs', 0).length >= 1);
     assert.ok(themes.unlocked('crosshairs', 999).length >= 10);
@@ -121,6 +121,39 @@ test('localised off-palette pixels fail the outlier rule even when the mean pass
 test('Settings accepts a targetSkin id', async () => {
     globalThis.window ??= { localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, addEventListener() {} };
     const { Settings } = await import('../../src/game/Settings.js');
-    assert.equal(Settings.sanitise({ targetSkin: 'bot-hex' }).targetSkin, 'bot-hex');
+    assert.equal(Settings.sanitise({ targetSkin: 'woofer-boombox' }).targetSkin, 'woofer-boombox');
     assert.equal(Settings.sanitise({ targetSkin: '../x' }).targetSkin, undefined);
+});
+
+test('bot catalogue: 5 bots x 3 skins, PULSE Range Issue is the free default everywhere', async () => {
+    const { x, themes } = providers();
+    const t = x.targets.targets;
+    assert.equal(t[0].id, 'pulse-range-issue');
+    assert.equal(themes.target(undefined).id, 'pulse-range-issue');
+    const bots = new Map();
+    for (const e of t) bots.set(e.bot, [...(bots.get(e.bot) ?? []), e]);
+    assert.deepEqual([...bots.keys()], ['PULSE', 'WOOFER', 'IRIS', 'BULLSEYE', 'PHANTOM']);
+    for (const [bot, skins] of bots) {
+        assert.equal(skins.length, 3, bot);
+        skins.forEach((e, i) => {
+            assert.equal(e.coinPrice, i === 0 ? (bot === 'PULSE' ? 0 : 400) : 150, e.id);
+            assert.match(e.sheet, new RegExp(`^images/bots/${bot.toLowerCase()}--[a-z-]+\.png$`));
+            assert.equal(e.cellWidth, 96);
+            assert.equal(e.cellHeight, 128);
+            assert.equal(e.licence, 'LICENSES/atlas-bot-sprites.txt');
+            assert.equal(e.author, 'CounterBeat (Atlas-generated, CC0)');
+        });
+    }
+    assert.equal(t.filter((e) => e.coinPrice === 0).length, 1);
+    const { readFileSync, existsSync } = await import('node:fs');
+    for (const e of t) {
+        const png = readFileSync(new URL(`../../public/${e.sheet}`, import.meta.url));
+        assert.equal(png.readUInt32BE(16), 96 * 5, `${e.id} width`); // 5 columns x 2 rows = 10 frames
+        assert.equal(png.readUInt32BE(20), 128 * 2, `${e.id} height`);
+    }
+    for (const old of ['bot-sheet', 'bot-hex-sheet', 'bot-chevron-sheet']) {
+        assert.ok(!existsSync(new URL(`../../public/images/${old}.png`, import.meta.url)), old);
+    }
+    const { DEFAULT_SETTINGS } = await import('../../src/game/rules/config.js');
+    assert.equal(DEFAULT_SETTINGS.targetSkin, 'pulse-range-issue');
 });

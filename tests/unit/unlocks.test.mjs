@@ -27,10 +27,10 @@ test('track unlock states at boundary star totals', () => {
     assert.equal(open(28), 6);
 });
 
-test('content minimums: >=10 crosshairs, 3 themes, 3 target skins', () => {
+test('content minimums: >=10 crosshairs, 3 themes, 15 target skins (5 bots x 3)', () => {
     assert.ok(crosshairs.length >= 10);
     assert.equal(themes.length, 3);
-    assert.equal(targets.length, 3);
+    assert.equal(targets.length, 15);
 });
 
 test('cosmetics unlock exactly at their starCost, and something is free', () => {

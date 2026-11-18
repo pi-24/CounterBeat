@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "spark": {
     "id": "spark",
     "name": "Hit spark",
@@ -10,37 +10,332 @@
   },
   "targets": [
     {
-      "id": "bot",
-      "name": "Bot",
+      "id": "pulse-range-issue",
+      "bot": "PULSE",
+      "skin": "Range Issue",
+      "name": "PULSE Range Issue",
       "placeholder": false,
       "starCost": 0,
-      "sheet": "images/bot-sheet.png",
+      "coinPrice": 0,
+      "sheet": "images/bots/pulse--range-issue.png",
       "cellWidth": 96,
       "cellHeight": 128,
-      "licence": "LICENSES/kenney-toon-characters.txt",
-      "author": "Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat"
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#f2f4f8",
+        "#a9b4c6",
+        "#ff6a1a",
+        "#11151e",
+        "#36f0ff",
+        "#0b0e16",
+        "#ffb000"
+      ]
     },
     {
-      "id": "bot-hex",
-      "name": "Hex Bot",
+      "id": "pulse-crimson-ops",
+      "bot": "PULSE",
+      "skin": "Crimson Ops",
+      "name": "PULSE Crimson Ops",
       "placeholder": false,
-      "starCost": 10,
-      "sheet": "images/bot-hex-sheet.png",
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/pulse--crimson-ops.png",
       "cellWidth": 96,
       "cellHeight": 128,
-      "licence": "LICENSES/kenney-toon-characters.txt",
-      "author": "Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat"
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#ff4b5c",
+        "#b0233a",
+        "#ffe14a",
+        "#170a10",
+        "#ffffff",
+        "#12060a"
+      ]
     },
     {
-      "id": "bot-chevron",
-      "name": "Chevron Bot",
+      "id": "pulse-arctic",
+      "bot": "PULSE",
+      "skin": "Arctic",
+      "name": "PULSE Arctic",
       "placeholder": false,
-      "starCost": 20,
-      "sheet": "images/bot-chevron-sheet.png",
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/pulse--arctic.png",
       "cellWidth": 96,
       "cellHeight": 128,
-      "licence": "LICENSES/kenney-toon-characters.txt",
-      "author": "Kenney (kenney.nl) - Toon Characters (Robot), recoloured by CounterBeat"
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#c9f3ff",
+        "#77b4d4",
+        "#2d6bff",
+        "#0b1430",
+        "#ff9a1f",
+        "#06102a"
+      ]
+    },
+    {
+      "id": "woofer-boombox",
+      "bot": "WOOFER",
+      "skin": "Boombox",
+      "name": "WOOFER Boombox",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 400,
+      "sheet": "images/bots/woofer--boombox.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#ffd23f",
+        "#e0951a",
+        "#22243a",
+        "#ff4f9a",
+        "#5ff6ff",
+        "#7b5cff",
+        "#120f1c"
+      ]
+    },
+    {
+      "id": "woofer-midnight-disco",
+      "bot": "WOOFER",
+      "skin": "Midnight Disco",
+      "name": "WOOFER Midnight Disco",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/woofer--midnight-disco.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#b994ff",
+        "#7a55d8",
+        "#17112b",
+        "#39f3ff",
+        "#ffef5a",
+        "#ff58c8",
+        "#0d0818"
+      ]
+    },
+    {
+      "id": "woofer-mint-bass",
+      "bot": "WOOFER",
+      "skin": "Mint Bass",
+      "name": "WOOFER Mint Bass",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/woofer--mint-bass.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#7dffc4",
+        "#2fbf8a",
+        "#1b2433",
+        "#ff7a3d",
+        "#fff36b",
+        "#0b1512"
+      ]
+    },
+    {
+      "id": "iris-watcher",
+      "bot": "IRIS",
+      "skin": "Watcher",
+      "name": "IRIS Watcher",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 400,
+      "sheet": "images/bots/iris--watcher.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#8592b0",
+        "#4c5672",
+        "#b8ff2e",
+        "#eef2f6",
+        "#ff2d55",
+        "#070910"
+      ]
+    },
+    {
+      "id": "iris-ember",
+      "bot": "IRIS",
+      "skin": "Ember",
+      "name": "IRIS Ember",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/iris--ember.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#ff9d3c",
+        "#c25a10",
+        "#fff04a",
+        "#3b3046",
+        "#ff3a2e",
+        "#0e0806"
+      ]
+    },
+    {
+      "id": "iris-ghost-white",
+      "bot": "IRIS",
+      "skin": "Ghost White",
+      "name": "IRIS Ghost White",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/iris--ghost-white.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#e6eaf1",
+        "#a3aec0",
+        "#2ee6ff",
+        "#ffffff",
+        "#7a3cff",
+        "#0a0d16"
+      ]
+    },
+    {
+      "id": "bullseye-hi-vis",
+      "bot": "BULLSEYE",
+      "skin": "Hi-Vis",
+      "name": "BULLSEYE Hi-Vis",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 400,
+      "sheet": "images/bots/bullseye--hi-vis.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#ff7a1a",
+        "#c24c06",
+        "#1c1d22",
+        "#f6f3ea",
+        "#ffe24a",
+        "#ff2a3d",
+        "#0e0e12"
+      ]
+    },
+    {
+      "id": "bullseye-cobalt",
+      "bot": "BULLSEYE",
+      "skin": "Cobalt",
+      "name": "BULLSEYE Cobalt",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/bullseye--cobalt.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#3b82ff",
+        "#1c4fc0",
+        "#0f1424",
+        "#f4f7ff",
+        "#ffd23a",
+        "#050812"
+      ]
+    },
+    {
+      "id": "bullseye-hazard-lime",
+      "bot": "BULLSEYE",
+      "skin": "Hazard Lime",
+      "name": "BULLSEYE Hazard Lime",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/bullseye--hazard-lime.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#c8ff2e",
+        "#86ba0c",
+        "#16180f",
+        "#ffffff",
+        "#ff4fd8",
+        "#0b0c06"
+      ]
+    },
+    {
+      "id": "phantom-cyan-signal",
+      "bot": "PHANTOM",
+      "skin": "Cyan Signal",
+      "name": "PHANTOM Cyan Signal",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 400,
+      "sheet": "images/bots/phantom--cyan-signal.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#3cf2ff",
+        "#1384a6",
+        "#ff3ded",
+        "#04121c"
+      ]
+    },
+    {
+      "id": "phantom-solar",
+      "bot": "PHANTOM",
+      "skin": "Solar",
+      "name": "PHANTOM Solar",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/phantom--solar.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#ffc83c",
+        "#a86600",
+        "#3c7bff",
+        "#160d00"
+      ]
+    },
+    {
+      "id": "phantom-toxic",
+      "bot": "PHANTOM",
+      "skin": "Toxic",
+      "name": "PHANTOM Toxic",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 150,
+      "sheet": "images/bots/phantom--toxic.png",
+      "cellWidth": 96,
+      "cellHeight": 128,
+      "licence": "LICENSES/atlas-bot-sprites.txt",
+      "author": "CounterBeat (Atlas-generated, CC0)",
+      "skinPalette": [
+        "#6dff6a",
+        "#1c8a3a",
+        "#ff8a1f",
+        "#031407"
+      ]
     }
   ]
 }
