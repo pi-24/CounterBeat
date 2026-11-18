@@ -42,7 +42,6 @@ import {
 } from '../modes/practice.js';
 import { Arena } from '../fps/Arena.js';
 import { hudDetail, isLightSky } from '../fps/hudText.js';
-import { isCosmeticUnlocked } from '../progress/unlocks.js';
 import { TargetField } from '../fps/TargetField.js';
 import { Viewmodel } from '../fps/Viewmodel.js';
 
@@ -132,15 +131,21 @@ export class PlayScreen {
         return this.app.current === this;
     }
 
+    /** The equipped bot design, or the free default when the setting names one that is not owned (e.g. a synced setting). */
+    targetSkinId() {
+        const wanted = this.app.settings.get('targetSkin');
+        const progress = this.app.services.progress;
+        return progress?.usable ? progress.usable(wanted, themeProvider.target().id) : wanted;
+    }
+
     // ------------------------------------------------------------ enter ----
 
     async enter() {
         const { scene, camera, hud, audio, settings } = this.app;
 
         // An equipped, unlocked arena theme re-dresses the room (visual only; the level data is untouched).
-        const themeId = this.app.services.progress?.values.equipped.theme;
-        if (themeId && !this.atlas && themeProvider.themes.has(themeId)
-            && isCosmeticUnlocked(themeProvider.theme(themeId), this.app.services.progress.total)) {
+        const themeId = this.app.services.progress?.equipped.theme;
+        if (themeId && !this.atlas && themeProvider.themes.has(themeId) && this.app.services.progress.isOwned(themeId)) {
             this.level = { ...this.level, arena: { theme: themeId } };
         }
 
@@ -178,7 +183,7 @@ export class PlayScreen {
             this.app.tutorialPanel.show(this.tutorialProgress);
         }
         this.arena = new Arena(scene, this.level, this.lanes);
-        this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, settings.get('targetSkin'), this.aim.hitboxScale);
+        this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, this.targetSkinId(), this.aim.hitboxScale);
         this.viewmodel = new Viewmodel(scene, camera.camera);
 
         camera.resetLook();

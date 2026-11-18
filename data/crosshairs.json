@@ -7,6 +7,7 @@
       "shape": "dot",
       "colour": "#ffffff",
       "starCost": 0,
+      "coinPrice": 0,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -15,6 +16,7 @@
       "shape": "cross",
       "colour": "#49e3ff",
       "starCost": 0,
+      "coinPrice": 0,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -23,6 +25,7 @@
       "shape": "gap-cross",
       "colour": "#ff3fb4",
       "starCost": 4,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -31,6 +34,7 @@
       "shape": "ring",
       "colour": "#ffd23f",
       "starCost": 6,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -39,6 +43,7 @@
       "shape": "chevron",
       "colour": "#7dffbb",
       "starCost": 8,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -47,6 +52,7 @@
       "shape": "hex",
       "colour": "#ffffff",
       "starCost": 10,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -55,6 +61,7 @@
       "shape": "diamond",
       "colour": "#49e3ff",
       "starCost": 12,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -63,6 +70,7 @@
       "shape": "t-bar",
       "colour": "#ff3fb4",
       "starCost": 14,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -71,6 +79,7 @@
       "shape": "square",
       "colour": "#ffd23f",
       "starCost": 16,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -79,6 +88,7 @@
       "shape": "dot-ring",
       "colour": "#7dffbb",
       "starCost": 18,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     },
     {
@@ -87,6 +97,7 @@
       "shape": "bracket",
       "colour": "#ffffff",
       "starCost": 20,
+      "coinPrice": 100,
       "licence": "LICENSES/atlas-procedural-art.txt"
     }
   ]

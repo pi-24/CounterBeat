@@ -180,6 +180,7 @@ export function validateAll({ root = ROOT, manifests } = {}) {
             else seen.add(e.id);
             if (!isStr(e.name) && !isStr(e.title)) err(`${what} ${e.id}: missing name`);
             if (what !== 'tracks' && !(isNum(e.starCost) && e.starCost >= 0)) err(`${what} ${e.id}: starCost must be a number >= 0`);
+            if (what !== 'tracks' && !(isNum(e.coinPrice) && e.coinPrice >= 0)) err(`${what} ${e.id}: coinPrice must be a number >= 0`);
         }
     };
 

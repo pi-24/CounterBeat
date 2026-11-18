@@ -35,6 +35,7 @@ cpSync(from, to, { recursive: true });
 const edgeRules = JSON.parse(readFileSync(resolve(root, 'data/rules.json'), 'utf8'));
 delete edgeRules.stars;
 delete edgeRules.starGates;
+delete edgeRules.economy; // coins are local progression too
 writeFileSync(resolve(to, 'rulesData.js'), renderRulesData(JSON.stringify(edgeRules)));
 const chartsTo = resolve(root, 'supabase/functions/_shared/charts');
 rmSync(chartsTo, { recursive: true, force: true });

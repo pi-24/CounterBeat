@@ -16,6 +16,7 @@ import { resolveChart } from '../game/rules/charts.js';
 import { bootCloudSave } from '../progress/cloudSave.js';
 import { settings } from '../game/Settings.js';
 import { ProgressStore } from '../game/progress/store.js';
+import { shopCatalogue } from '../game/providers/index.js';
 import { formatScore } from '../ui/format.js';
 import { RunHistory } from '../ui/runHistory.js';
 import { toast } from '../ui/Toast.js';
@@ -49,7 +50,7 @@ if (platform === 'desktop') {
     window.counterbeatDesktop.onWindowedChange?.((value) => settings.update({ windowed: value }));
 }
 
-const starProgress = new ProgressStore();
+const starProgress = new ProgressStore(undefined, { catalogue: shopCatalogue });
 // The screenshot hook (?atlas_scene=) never touches saved progress.
 const atlasParams = parseAtlasParams(window.location.search);
 if (!atlasParams) {

@@ -23,7 +23,7 @@ import { MenuScreen } from './screens/MenuScreen.js';
 import { SettingsPanel } from './screens/SettingsPanel.js';
 import { Calibration } from './screens/Calibration.js';
 import { SongLibrary } from './library/SongLibrary.js';
-import { assets, themeProvider, feedbackBus } from './providers/index.js';
+import { assets, themeProvider, feedbackBus, shopCatalogue } from './providers/index.js';
 import { AchievementTracker } from '../progress/AchievementTracker.js';
 import achievementsManifest from '../../data/achievements.json';
 import { CosmeticsPanel } from './screens/CosmeticsPanel.js';
@@ -103,6 +103,7 @@ export class GameApp {
         });
         this.cosmetics = new CosmeticsPanel(
             options.settingsForm.querySelector('#cosmetics'), this.services.progress, themeProvider, this.settings,
+            { onShop: (choice) => this.openShop(choice) },
         );
         this.settingsPanel.onCalibrate = () => this.calibration.open();
         this.tutorialPanel = new TutorialPanel(this.stage, {
@@ -120,7 +121,7 @@ export class GameApp {
             onDaily: () => this.current?.start?.(dailyChartId()),
             onTutorial: () => this.startTutorial(),
             onCredits: () => this.openCredits(),
-            onShop: () => toast.info('The shop is coming soon: bots, skins and crosshairs, bought with coins earned on every level.'),
+            onShop: () => this.openShop(),
             onQuit: () => this.quitGame(),
             getPreview: (id) => this.current?.previewFor?.(id) ?? null,
             onPanel: (name) => {
@@ -377,6 +378,21 @@ export class GameApp {
             this.credits = new CreditsScreen(this.menuOverlay, CREDITS);
         }
         this.credits.open(opener);
+    }
+
+    /**
+     * The Shop (bots, skins, crosshairs, themes bought with coins), a dialog over the menu. Lazy-loaded.
+     * @param {{tab?:string, selectedId?:string}} [choice]
+     */
+    async openShop(choice = {}) {
+        const opener = document.activeElement;
+        if (!this.shop) {
+            const { ShopScreen } = await import('../ui/ShopScreen.js');
+            this.shop = new ShopScreen(this.menuOverlay, {
+                progress: this.services.progress, catalogue: shopCatalogue, settings: this.settings,
+            });
+        }
+        this.shop.open(opener, choice);
     }
 
     /** Atlas screenshot hook: the settings panel (with rebinding) over the menu. */

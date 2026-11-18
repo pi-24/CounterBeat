@@ -2,7 +2,7 @@
  * atlasHook.js
  *
  * Optional URL hook for automated screenshots:
- *   ?atlas_scene=<title|play|practice|results|calibration|tutorial|settings|credits>&atlas_seed=<n>&atlas_t=<seconds>
+ *   ?atlas_scene=<title|play|practice|results|calibration|tutorial|settings|credits|shop>&atlas_seed=<n>&atlas_t=<seconds>
  * It renders a seeded state of the real screens and must be harmless in a
  * shipped build: progress is held in memory only, no run is ever submitted and
  * nothing is written to local storage or the account.
@@ -10,10 +10,11 @@
 import { resolveChart, TRACKS } from './rules/charts.js';
 import { BeatMap } from './rules/BeatMap.js';
 import { ProgressStore } from './progress/store.js';
+import { shopCatalogue } from './providers/index.js';
 import { RunHistory } from '../ui/runHistory.js';
-import { ATLAS_SCENES, parseAtlasParams, parseAtlasClean } from './atlasParams.js';
+import { ATLAS_SCENES, parseAtlasParams, parseAtlasClean, parseAtlasShop } from './atlasParams.js';
 
-export { ATLAS_SCENES, parseAtlasParams, parseAtlasClean };
+export { ATLAS_SCENES, parseAtlasParams, parseAtlasClean, parseAtlasShop };
 
 /** Which results leaderboard to show: ?atlas_board=global|friends|daily|empty (anything else: global). */
 export function parseAtlasBoard(search) {
@@ -40,7 +41,7 @@ export function memoryStorage() {
  */
 export function atlasServices(base, options = {}) {
     return {
-        progress: new ProgressStore(memoryStorage()),
+        progress: new ProgressStore(memoryStorage(), { catalogue: shopCatalogue }),
         history: new RunHistory(memoryStorage()),
         getPlayerName: () => (options.clean ? 'Player' : 'Guest'),
         getUserId: () => 'atlas-me',
@@ -187,6 +188,12 @@ export async function showAtlasScene(app, params) {
     } else if (params.scene === 'credits') {
         await app.showMenu();
         await app.openCredits();
+    } else if (params.scene === 'shop') {
+        // A made-up wallet, in memory only: 900 coins earned, one bot bought, so the shop shows
+        // owned, equipped, buyable and too-expensive items at once. Nothing is saved.
+        app.services.progress.values.wallet = { earned: 900, paid: { 'woofer-boombox': 400 }, owned: [], cleared: [] };
+        await app.showMenu();
+        await app.openShop({ tab: 'bot', selectedId: 'iris-watcher', ...parseAtlasShop(window.location.search) });
     } else if (params.scene === 'settings') {
         await app.showAtlasSettings();
     } else if (params.scene === 'play' || params.scene === 'tutorial') {

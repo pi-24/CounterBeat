@@ -2,7 +2,7 @@
  * atlasParams.js - the atlas URL parameters, in a module with no imports so the page's
  * first script can read them without pulling in the rest of the game.
  */
-export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'practice', 'calibration', 'tutorial', 'settings', 'credits']);
+export const ATLAS_SCENES = Object.freeze(['title', 'play', 'results', 'practice', 'calibration', 'tutorial', 'settings', 'credits', 'shop']);
 
 /**
  * @param {string} search a location.search string
@@ -33,4 +33,19 @@ export function parseAtlasParams(search) {
  */
 export function parseAtlasClean(search) {
     return new URLSearchParams(search).get('atlas_clean') === '1';
+}
+
+/**
+ * Which Shop tab and item the shop scene opens on: ?atlas_tab=bot|skin|crosshair|theme&atlas_item=<item id>.
+ * @param {string} search a location.search string
+ * @returns {{tab?:string, selectedId?:string}}
+ */
+export function parseAtlasShop(search) {
+    const params = new URLSearchParams(search);
+    const tab = params.get('atlas_tab');
+    const item = params.get('atlas_item');
+    return {
+        ...(['bot', 'skin', 'crosshair', 'theme'].includes(tab) ? { tab } : {}),
+        ...(item && /^[\w-]{1,48}$/.test(item) ? { selectedId: item } : {}),
+    };
 }

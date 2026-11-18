@@ -23,6 +23,29 @@ export default {
         21,
         28
     ],
+    "economy": {
+        "note": "Coins are earned per level and spent in the Shop. Local/synced progression only: never sent with ranked submissions, never read by the server (sync-rules strips this block from the edge copy).",
+        "clearBase": 20,
+        "difficultyMultiplier": {
+            "easy": 1,
+            "normal": 1.5,
+            "hard": 2,
+            "expert": 3
+        },
+        "rankBonus": {
+            "S": 30,
+            "A": 20,
+            "B": 10
+        },
+        "perNewStar": 25,
+        "firstClear": 50,
+        "prices": {
+            "bot": 400,
+            "skin": 150,
+            "crosshair": 100,
+            "theme": 300
+        }
+    },
     "difficulties": {
         "easy": {
             "notesPerSecond": 0.95,

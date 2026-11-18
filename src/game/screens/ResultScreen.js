@@ -12,6 +12,7 @@ import { el } from '../../ui/format.js';
 import { themeProvider, feedbackBus } from '../providers/index.js';
 import { awardsStars } from '../progress/stars.js';
 import { newlyUnlocked } from '../progress/unlocks.js';
+import { coinsText } from '../progress/coins.js';
 import {
     buildResultsView, renderHistogram, meanSdText, personalBestText, judgementCells,
 } from '../../ui/Results.js';
@@ -44,6 +45,8 @@ export class ResultScreen {
         this.stopQuality = options.stopQuality ?? { stopShots: 0, stopGood: 0 };
         /** @type {{best:boolean[], isNew:boolean[], unlocked:string[], total:number}|null} */
         this.starResult = null;
+        /** @type {{total:number, lines:object[], balance:number}|null} coins this run paid */
+        this.coinAward = null;
         this.timingErrorsMs = options.timingErrorsMs ?? [];
         this.practiceSection = options.section ?? null;
         this.loopPasses = options.loopPasses ?? [];
@@ -62,25 +65,28 @@ export class ResultScreen {
         const run = {
             mode: this.runMode, trackId: this.level.trackId, difficulty: this.record.difficulty, speed: this.runSpeed,
         };
-        if (this.level.kind !== 'track' || this.isReplay
-            || !awardsStars({ ...run, completed: this.record.completed })) {
+        if (this.isReplay) {
             return;
         }
-        const prev = progress.starsFor(run.trackId, run.difficulty);
-        const { before, total } = progress.record(run, { ...this.record, ...this.stopQuality });
-        feedbackBus.emit('starsChanged', { total });
-        const best = progress.starsFor(run.trackId, run.difficulty);
-        const groups = {
-            theme: [...themeProvider.themes.values()],
-            target: [...themeProvider.targets.values()],
-            crosshair: [...themeProvider.crosshairs.values()],
-        };
-        this.starResult = {
-            best,
-            isNew: best.map((on, i) => on && !prev[i]),
-            unlocked: newlyUnlocked(TRACKS.map((t) => t.id), groups, before, total).map((id) => ResultScreen.unlockLabel(id)),
-            total,
-        };
+        let newStars = 0;
+        if (this.level.kind === 'track' && awardsStars({ ...run, completed: this.record.completed })) {
+            const prev = progress.starsFor(run.trackId, run.difficulty);
+            const { before, total } = progress.record(run, { ...this.record, ...this.stopQuality });
+            feedbackBus.emit('starsChanged', { total });
+            const best = progress.starsFor(run.trackId, run.difficulty);
+            newStars = best.filter((on, i) => on && !prev[i]).length;
+            this.starResult = {
+                best,
+                isNew: best.map((on, i) => on && !prev[i]),
+                unlocked: newlyUnlocked(TRACKS.map((t) => t.id), {}, before, total).map((id) => ResultScreen.unlockLabel(id)),
+                total,
+            };
+        }
+        // Coins: Campaign, Quick Play and Daily pay per level; the tutorial, Custom and Practice never get here with a reward.
+        if (!this.level.tutorial && progress.awardCoins) {
+            const award = progress.awardCoins({ ...run, kind: this.level.kind }, this.record, newStars);
+            this.coinAward = award.total > 0 ? { ...award, balance: progress.coins } : null;
+        }
     }
 
     /** @param {string} id e.g. 'track:neon' or 'crosshair:xh-ring' */
@@ -115,6 +121,27 @@ export class ResultScreen {
         if (this.starResult.unlocked.length) {
             unlocked.textContent = `UNLOCKED: ${this.starResult.unlocked.join(', ')}`;
             unlocked.hidden = false;
+        }
+    }
+
+    /** "+N coins" with the breakdown that makes it up, and the new balance. */
+    renderCoins() {
+        const host = this.overlay.querySelector('#resultCoins');
+        if (!host) {
+            return;
+        }
+        host.hidden = !this.coinAward;
+        if (!this.coinAward) {
+            return;
+        }
+        this.overlay.querySelector('#resultCoinsTotal').textContent = coinsText(this.coinAward.total);
+        this.overlay.querySelector('#resultCoinsBalance').textContent = `BALANCE ${this.coinAward.balance.toLocaleString('en-GB')}`;
+        const list = this.overlay.querySelector('#resultCoinsLines');
+        list.replaceChildren();
+        for (const line of this.coinAward.lines) {
+            const row = el('li', '');
+            row.append(el('span', '', line.label), el('b', '', `+${line.amount}`));
+            list.append(row);
         }
     }
 
@@ -401,6 +428,7 @@ export class ResultScreen {
         }
 
         this.renderStars();
+        this.renderCoins();
         this.renderTiming();
 
         const guest = o.querySelector('#resultGuest');

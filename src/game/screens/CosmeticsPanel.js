@@ -1,13 +1,20 @@
 /**
  * CosmeticsPanel.js
  *
- * Settings selectors for target skins and crosshair styles. Entries come from
- * the manifests (data/targets.json, data/crosshairs.json) and are enabled by
- * cosmeticStates(): a star total opens them, difficulty clears do not.
+ * The cosmetics block of Settings. Bots, skins, crosshairs and arena themes are
+ * bought with coins in the Shop, so this panel no longer picks anything: it
+ * shows what is equipped and links each row into the Shop.
  * Purely visual; nothing here reaches hitboxes, grading or the server.
  */
-import { cosmeticStates } from '../progress/unlocks.js';
 import { el } from '../../ui/format.js';
+import { coinLabel } from '../../ui/shopModel.js';
+
+/** Settings rows: what is shown, which equipped slot it reads and which Shop tab it opens. */
+const ROWS = Object.freeze([
+    Object.freeze({ label: 'Bot / skin', slot: 'targetSkin', tab: 'bot', map: 'targets' }),
+    Object.freeze({ label: 'Arena theme', slot: 'theme', tab: 'theme', map: 'themes' }),
+    Object.freeze({ label: 'Crosshair', slot: 'crosshair', tab: 'crosshair', map: 'crosshairs' }),
+]);
 
 export class CosmeticsPanel {
     /**
@@ -15,67 +22,43 @@ export class CosmeticsPanel {
      * @param {import('../progress/store.js').ProgressStore} progress
      * @param {import('../providers/ThemeProvider.js').ThemeProvider} themes
      * @param {import('../Settings.js').Settings} settings
+     * @param {{onShop?:(choice:{tab?:string, selectedId?:string}) => void}} [handlers]
      */
-    constructor(host, progress, themes, settings) {
+    constructor(host, progress, themes, settings, handlers = {}) {
         this.host = host;
         this.progress = progress;
         this.themes = themes;
         this.settings = settings;
+        this.handlers = handlers;
         if (host) {
             this.render();
             progress.onChange(() => this.render());
         }
     }
 
+    /** The name of what is equipped in a slot (the free default when nothing, or something unowned, is). */
+    equippedName(row) {
+        const map = this.themes[row.map];
+        const wanted = row.slot === 'targetSkin'
+            ? (this.progress.equipped.targetSkin ?? this.settings.get('targetSkin'))
+            : this.progress.equipped[row.slot];
+        const fallback = map.values().next().value;
+        const entry = wanted && map.has(wanted) && this.progress.isOwned(wanted) ? map.get(wanted) : fallback;
+        return entry?.name ?? '';
+    }
+
     render() {
         this.host.replaceChildren();
-        const stars = this.progress.total;
-        this.host.append(
-            this.select('Target skin', [...this.themes.targets.values()], stars,
-                this.progress.values.equipped.targetSkin ?? this.settings.get('targetSkin'), (id) => this.equipTargetSkin(id)),
-            this.select('Arena theme', [...this.themes.themes.values()], stars,
-                this.progress.values.equipped.theme, (id) => this.progress.equip('theme', id)),
-            this.select('Crosshair style', [...this.themes.crosshairs.values()], stars,
-                this.progress.values.equipped.crosshair, (id) => this.equipCrosshair(id)),
-            el('p', 'text-dim', `★ ${stars} stars earned. Locked styles open as you earn stars.`),
-        );
-    }
-
-    select(label, entries, stars, current, onPick) {
-        const row = el('label', 'settings__row');
-        row.append(el('span', 'settings__label', label));
-        const select = document.createElement('select');
-        const byId = new Map(entries.map((e) => [e.id, e]));
-        const states = cosmeticStates(entries, stars);
-        for (const state of states) {
-            const option = document.createElement('option');
-            option.value = state.id;
-            option.disabled = !state.unlocked;
-            option.textContent = state.unlocked ? byId.get(state.id).name : `${byId.get(state.id).name} (★ ${state.starCost})`;
-            select.append(option);
+        for (const row of ROWS) {
+            const line = el('div', 'settings__row');
+            line.append(el('span', 'settings__label', row.label), el('span', 'settings__value', this.equippedName(row)));
+            const link = el('button', 'btn btn--ghost', 'Shop');
+            link.type = 'button';
+            link.dataset.shopLink = row.tab;
+            link.addEventListener('click', () => this.handlers.onShop?.({ tab: row.tab }));
+            line.append(link);
+            this.host.append(line);
         }
-        const usable = (id) => states.some((s) => s.id === id && s.unlocked);
-        const fallback = states.find((s) => s.unlocked)?.id ?? entries[0]?.id;
-        select.value = usable(current) ? current : fallback;
-        select.addEventListener('change', () => onPick(select.value));
-        row.append(select);
-        return row;
-    }
-
-    equipTargetSkin(id) {
-        this.progress.equip('targetSkin', id);
-        this.settings.update({ targetSkin: id });
-    }
-
-    /** Applies a crosshair manifest entry to the player's crosshair settings. */
-    equipCrosshair(id) {
-        const entry = this.themes.crosshair(id);
-        this.progress.equip('crosshair', entry.id);
-        const dot = entry.shape === 'dot';
-        this.settings.update({
-            crosshairColour: entry.colour,
-            crosshairDot: dot,
-            crosshairLength: dot ? 0 : Math.max(this.settings.get('crosshairLength'), 6),
-        });
+        this.host.append(el('p', 'text-dim', `${coinLabel(this.progress.coins)} to spend. Earn coins on every level; bots, skins, crosshairs and themes are bought in the Shop.`));
     }
 }

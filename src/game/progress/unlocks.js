@@ -1,9 +1,12 @@
 /**
  * unlocks.js
  *
- * Star-total unlocks. Tracks 2..6 open at RULES.starGates (3/8/14/21/28);
- * crosshairs, themes and target skins open at their manifest `starCost`.
+ * Star-total unlocks. Tracks 2..6 open at RULES.starGates (3/8/14/21/28).
  * Difficulty clears play no part.
+ *
+ * Cosmetics (bots, skins, crosshairs, themes) are no longer star-gated: they are
+ * bought with coins in the Shop (wallet.js). The `starCost` helpers below remain
+ * only so progress saved before the Shop can be migrated (wallet.migrateLegacy).
  */
 import { RULES } from '../rules/rules.js';
 

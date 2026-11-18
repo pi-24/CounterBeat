@@ -3154,3 +3154,396 @@ body[data-input="pad"] .trow:focus {
     font: 700 0.75rem var(--mono);
     letter-spacing: 0.16em;
 }
+
+/* Results: coins earned this run, with the breakdown */
+.result__coins {
+    display: grid;
+    gap: var(--s-1);
+    justify-self: start;
+    min-width: 16rem;
+    padding: var(--s-2) var(--s-3);
+    border-left: var(--rule-thick) solid var(--acid);
+    background: var(--ink-2);
+}
+
+.result__coins[hidden] {
+    display: none;
+}
+
+.result__coins-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+.result__coins-head b {
+    color: var(--acid);
+    font: 400 1.7rem / 1 var(--display);
+    letter-spacing: 0.02em;
+}
+
+.result__coins-head small {
+    color: var(--dim);
+    font: 700 0.62rem var(--mono);
+    letter-spacing: 0.1em;
+}
+
+.result__coins-lines {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--paper-2);
+    font: 700 0.68rem var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.result__coins-lines li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+/* Shop (Direction C): ruled ink sheet, Anton headings, acid for coins and the chosen item */
+.shop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    background: var(--mix-bg-92);
+}
+
+.shop[hidden] {
+    display: none;
+}
+
+.shop__card {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: var(--s-3);
+    width: min(1080px, 94vw);
+    height: min(720px, 92vh);
+    padding: var(--s-4);
+    border-top: var(--rule-thick) solid var(--acid);
+    background: var(--ink-2);
+    color: var(--paper);
+}
+
+.shop__head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    padding-bottom: var(--s-2);
+    border-bottom: var(--rule) solid var(--paper);
+}
+
+.shop__title {
+    margin: 0;
+    font: 400 2.6rem / 1 var(--display);
+    text-transform: uppercase;
+}
+
+.shop__tag {
+    flex: 1;
+    margin: 0;
+    color: var(--dim);
+    font: 700 0.7rem var(--mono);
+    letter-spacing: 0.06em;
+}
+
+.shop__wallet {
+    display: grid;
+    justify-items: end;
+    padding: var(--s-1) var(--s-3);
+    background: var(--acid);
+    color: var(--ink);
+}
+
+.shop__wallet small {
+    font: 700 0.58rem var(--mono);
+    letter-spacing: 0.14em;
+}
+
+.shop__coins {
+    font: 400 1.9rem / 1 var(--display);
+    letter-spacing: 0.02em;
+}
+
+.shop__tabs {
+    display: flex;
+    gap: var(--s-1);
+    border-bottom: var(--rule-thin) solid var(--ink-4);
+}
+
+.shop__tab {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    border: 0;
+    border-bottom: var(--rule) solid transparent;
+    background: none;
+    color: var(--dim);
+    font: 400 1.25rem / 1 var(--display);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.shop__tab small {
+    font: 700 0.62rem var(--mono);
+}
+
+.shop__tab:hover,
+.shop__tab:focus-visible {
+    color: var(--paper);
+}
+
+.shop__tab.is-on {
+    border-bottom-color: var(--acid);
+    color: var(--paper);
+}
+
+.shop__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--s-4);
+    min-height: 0;
+}
+
+.shop__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: var(--s-2);
+    min-height: 0;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.shop__item {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-2);
+    border: var(--rule-thin) solid var(--ink-4);
+    background: var(--ink-3);
+    color: var(--paper);
+    text-align: left;
+    cursor: pointer;
+}
+
+.shop__item:hover {
+    border-color: var(--paper);
+}
+
+.shop__item:focus-visible {
+    outline: var(--outline);
+    outline-offset: 2px;
+}
+
+.shop__item.is-selected {
+    border-color: var(--acid);
+    box-shadow: inset var(--rule) 0 0 var(--acid);
+}
+
+.shop__thumb {
+    display: block;
+    flex: none;
+    width: 72px;
+    height: 96px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+.shop__thumb--crosshair,
+.shop__thumb--theme {
+    height: 64px;
+    background-color: var(--ink);
+}
+
+.shop__thumb--crosshair svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.shop__item-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.shop__item-name {
+    font: 400 1.05rem / 1.1 var(--display);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.shop__item-meta {
+    color: var(--dim);
+    font: 700 0.62rem var(--mono);
+    letter-spacing: 0.1em;
+}
+
+.shop__item-meta.is-price,
+.shop__item.is-equipped .shop__item-meta {
+    color: var(--acid);
+}
+
+.shop__detail {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    gap: var(--s-3);
+    min-height: 0;
+    padding: var(--s-3);
+    border: var(--rule-thin) solid var(--ink-4);
+    background: var(--ink);
+}
+
+.shop__preview {
+    position: relative;
+    display: grid;
+    place-items: center;
+    gap: var(--s-2);
+    min-height: 0;
+    overflow: hidden;
+    background:
+        linear-gradient(var(--mix-ink-3) 1px, transparent 1px) 0 0 / 100% 32px,
+        linear-gradient(90deg, var(--mix-ink-3) 1px, transparent 1px) 0 0 / 32px 100%,
+        var(--ink-2);
+}
+
+.shop__preview.is-locked .shop__sprite {
+    filter: grayscale(1) brightness(0.55);
+}
+
+.shop__sprite {
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.shop__demo {
+    position: absolute;
+    right: var(--s-2);
+    bottom: var(--s-2);
+    display: flex;
+    gap: var(--s-1);
+}
+
+.shop__demo-btn {
+    padding: var(--s-1) var(--s-2);
+    font-size: 0.7rem;
+}
+
+.shop__xhair {
+    width: 62%;
+    max-width: 260px;
+    aspect-ratio: 1;
+    border: var(--rule-thin) dashed var(--ink-4);
+}
+
+.shop__xhair svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.shop__theme {
+    width: 100%;
+    height: 78%;
+    background-position: center;
+    background-size: cover;
+}
+
+.shop__swatches {
+    display: flex;
+    gap: var(--s-1);
+}
+
+.shop__swatch {
+    width: 34px;
+    height: 14px;
+    border: var(--rule-thin) solid var(--paper);
+}
+
+.shop__info {
+    display: grid;
+    gap: 2px;
+}
+
+.shop__kind {
+    color: var(--dim);
+    font: 700 0.62rem var(--mono);
+    letter-spacing: 0.12em;
+}
+
+.shop__name {
+    margin: 0;
+    font: 400 1.9rem / 1 var(--display);
+    text-transform: uppercase;
+}
+
+.shop__price {
+    margin: 0;
+    color: var(--acid);
+    font: 700 0.8rem var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.shop__price.is-owned {
+    color: var(--paper);
+}
+
+.shop__actions {
+    display: flex;
+    gap: var(--s-2);
+}
+
+.shop__msg {
+    min-height: 2.6em;
+    margin: 0;
+    color: var(--paper-2);
+    font: 700 0.7rem / 1.4 var(--mono);
+    letter-spacing: 0.03em;
+}
+
+.shop__msg.is-warn {
+    padding-left: var(--s-2);
+    border-left: var(--rule) solid var(--paper);
+    color: var(--paper);
+}
+
+.shop__msg.is-ok,
+.shop__msg.is-info {
+    padding-left: var(--s-2);
+    border-left: var(--rule) solid var(--acid);
+}
+
+.shop__empty {
+    color: var(--dim);
+    font: 700 0.75rem var(--mono);
+}
+
+@media (max-width: 760px) {
+    .shop__body {
+        grid-template-columns: minmax(0, 1fr);
+        overflow-y: auto;
+    }
+
+    .shop__tag {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shop__sprite {
+        transition: none;
+    }
+}

@@ -111,7 +111,7 @@ const FOCUSABLE = 'button:not([data-nofocus]), a[href], input:not([type="hidden"
 const OVERLAY_SELECTOR = '[data-pad-overlay]';
 const MODAL_SELECTOR = '[aria-modal="true"], [data-pad-modal]';
 /** What "back" clicks inside the active scope, in order of preference. */
-const BACK_SELECTOR = '[data-pad-back], [data-action="menu-back"], [data-action="credits-close"], [data-action="cal-close"], [data-action="help-close"], [data-action="resume"], [data-action="menu"]';
+const BACK_SELECTOR = '[data-pad-back], [data-action="menu-back"], [data-action="credits-close"], [data-action="shop-close"], [data-action="cal-close"], [data-action="help-close"], [data-action="resume"], [data-action="menu"]';
 
 /** @param {Element} element */
 const shown = (element) => !element.hidden && !element.closest('[hidden]') && element.getClientRects().length > 0;
