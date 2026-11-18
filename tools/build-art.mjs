@@ -17,13 +17,12 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodePng, hexToRgb, thumbSourceHash } from './validate-assets.mjs';
 import { encodePng, toRgba, resize } from './lib/png.mjs';
+import { RANGE_HEX } from '../src/game/fps/rangePalette.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = resolve(ROOT, 'art-src/kenney');
 const OUT = resolve(ROOT, 'public/images');
 const C = hexToRgb;
-const NAVY0 = C('#070b1a'); const NAVY1 = C('#0f1730'); const NAVY2 = C('#1b2547');
-const WHITE = C('#ffffff');
 
 const load = (rel) => {
     const f = resolve(SRC, rel);
@@ -79,23 +78,24 @@ function buildTexture(out, src, stops, { gain = 6, band = null } = {}) {
 }
 
 function buildTextures() {
-    const orange = C('#ff8a2a');
-    const grey = [[0, C('#8a929c')], [1, C('#3b4048')]];
-    // Range: grey concrete with orange markings
-    buildTexture('floor-range', 'Light/texture_01.png', grey, { gain: 14, band: { colour: orange, test: (x, y) => x < 2 || y < 2 } });
-    buildTexture('wall-range', 'Light/texture_02.png', grey, { gain: 14, band: { colour: orange, test: (x, y) => y < 6 || y > 249 } });
-    // Neon: near-black blue with cyan lines
-    buildTexture('floor-neon', 'Dark/texture_02.png', [[0, NAVY1], [0.35, NAVY2], [1, C('#49e3ff')]], { gain: 7 });
-    buildTexture('wall-neon', 'Dark/texture_04.png', [[0, NAVY0], [0.4, NAVY2], [1, C('#49e3ff')]], { gain: 6 });
-    // Vault: dark steel with amber lines
-    buildTexture('floor-vault', 'Dark/texture_06.png', [[0, NAVY0], [0.45, C('#3b4048')], [1, C('#ffd23f')]], { gain: 6 });
-    buildTexture('wall-vault', 'Dark/texture_08.png', [[0, NAVY1], [0.5, C('#5a4630')], [1, C('#ffd23f')]], { gain: 6 });
+    // Direction C range (src/game/fps/rangePalette.js): ink and graphite, thin paper lines, flat, no colour but the neutrals.
+    // Acid is kept for the set dressing and lit lane frames in the engine, so textures stay quiet.
+    const c = (name) => C(RANGE_HEX[name]);
+    // Range: ink floor and wall, thin grey-paper grid
+    buildTexture('floor-range', 'Light/texture_01.png', [[0, c('ink2')], [0.45, c('ink3')], [1, c('dim')]], { gain: 14, band: { colour: c('mute'), test: (x, y) => x < 2 || y < 2 } });
+    buildTexture('wall-range', 'Light/texture_02.png', [[0, c('ink3')], [0.45, c('ink4')], [1, c('dim')]], { gain: 14, band: { colour: c('mute'), test: (x, y) => y < 4 || y > 251 } });
+    // Neon: the darker ink variant, lines only just above the base; a single acid-dark rule along the wall foot
+    buildTexture('floor-neon', 'Dark/texture_02.png', [[0, c('ink')], [0.4, c('ink2')], [1, c('mute')]], { gain: 7 });
+    buildTexture('wall-neon', 'Dark/texture_04.png', [[0, c('ink')], [0.4, c('ink2')], [1, c('ink4')]], { gain: 6, band: { colour: c('acidDk'), test: (x, y) => y > 252 } });
+    // Vault: paper / bone, ink lines
+    buildTexture('floor-vault', 'Light/texture_03.png', [[0, c('paper2')], [0.45, c('paper2')], [1, c('ink4')]], { gain: 10, band: { colour: c('ink4'), test: (x, y) => x < 2 || y < 2 } });
+    buildTexture('wall-vault', 'Light/texture_04.png', [[0, c('paper')], [0.45, c('paper2')], [1, c('ink4')]], { gain: 10, band: { colour: c('ink'), test: (x, y) => y < 4 || y > 251 } });
 }
 
 // ------------------------------------------------------------ thumbnails
 /**
  * Level thumbnails are composed from the shipped floor/wall textures (perspective
- * floor, wall band, fog to the base navy) and the source hash is recorded in
+ * floor, wall band, fog to the theme's fog colour) and the source hash is recorded in
  * data/themes.json so the validator fails when a texture changes without a rebuild.
  */
 function buildThumbs() {
@@ -103,6 +103,7 @@ function buildThumbs() {
     const themesPath = resolve(ROOT, 'data/themes.json');
     const themes = JSON.parse(readFileSync(themesPath, 'utf8'));
     for (const t of themes.themes) {
+        const fogRgb = t.fog.colour.map((v) => Math.round(v * 255));
         const floor = decodePng(readFileSync(resolve(OUT, '..', t.floorTexture.startsWith('images/') ? t.floorTexture : `images/${t.floorTexture}`)));
         const wall = decodePng(readFileSync(resolve(OUT, '..', t.wallTexture)));
         const data = new Uint8Array(W * H * 4);
@@ -117,7 +118,8 @@ function buildThumbs() {
                 }
                 const vig = 1 - Math.hypot((x - W / 2) / W, (y - H / 2) / H) * 0.9;
                 const k = Math.max(0, Math.min(1, vig));
-                const f = lerp(col.map((c) => c * k), NAVY0, fog);
+                // vignette and distance both fade to the theme's own fog colour (ink on the dark ranges, bone on Vault)
+                const f = lerp(lerp(col, fogRgb, (1 - k) * 0.8), fogRgb, fog);
                 data.set([f[0], f[1], f[2], 255], (y * W + x) * 4);
             }
         }

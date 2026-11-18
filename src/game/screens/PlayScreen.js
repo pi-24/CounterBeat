@@ -145,7 +145,7 @@ export class PlayScreen {
 
         // An equipped, unlocked arena theme re-dresses the room (visual only; the level data is untouched).
         const themeId = this.app.services.progress?.equipped.theme;
-        if (themeId && !this.atlas && themeProvider.themes.has(themeId) && this.app.services.progress.isOwned(themeId)) {
+        if (themeId && !this.atlas && !this.level.tutorial && themeProvider.themes.has(themeId) && this.app.services.progress.isOwned(themeId)) {
             this.level = { ...this.level, arena: { theme: themeId } };
         }
 
@@ -183,15 +183,17 @@ export class PlayScreen {
             this.app.tutorialPanel.show(this.tutorialProgress);
         }
         this.arena = new Arena(scene, this.level, this.lanes);
-        this.targets = new TargetField(scene, this.lanes, camera, themeProvider.resolveArena(this.level.arena).accent, this.targetSkinId(), this.aim.hitboxScale);
-        this.viewmodel = new Viewmodel(scene, camera.camera);
+        const arenaLook = themeProvider.resolveArena(this.level.arena);
+        const lightRoom = isLightSky(arenaLook.sky);
+        this.targets = new TargetField(scene, this.lanes, camera, arenaLook.accent, this.targetSkinId(), this.aim.hitboxScale, lightRoom);
+        this.viewmodel = new Viewmodel(scene, camera.camera, lightRoom);
 
         camera.resetLook();
         camera.lookEnabled = true;
         camera.update(Arena.toWorldX(this.body.x), 0, 0);
 
         hud.show();
-        hud.root.classList.toggle('hud--light', isLightSky(themeProvider.resolveArena(this.level.arena).sky));
+        hud.root.classList.toggle('hud--light', lightRoom);
         const placeholderTag = !this.atlasClean && this.level.trackId && !this.level.custom && trackProvider.isPlaceholder(this.level.trackId)
             ? ' · placeholder music' : '';
         hud.setLevel(this.level.trackName ?? this.level.name, this.level.bpm, hudDetail(this.level, this.replay && !this.atlasDemo, placeholderTag !== ''));

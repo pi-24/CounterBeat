@@ -68,10 +68,9 @@
     /* Placeholder label */
     --c-placeholder: var(--c-warn);
 
-    /* Tactical-range 3D environment (tutorial scene). Kept apart from the UI tokens:
-       the HUD and menus keep the C palette while the range keeps concrete and orange. */
-    --env-concrete: #1b1d20;
-    --env-marking: #ff8a2a;
+    /* 3D range environment (mirrors src/game/fps/rangePalette.js). Kept apart from the UI tokens. */
+    --env-concrete: var(--ink-2);
+    --env-marking: var(--acid);
 }
 
 /* Translucent mixes derived from the palette roles above (role-percent). They follow the active look. */
@@ -133,8 +132,8 @@
 /* Tactical range: only the 3D environment tokens change; UI tokens are untouched so the
    design stays consistent in the tutorial. */
 [data-look="tactical"] {
-    --env-concrete: #2b2f35;
-    --env-marking: #ff8a2a;
+    --env-concrete: var(--paper-2);
+    --env-marking: var(--acid);
 }
 
 /* Shared shape-language helpers */

@@ -233,3 +233,130 @@ test('contrast: markers and small labels on ink meet their WCAG minimum', async 
     for (const [grade, hex] of Object.entries(GRADE_COLOURS.safe)) assert.ok(ratio(hex) >= 4.5, `safe ${grade} ${ratio(hex).toFixed(2)}`);
     for (const [grade, hex] of Object.entries(GRADE_COLOURS.default)) assert.ok(ratio(hex) >= 3, `default ${grade} ${ratio(hex).toFixed(2)}`);
 });
+
+// ---------------------------------------------------------------- 3D range (direction C)
+
+const themes = JSON.parse(readFileSync(resolve(root, 'data/themes.json'), 'utf8'));
+const hex01 = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255); };
+const closeTo = (a, b, eps = 0.005) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) <= eps);
+
+test('range palette module mirrors the design tokens (one source for scene colours)', async () => {
+    const { RANGE_HEX } = await import('../../src/game/fps/rangePalette.js');
+    const c = art.uiPalette.colours;
+    for (const [key, token] of [['ink', 'ink'], ['ink2', 'ink-2'], ['ink3', 'ink-3'], ['ink4', 'ink-4'], ['paper', 'paper'], ['paper2', 'paper-2'],
+        ['dim', 'dim'], ['mute', 'mute'], ['acid', 'acid'], ['acidDk', 'acid-dk']]) {
+        assert.ok(tokens.includes(`--${token}: ${RANGE_HEX[key]};`), `${key} vs --${token}`);
+    }
+    assert.equal(RANGE_HEX.acid, c.acid);
+});
+
+test('themes.json palette is the direction C range palette: no cyan, magenta or orange swatches', async () => {
+    const { RANGE_HEX } = await import('../../src/game/fps/rangePalette.js');
+    const swatches = Object.values(RANGE_HEX).map((h) => h.toLowerCase());
+    assert.deepEqual([...themes.palette.colours].map((h) => h.toLowerCase()).sort(), [...swatches].sort());
+    // saturation check: the only chroma allowed in the room palette is acid (hue about 66 deg)
+    for (const hex of swatches) {
+        const [r, g, b] = hex01(hex);
+        const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+        if (hex !== RANGE_HEX.acid && hex !== RANGE_HEX.acidDk) assert.ok(chroma < 0.12, `${hex} is a neutral`);
+    }
+});
+
+test('every theme sky, fog and accent is a swatch of the range palette; accent is acid', async () => {
+    const { RANGE_HEX } = await import('../../src/game/fps/rangePalette.js');
+    const swatches = Object.values(RANGE_HEX).map(hex01);
+    for (const t of themes.themes) {
+        for (const [what, rgb] of [['sky', t.sky], ['fog', t.fog.colour], ['accent', t.accent]]) {
+            assert.ok(swatches.some((s) => closeTo(s, rgb)), `${t.id} ${what} ${JSON.stringify(rgb)} is not a palette swatch`);
+        }
+        assert.ok(closeTo(hex01(RANGE_HEX.acid), t.accent), `${t.id} accent is acid`);
+        assert.deepEqual(t.sky, t.fog.colour, `${t.id} fog fades to the sky colour`);
+    }
+});
+
+test('room textures and thumbnails carry no orange, cyan or magenta pixels', async () => {
+    const { decodePng } = await import('../../tools/validate-assets.mjs');
+    for (const t of themes.themes) {
+        for (const rel of [t.floorTexture, t.wallTexture, t.thumb]) {
+            const img = decodePng(readFileSync(resolve(root, 'public', rel)));
+            let chromatic = 0;
+            let total = 0;
+            for (let i = 0; i < img.width * img.height; i++) {
+                const o = i * img.channels;
+                const [r, g, b] = [img.data[o], img.data[o + 1], img.data[o + 2]];
+                const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+                total += 1;
+                // acid-dark (#b8d000) is the one allowed hue; everything else stays neutral
+                if (chroma > 40 && !(g > r && g > b && r > b)) chromatic += 1;
+            }
+            assert.ok(chromatic / total < 0.001, `${rel}: ${(100 * chromatic / total).toFixed(2)}% chromatic pixels`);
+        }
+    }
+});
+
+test('Range and Neon are dark ink rooms, Vault and the tutorial are the light bone room', async () => {
+    const { isLightSky } = await import('../../src/game/fps/hudText.js');
+    const { resolveChart, ARENAS } = await import('../../src/game/rules/charts.js');
+    const tutorial = resolveChart('tutorial');
+    const byId = Object.fromEntries(themes.themes.map((t) => [t.id, t]));
+    assert.equal(isLightSky(byId.range.sky), false);
+    assert.equal(isLightSky(byId.neon.sky), false);
+    assert.equal(isLightSky(byId.vault.sky), true);
+    assert.equal(byId.vault.coinPrice, 300);
+    assert.equal(byId.range.coinPrice, 0);
+    assert.equal(byId.range.decor, 'crates');
+    assert.equal(tutorial.arena.theme, ARENAS.vault.theme);
+    assert.equal(tutorial.arena.accent, undefined, 'the tutorial uses the theme accent (acid), not an override');
+    assert.ok(Object.values(themes.themes).every((t) => !/orange|cyan/i.test(t.name)));
+});
+
+test('rangeLook: dark rooms glow acid on ink, light rooms flip to flat ink marks', async () => {
+    const { rangeLook, rangeRgb } = await import('../../src/game/fps/rangePalette.js');
+    const acid = rangeRgb('acid');
+    const dark = rangeLook(false, acid);
+    const light = rangeLook(true, acid);
+    assert.deepEqual(dark.ring.idle, acid);
+    assert.deepEqual(dark.ring.close, rangeRgb('paper'));
+    assert.equal(dark.sparks.additive, true);
+    assert.equal(light.sparks.additive, false);
+    assert.notDeepEqual(light.ring.idle, light.ring.close, 'the ring still changes when the bot is in the window');
+    assert.deepEqual(light.ring.close, rangeRgb('ink'));
+    assert.deepEqual(dark.tracer.hit, acid);
+    // the lit lane frame always uses the accent, and differs from the idle frame in both rooms
+    for (const look of [dark, light]) assert.notDeepEqual(look.frameActive.diffuse, look.frameIdle.diffuse);
+});
+
+test('no legacy cyan, magenta, mint or orange scene colours remain in the 3D range code', () => {
+    for (const f of ['Arena.js', 'TargetField.js', 'Viewmodel.js']) {
+        const src = readFileSync(resolve(root, 'src/game/fps', f), 'utf8');
+        assert.doesNotMatch(src, /new Color[34]\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+/, `${f} builds colours from literals instead of rangePalette.js`);
+    }
+    assert.doesNotMatch(readFileSync(resolve(root, 'src/game/rules/charts.js'), 'utf8'), /0\.49,\s*1\.0,\s*0\.73/);
+});
+
+test('every bot skin reads on both the ink rooms and the bone room (dark outline plus a bright body)', async () => {
+    const { decodePng } = await import('../../tools/validate-assets.mjs');
+    const targets = JSON.parse(readFileSync(resolve(root, 'data/targets.json'), 'utf8')).targets;
+    assert.ok(targets.length >= 15);
+    const luma = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    for (const t of targets) {
+        const img = decodePng(readFileSync(resolve(root, 'public', t.sheet)));
+        assert.equal(img.channels, 4, t.id);
+        let opaque = 0;
+        let dark = 0;
+        let bright = 0;
+        for (let y = 0; y < t.cellHeight; y++) {
+            for (let x = 0; x < t.cellWidth; x++) {
+                const o = (y * img.width + x) * 4;
+                if (img.data[o + 3] <= 200) continue;
+                opaque += 1;
+                const l = luma(img.data[o], img.data[o + 1], img.data[o + 2]);
+                if (l < 70) dark += 1;
+                if (l > 110) bright += 1;
+            }
+        }
+        // the outline separates the bot from the pale Vault; the bright body separates it from ink
+        assert.ok(dark / opaque >= 0.12, `${t.id}: outline share ${(dark / opaque).toFixed(2)}`);
+        assert.ok(bright / opaque >= 0.35, `${t.id}: bright body share ${(bright / opaque).toFixed(2)}`);
+    }
+});

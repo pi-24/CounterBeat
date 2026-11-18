@@ -120,12 +120,12 @@ test('leaderboard view: no rows, or you are not on it, still renders cleanly', (
     assert.equal(view.entries.length, 1);
 });
 
-test('isLightSky: the pale Range sky gets the HUD scrim, the neon and vault skies do not', async () => {
+test('isLightSky: the pale bone Vault sky gets the HUD scrim, the ink Range and Neon skies do not', async () => {
     const { isLightSky } = await import('../../src/game/fps/hudText.js');
     const { default: themes } = await import('../../data/themes.json', { with: { type: 'json' } });
     const sky = (id) => themes.themes.find((t) => t.id === id)?.sky;
-    assert.equal(isLightSky(sky('range')), true);
-    for (const t of themes.themes.filter((x) => x.id !== 'range')) assert.equal(isLightSky(t.sky), false, t.id);
+    assert.equal(isLightSky(sky('vault')), true);
+    for (const t of themes.themes.filter((x) => x.id !== 'vault')) assert.equal(isLightSky(t.sky), false, t.id);
     assert.equal(isLightSky(undefined), false);
 });
 

@@ -16,6 +16,7 @@ import { APPROACH_BEATS, WORLD } from '../rules/config.js';
 import { themeProvider, assets } from '../providers/index.js';
 import { Arena } from './Arena.js';
 import { HITBOX, scaleHitbox, zoneAt } from '../rules/aim.js';
+import { rangeLook } from './rangePalette.js';
 
 const FRAMES = {
     idle: [0, 3],
@@ -26,8 +27,7 @@ const FRAMES = {
 const SPARK_POOL_SIZE = 6;
 /** Particles per system: a headshot burst, the largest. */
 const SPARK_CAPACITY = 26;
-const SPARK_NORMAL = new Color4(1, 0.7, 0.35, 1);
-const SPARK_BRIGHT = new Color4(1, 0.95, 0.7, 1);
+const color4 = (rgb, a = 1) => new Color4(rgb[0], rgb[1], rgb[2], a);
 
 export class TargetField {
     /**
@@ -36,8 +36,13 @@ export class TargetField {
      * @param {import('./FpsCamera.js').FpsCamera} camera
      * @param {number[]} accent level accent colour as [r, g, b]
      * @param {string} [skinId] id from data/targets.json (default skin when omitted)
+     * @param {number} [hitboxScale]
+     * @param {boolean} [light] pale (bone) room: rings and sparks switch to flat ink marks (rangePalette.js)
      */
-    constructor(scene, lanes, camera, accent, skinId, hitboxScale = 1) {
+    constructor(scene, lanes, camera, accent, skinId, hitboxScale = 1, light = false) {
+        this.look = rangeLook(light, accent);
+        this.look.sparks.normalColour = color4(this.look.sparks.normal);
+        this.look.sparks.brightColour = color4(this.look.sparks.bright);
         this.hitbox = scaleHitbox(HITBOX, hitboxScale);
         const SHEET = themeProvider.target(skinId);
         this.sheet = SHEET;
@@ -49,15 +54,14 @@ export class TargetField {
             { width: SHEET.cellWidth, height: SHEET.cellHeight }, scene);
         this.manager.isPickable = true;
 
-        const [r, g, b] = accent;
         this.ringIdle = new StandardMaterial('ring-idle', scene);
-        this.ringIdle.emissiveColor = new Color3(r, g, b);
+        this.ringIdle.emissiveColor = new Color3(...this.look.ring.idle);
         this.ringIdle.diffuseColor = Color3.Black();
         this.ringIdle.specularColor = Color3.Black();
         this.ringIdle.disableLighting = true;
 
         this.ringClose = new StandardMaterial('ring-close', scene);
-        this.ringClose.emissiveColor = new Color3(0.49, 1, 0.73);
+        this.ringClose.emissiveColor = new Color3(...this.look.ring.close);
         this.ringClose.diffuseColor = Color3.Black();
         this.ringClose.specularColor = Color3.Black();
         this.ringClose.disableLighting = true;
@@ -282,7 +286,7 @@ export class TargetField {
         particles.stop();
         particles.reset();
         particles.emitter.copyFrom(point);
-        particles.color1.copyFrom(bright ? SPARK_BRIGHT : SPARK_NORMAL);
+        particles.color1.copyFrom(bright ? this.look.sparks.brightColour : this.look.sparks.normalColour);
         particles.maxSize = bright ? 0.22 : 0.15;
         particles.manualEmitCount = Math.min(count, SPARK_CAPACITY);
         particles.start();
@@ -296,15 +300,15 @@ export class TargetField {
             particles.emitter = new Vector3(0, 0, 0);
             particles.minEmitBox = new Vector3(-0.05, -0.05, -0.05);
             particles.maxEmitBox = new Vector3(0.05, 0.05, 0.05);
-            particles.color1 = SPARK_NORMAL.clone();
-            particles.color2 = new Color4(1, 0.5, 0.2, 1);
-            particles.colorDead = new Color4(0.3, 0.1, 0, 0);
+            particles.color1 = this.look.sparks.normalColour.clone();
+            particles.color2 = color4(this.look.sparks.mid);
+            particles.colorDead = color4(this.look.sparks.dead, 0);
             particles.minSize = 0.06;
             particles.maxSize = 0.15;
             particles.minLifeTime = 0.15;
             particles.maxLifeTime = 0.4;
             particles.emitRate = 0;
-            particles.blendMode = ParticleSystem.BLENDMODE_ADD;
+            particles.blendMode = this.look.sparks.additive ? ParticleSystem.BLENDMODE_ADD : ParticleSystem.BLENDMODE_STANDARD;
             particles.direction1 = new Vector3(-1, -0.5, -1);
             particles.direction2 = new Vector3(1, 1.4, 1);
             particles.minEmitPower = 1.5;

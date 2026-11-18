@@ -230,7 +230,8 @@ const TUTORIAL = Object.freeze({
     movement: MOVEMENT,
     passAccuracy: 0,
     seed: 707,
-    arena: { ...ARENAS.range, accent: [0.49, 1.0, 0.73] },
+    // tactical range: the light bone room (vault textures and acid accent) dressed with crates
+    arena: { ...ARENAS.vault, decor: 'crates' },
 });
 
 // ------------------------------------------------------------------ builds

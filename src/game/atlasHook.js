@@ -86,9 +86,9 @@ export function demoLeaderboard(chartId, run = null) {
     });
 }
 
-/** A chart id chosen by the seed (Normal: stars on offer, no fail-out). Neon and Vault tracks only: the pale Range look is the tutorial's. */
+/** A chart id chosen by the seed (Normal: stars on offer, no fail-out); seeds 0-5 walk the six tracks, so every range theme shows up. */
 export function atlasChartId(seed) {
-    const tracks = TRACKS.filter((t) => t.arena !== 'range');
+    const tracks = TRACKS;
     return `t:${tracks[seed % tracks.length].id}:normal`;
 }
 

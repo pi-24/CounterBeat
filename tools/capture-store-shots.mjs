@@ -13,16 +13,17 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 // name, atlas scene, seed, simulated seconds. Play scenes show a scripted bot run (live score, combo, accuracy);
-// seeds 0-3 pick Neon Alley, Breakneck, Server Vault, Overclock. atlas_clean=1 (set by the capture window) drops
+// seeds 0-5 pick The Range, Lo-fi Drift, Neon Alley, Breakneck, Server Vault, Overclock (ink Range, ink Neon, bone Vault). atlas_clean=1 (set by the capture window) drops
 // the web guest wording and the placeholder-music tag. Any PNG in store/screenshots counts toward the checker's minimum.
 const SHOTS = [
-    ['01-neon-play', 'play', 0, 20],
-    ['02-breakneck-play', 'play', 1, 18],
-    ['03-vault-play', 'play', 2, 26],
-    ['04-overclock-play', 'play', 3, 25],
-    ['05-overclock-early', 'play', 3, 12],
-    ['06-vault-mid', 'play', 2, 21],
-    ['07-results', 'results', 1, 8],
+    ['01-neon-play', 'play', 2, 20],
+    ['02-breakneck-play', 'play', 3, 18],
+    ['03-vault-play', 'play', 4, 26],
+    ['04-overclock-play', 'play', 5, 25],
+    ['05-overclock-early', 'play', 5, 12],
+    ['06-vault-mid', 'play', 4, 21],
+    ['07-results', 'results', 3, 8],
+    ['08-range-play', 'play', 0, 20],
 ];
 
 const out = path.resolve(process.argv[2] ?? 'store/screenshots');

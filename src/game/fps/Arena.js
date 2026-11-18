@@ -16,6 +16,8 @@
 import { Scene, Vector3, Color3, Color4, Mesh, StandardMaterial, Texture, HemisphericLight, DirectionalLight, MeshBuilder } from '../engine.js';
 import { LAYOUT, WORLD } from '../rules/config.js';
 import { themeProvider } from '../providers/index.js';
+import { rangeLook } from './rangePalette.js';
+import { isLightSky } from './hudText.js';
 
 const TRACK_CENTRE = (LAYOUT.trackLeft + LAYOUT.trackRight) / 2;
 
@@ -110,8 +112,10 @@ export class Arena {
 
     buildMaterials() {
         const scene = this.scene;
-        const [r, g, b] = this.arena.accent;
-        const accent = new Color3(r, g, b);
+        // Every colour below comes from the direction C palette module (rangePalette.js).
+        const look = rangeLook(isLightSky(this.arena.sky), this.arena.accent);
+        this.look = look;
+        const col = (rgb) => new Color3(rgb[0], rgb[1], rgb[2]);
 
         this.floorMaterial = new StandardMaterial('floor', scene);
         const floorTexture = new Texture(this.arena.floorTexture, scene);
@@ -128,28 +132,28 @@ export class Arena {
         this.wallMaterial.specularColor = Color3.Black();
 
         this.frameIdle = new StandardMaterial('frame-idle', scene);
-        this.frameIdle.diffuseColor = new Color3(0.26, 0.28, 0.34);
-        this.frameIdle.emissiveColor = new Color3(0.08, 0.09, 0.11);
+        this.frameIdle.diffuseColor = col(look.frameIdle.diffuse);
+        this.frameIdle.emissiveColor = col(look.frameIdle.emissive);
         this.frameIdle.specularColor = Color3.Black();
 
         this.frameActive = new StandardMaterial('frame-active', scene);
-        this.frameActive.diffuseColor = accent;
-        this.frameActive.emissiveColor = accent.scale(0.7);
+        this.frameActive.diffuseColor = col(look.frameActive.diffuse);
+        this.frameActive.emissiveColor = col(look.frameActive.emissive);
         this.frameActive.specularColor = Color3.Black();
 
         this.padIdle = new StandardMaterial('pad-idle', scene);
-        this.padIdle.diffuseColor = new Color3(0.2, 0.22, 0.28);
-        this.padIdle.emissiveColor = new Color3(0.05, 0.06, 0.08);
+        this.padIdle.diffuseColor = col(look.padIdle.diffuse);
+        this.padIdle.emissiveColor = col(look.padIdle.emissive);
         this.padIdle.specularColor = Color3.Black();
 
         this.padActive = new StandardMaterial('pad-active', scene);
-        this.padActive.diffuseColor = accent;
-        this.padActive.emissiveColor = accent.scale(0.6);
+        this.padActive.diffuseColor = col(look.padActive.diffuse);
+        this.padActive.emissiveColor = col(look.padActive.emissive);
         this.padActive.specularColor = Color3.Black();
 
         this.accentMaterial = new StandardMaterial('accent', scene);
-        this.accentMaterial.emissiveColor = accent;
-        this.accentMaterial.diffuseColor = accent;
+        this.accentMaterial.emissiveColor = col(look.mark);
+        this.accentMaterial.diffuseColor = col(look.mark);
         this.accentMaterial.specularColor = Color3.Black();
 
         this.disposables.push(this.floorMaterial, this.wallMaterial, this.frameIdle,
@@ -169,7 +173,7 @@ export class Arena {
 
         const hemi = new HemisphericLight('hemi', new Vector3(0.2, 1, 0.3), scene);
         hemi.intensity = this.arena.ambient;
-        hemi.groundColor = new Color3(0.25, 0.25, 0.3);
+        hemi.groundColor = new Color3(...this.look.hemiGround);
         this.hemi = hemi;
         this.pulseLevel = 0;
 

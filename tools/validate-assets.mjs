@@ -211,7 +211,7 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     const palette = themes.palette;
     if (!palette || !Array.isArray(palette.colours) || palette.colours.length < 3) err('themes.json: palette.colours required');
     else if (![palette.tolerance, palette.pixelTolerance, palette.maxOutlierFraction].every(isNum)) err('themes.json: palette.tolerance, pixelTolerance and maxOutlierFraction required');
-    else { try { palette.colours.forEach(hexToRgb); } catch (e) { err(e.message); } }
+    else { try { palette.colours.forEach(hexToRgb); (palette.spriteColours ?? []).forEach(hexToRgb); } catch (e) { err(e.message); } }
 
     const isPow2 = (n) => n > 0 && (n & (n - 1)) === 0;
     const referenced = new Set();
@@ -219,6 +219,8 @@ export function validateAll({ root = ROOT, manifests } = {}) {
         if (!isStr(lic)) err(`${what}: missing licence path`);
         else if (!existsSync(resolve(root, lic))) err(`${what}: licence file ${lic} not found`);
     };
+    /** Bot sheets and brand art keep their own colourways on top of the room palette. */
+    const spriteColours = Array.isArray(palette?.spriteColours) ? palette.spriteColours : [];
     const checkImage = (rel, what, { pow2 = false, licence, extraColours = [] } = {}) => {
         if (isStr(rel)) referenced.add(rel.split('\\').join('/'));
         checkLicence(licence, what);
@@ -260,7 +262,7 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     checkImage(targets.spark?.path, 'spark', { licence: targets.spark?.licence });
     for (const t of targets.targets ?? []) {
         if (t.skinPalette !== undefined && !(Array.isArray(t.skinPalette) && t.skinPalette.every((c) => isStr(c) && /^#[0-9a-fA-F]{6}$/.test(c)))) err(`target ${t.id}: skinPalette must be a list of #rrggbb colours`);
-        checkImage(t.sheet, `target ${t.id} sheet`, { licence: t.licence, extraColours: Array.isArray(t.skinPalette) ? t.skinPalette : [] });
+        checkImage(t.sheet, `target ${t.id} sheet`, { licence: t.licence, extraColours: [...(Array.isArray(t.skinPalette) ? t.skinPalette : []), ...spriteColours] });
         if (!isNum(t.cellWidth) || !isNum(t.cellHeight)) err(`target ${t.id}: cellWidth/cellHeight required`);
         if (typeof t.placeholder !== 'boolean') err(`target ${t.id}: placeholder flag must be boolean`);
     }
@@ -289,7 +291,7 @@ export function validateAll({ root = ROOT, manifests } = {}) {
     if (!Array.isArray(art?.images)) err('art.json: images must be an array');
     for (const i of art?.images ?? []) {
         if (!isStr(i.id) || !isStr(i.name)) err('art.json: image needs id and name');
-        checkImage(i.path, `art ${i.id}`, { licence: i.licence });
+        checkImage(i.path, `art ${i.id}`, { licence: i.licence, extraColours: spriteColours });
     }
 
     // every image under public/ must be in a manifest; HTML, CSS and src/ may not

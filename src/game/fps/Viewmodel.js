@@ -8,7 +8,7 @@
  * never clips through the wall when the player stands close to a window.
  */
 import { Scene, Vector3, Color3, Camera, Mesh, TransformNode, StandardMaterial, Texture, PointLight, MeshBuilder } from '../engine.js';
-import { PALETTE, hexToRgb01 } from '../../ui/palette.js';
+import { RIFLE, rangeLook } from './rangePalette.js';
 import { assets } from '../providers/index.js';
 
 const REST = { x: 0.34, y: -0.30, z: 0.98 };
@@ -16,16 +16,18 @@ const KICK = { back: 0.1, up: 0.04, pitch: 0.14 };
 const RECOVER = 14;   // per second
 const FLASH_SECONDS = 0.045;
 const TRACER_SECONDS = 0.06;
-const TRACER_HIT = new Color3(0.49, 1, 0.73);
-const TRACER_MISS = new Color3(1, 0.4, 0.4);
 
 export class Viewmodel {
     /**
      * @param {Scene} scene
      * @param {Camera} camera
+     * @param {boolean} [light] pale (bone) room: tracer marks switch to ink (rangePalette.js)
      */
-    constructor(scene, camera) {
+    constructor(scene, camera, light = false) {
         this.scene = scene;
+        this.look = rangeLook(light, RIFLE.accent);
+        this.tracerHit = new Color3(...this.look.tracer.hit);
+        this.tracerMiss = new Color3(...this.look.tracer.miss);
         this.camera = camera;
         this.kick = 0;          // 0 .. 1, current recoil displacement
         this.flashUntil = 0;
@@ -59,18 +61,18 @@ export class Viewmodel {
 
     buildRifle() {
         const dark = new StandardMaterial('rifle-dark', this.scene);
-        dark.diffuseColor = new Color3(0.13, 0.14, 0.17);
-        dark.specularColor = new Color3(0.15, 0.15, 0.15);
+        dark.diffuseColor = new Color3(...RIFLE.dark);
+        dark.specularColor = Color3.Black();
         dark.fogEnabled = false;
 
         const mid = new StandardMaterial('rifle-mid', this.scene);
-        mid.diffuseColor = new Color3(0.3, 0.32, 0.38);
-        mid.specularColor = new Color3(0.2, 0.2, 0.2);
+        mid.diffuseColor = new Color3(...RIFLE.mid);
+        mid.specularColor = Color3.Black();
         mid.fogEnabled = false;
 
         const accent = new StandardMaterial('rifle-accent', this.scene);
-        accent.diffuseColor = new Color3(...hexToRgb01(PALETTE.primary));
-        accent.emissiveColor = new Color3(...hexToRgb01(PALETTE.primary).map((c) => c * 0.5));
+        accent.diffuseColor = new Color3(...RIFLE.accent);
+        accent.emissiveColor = new Color3(...RIFLE.accent.map((c) => c * 0.5));
         accent.specularColor = Color3.Black();
         accent.fogEnabled = false;
 
@@ -105,7 +107,7 @@ export class Viewmodel {
 
     buildFlash() {
         const material = new StandardMaterial('flash', this.scene);
-        material.emissiveColor = new Color3(1, 0.85, 0.5);
+        material.emissiveColor = new Color3(...this.look.flash);
         material.diffuseColor = Color3.Black();
         material.opacityTexture = new Texture(assets.spark(), this.scene);
         material.disableLighting = true;
@@ -122,7 +124,7 @@ export class Viewmodel {
         this.flash.setEnabled(false);
 
         this.flashLight = new PointLight('flash-light', new Vector3(0, 0, 0), this.scene);
-        this.flashLight.diffuse = new Color3(1, 0.75, 0.4);
+        this.flashLight.diffuse = new Color3(...this.look.flash);
         this.flashLight.intensity = 0;
         this.flashLight.range = 6;
         this.materials.push(material);
@@ -130,7 +132,7 @@ export class Viewmodel {
 
     buildTracer() {
         const material = new StandardMaterial('tracer', this.scene);
-        material.emissiveColor = new Color3(1, 0.9, 0.6);
+        material.emissiveColor = new Color3(...this.look.tracer.line);
         material.disableLighting = true;
         material.fogEnabled = false;
         this.materials.push(material);
@@ -139,7 +141,7 @@ export class Viewmodel {
             points: [Vector3.Zero(), Vector3.Zero()],
             updatable: true,
         }, this.scene);
-        this.tracer.color = new Color3(1, 0.9, 0.6);
+        this.tracer.color = new Color3(...this.look.tracer.line);
         this.tracer.isPickable = false;
         this.tracer.setEnabled(false);
     }
@@ -147,7 +149,7 @@ export class Viewmodel {
     /**
      * @param {Vector3} from world-space muzzle position
      * @param {Vector3} to world-space hit point
-     * @param {boolean} hit colours the tracer green on a hit, red on a miss.
+     * @param {boolean} hit tracer is acid on a hit, dim on a miss (ink / grey on a bone range).
      */
     fire(from, to, hit) {
         this.kick = 1;
@@ -162,7 +164,7 @@ export class Viewmodel {
         MeshBuilder.CreateLines('tracer', {
             points: [from, to], instance: this.tracer,
         });
-        this.tracer.color.copyFrom(hit ? TRACER_HIT : TRACER_MISS);
+        this.tracer.color.copyFrom(hit ? this.tracerHit : this.tracerMiss);
         this.tracer.setEnabled(true);
     }
 
