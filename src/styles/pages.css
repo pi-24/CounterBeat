@@ -1,0 +1,321 @@
+/* ==========================================================================
+   pages.css - website-only layouts in Direction C (docs/design/ui-direction-c.html):
+   C-styled form controls, the rankings page (the results-screen leaderboard sheet
+   from frame 04), the compact leaderboard on the home page, and the account pages.
+   Palette tokens only (tokens.css owns every literal colour).
+   ========================================================================== */
+
+/* ------------------------------------------------------------- C controls */
+/* Thick paper-rule boxes, mono text. Hover brightens the rule; focus is the acid slab. */
+.main .field__control {
+    min-height: 3rem;
+    border: var(--rule) solid var(--ink-4);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.main .field__control:hover {
+    border-color: var(--paper);
+}
+
+.main .field__control:focus {
+    border-color: var(--acid);
+    box-shadow: 6px 6px 0 var(--acid);
+}
+
+.main .field--invalid .field__control {
+    border-color: var(--paper);
+    border-style: dashed;
+    box-shadow: none;
+}
+
+.main select.field__control {
+    padding-right: 2.5rem;
+    text-overflow: ellipsis;
+}
+
+.main .field__label {
+    color: var(--dim);
+}
+
+/* --------------------------------------------------------------- rankings */
+.rankings {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 620px);
+    gap: var(--s-7);
+    align-items: start;
+}
+
+.rankings__side {
+    min-width: 0;
+}
+
+.rankings__title {
+    margin-bottom: var(--s-4);
+    font-size: clamp(3.5rem, 9vw, 6.5rem);
+    line-height: 0.9;
+}
+
+.rankings__lead {
+    max-width: 44ch;
+    margin-bottom: var(--s-5);
+}
+
+.stats--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stats--2 .stat {
+    padding-block: var(--s-3);
+}
+
+.stats--2 .stat__value {
+    font-size: 2.25rem;
+}
+
+.rankings__controls {
+    display: grid;
+    gap: var(--s-4);
+    margin-top: var(--s-6);
+}
+
+.rankings__controls .field {
+    margin-bottom: 0;
+}
+
+.rankings__controls .btn {
+    justify-self: start;
+}
+
+.rankings__pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-4);
+}
+
+/* ------------------------------------------------ leaderboard sheet (paper) */
+/* The same printed sheet as the results screen: paper surface, ink text, acid underline on
+   the live tab, your row inked with an acid bar. Rows and tabs come from components.css. */
+.board--page {
+    min-width: 0;
+    min-height: 34rem;
+    padding: 28px 32px;
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.board--page {
+    display: flex;
+    flex-direction: column;
+}
+
+.board--page .board__foot {
+    margin-top: auto;
+}
+
+.board--page .board__tabs {
+    flex-wrap: wrap;
+}
+
+.board--page .board__meta {
+    min-height: 2.2rem;
+}
+
+.board--page .board__rows {
+    min-width: 0;
+}
+
+.board--page .board__row {
+    grid-template-columns: 44px minmax(0, 1fr) 92px 64px 44px 30px;
+}
+
+.board--page .board__row:not(.board__row--head):not(.is-me):hover {
+    background: var(--paper-2);
+}
+
+/* an a.board__replay would otherwise pick up the acid link colour */
+.board--page a.board__replay {
+    color: inherit;
+    text-decoration: none;
+}
+
+.board--page a.board__replay:hover,
+.board--page a.board__replay:focus-visible {
+    background: var(--ink);
+    color: var(--paper);
+    outline: none;
+}
+
+.board--page .is-me a.board__replay:hover,
+.board--page .is-me a.board__replay:focus-visible {
+    background: var(--acid);
+    color: var(--ink);
+}
+
+.board__replay.is-off {
+    opacity: 0.25;
+    cursor: default;
+}
+
+.board--page .board__empty a,
+.board--page .board__more {
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.board--page .board__tab {
+    cursor: pointer;
+}
+
+.board__foot--split {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--s-2);
+}
+
+.board__more {
+    display: inline-block;
+    margin-top: var(--s-4);
+    font: 700 0.75rem var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* The compact sheet on the home page: no min height, the chart picker sits under the tab */
+.board--compact {
+    min-height: 0;
+    display: block;
+    align-self: start;
+    padding: 24px 28px;
+}
+
+.board--compact .board__field {
+    margin: var(--s-3) 0;
+}
+
+.board--compact .board__field .field__label {
+    color: var(--ink-4);
+}
+
+.board--compact .field__control {
+    border-color: var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.board--compact .field__control:hover {
+    background: var(--paper-2);
+}
+
+/* ------------------------------------------------------------ account pages */
+.page--narrow .section__head h1 {
+    font-size: clamp(2.75rem, 8vw, 4.5rem);
+}
+
+.page--narrow .card--form {
+    border-top-width: var(--rule-thick);
+}
+
+.page--narrow .card__foot a {
+    font-weight: 700;
+}
+
+.card .table {
+    margin: 0;
+}
+
+.card .table th {
+    width: 38%;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.card .table td {
+    overflow-wrap: anywhere;
+}
+
+.card > .table-wrap {
+    margin-top: var(--s-3);
+}
+
+/* six track tiles: 3 x 2, then 2 x 3, then a single column */
+.grid--tracks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+    .grid--tracks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .grid--tracks {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ------------------------------------------------------------ responsive */
+@media (max-width: 1000px) {
+    .rankings {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s-6);
+    }
+}
+
+@media (max-width: 560px) {
+    .rankings__pair {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .board--page,
+    .board--compact {
+        padding: 20px 16px;
+    }
+
+    /* the accuracy column drops out first; place, name, score, count and replay stay */
+    .board--page .board__row {
+        grid-template-columns: 32px minmax(0, 1fr) 72px 34px 26px;
+        column-gap: 6px;
+    }
+
+    .board--page .board__row .num--acc {
+        display: none;
+    }
+
+    .board--page .board__row.is-me {
+        margin: 0 -8px;
+        padding: 0 8px;
+    }
+
+    .board--page .board__row .name .name__detail {
+        display: none;
+    }
+
+    .stats--2 .stat__value {
+        font-size: 1.75rem;
+    }
+
+    .card--form {
+        padding: var(--s-5) var(--s-4);
+    }
+
+    .hero__cover {
+        box-shadow: 6px 6px 0 var(--paper);
+    }
+}
+
+.card > .badge + .card__title,
+.level-card__body > .badge + .card__title {
+    margin-top: var(--s-2);
+}

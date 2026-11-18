@@ -1,5 +1,7 @@
 /* ==========================================================================
    layout.css - page skeleton: header, navigation bar, main shell, footer.
+   Direction C "Bold Editorial": flat ink, thick paper rules, Anton headlines,
+   mono captions, one acid accent. Same tokens and components as the game.
    ========================================================================== */
 
 .page {
@@ -20,9 +22,8 @@
     position: sticky;
     top: 0;
     z-index: 40;
-    border-bottom: 1px solid var(--c-line);
-    background: var(--mix-bgalt-86);
-    backdrop-filter: blur(10px);
+    border-bottom: var(--rule) solid var(--paper);
+    background: var(--ink);
 }
 
 .site-header__inner {
@@ -32,44 +33,49 @@
     min-height: 68px;
 }
 
+/* Wordmark: acid diamond (the Perfect glyph) + Anton name, as on the game's main menu */
 .brand {
     display: flex;
     align-items: center;
-    gap: var(--s-2);
-    color: var(--c-text);
-    font-family: var(--font-display);
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    gap: var(--s-3);
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: 1.6rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     white-space: nowrap;
 }
 
 .brand:hover,
 .brand:focus-visible {
-    color: var(--c-text);
+    color: var(--paper);
     text-decoration: none;
 }
 
 .brand__mark {
-    width: 30px;
-    height: 30px;
-    border: 2px solid var(--c-accent);
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--c-primary) 18%, transparent);
     position: relative;
+    flex: none;
+    width: 1.55rem;
+    height: 1.55rem;
+    background: var(--acid);
 }
 
 .brand__mark::after {
     content: "";
     position: absolute;
-    inset: 9px;
-    border-radius: 50%;
-    background: var(--c-primary);
+    inset: 0.42rem;
+    transform: rotate(45deg);
+    background: var(--ink);
+}
+
+.brand__name {
+    white-space: nowrap;
 }
 
 .brand__beat {
-    color: var(--c-accent);
+    color: var(--acid);
 }
 
 /* ------------------------------------------------------------ nav bar */
@@ -79,13 +85,21 @@
 
 .nav__toggle {
     display: none;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    background: var(--c-surface);
-    color: var(--c-text);
-    font: inherit;
+    padding: 0.45rem 0.9rem;
+    border: var(--rule) solid var(--paper);
+    border-radius: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font: 400 1.1rem / 1 var(--display);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     cursor: pointer;
+}
+
+.nav__toggle[aria-expanded="true"] {
+    background: var(--acid);
+    border-color: var(--acid);
+    color: var(--ink);
 }
 
 .nav__list {
@@ -102,56 +116,71 @@
 }
 
 .nav__link {
+    position: relative;
     display: block;
-    padding: 0.5rem 0.9rem;
-    border-radius: var(--radius);
-    color: var(--c-text-dim);
-    font-size: 0.92rem;
-    font-weight: 600;
+    padding: 0.5rem 0.8rem;
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     white-space: nowrap;
 }
 
 .nav__link:hover,
 .nav__link:focus-visible {
-    background: var(--c-surface);
-    color: var(--c-text);
+    color: var(--acid);
     text-decoration: none;
 }
 
+/* the page you are on is "live": acid text and a thick acid rule */
 .nav__link.is-active {
-    background: color-mix(in srgb, var(--c-primary) 14%, transparent);
-    color: var(--c-accent);
+    color: var(--acid);
+    box-shadow: inset 0 calc(-1 * var(--rule)) 0 var(--acid);
 }
 
 .nav__cta {
     margin-left: var(--s-2);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius);
-    background: linear-gradient(135deg, var(--c-accent), var(--c-accent-dk));
-    color: var(--c-bg);
-    font-size: 0.92rem;
-    font-weight: 700;
+    padding: 0.55rem 1.1rem;
+    background: var(--acid);
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 1.1rem;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    text-transform: uppercase;
 }
 
 .nav__cta:hover,
 .nav__cta:focus-visible {
-    color: var(--c-bg);
+    background: var(--paper);
+    color: var(--ink);
     text-decoration: none;
 }
 
 .nav__user {
     display: flex;
     align-items: center;
-    gap: var(--s-2);
+    gap: var(--s-3);
     padding-left: var(--s-3);
     margin-left: var(--s-2);
-    border-left: 1px solid var(--c-line);
+    border-left: var(--rule-thin) solid var(--ink-4);
 }
 
 .nav__user-name {
-    color: var(--c-primary);
-    font-size: 0.9rem;
-    font-weight: 600;
+    color: var(--acid);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.nav__user .btn {
+    min-height: 2.25rem;
+    padding: 0.3rem 0.8rem;
+    font-size: 1rem;
 }
 
 /* ----------------------------------------------------------------- main */
@@ -168,37 +197,65 @@
     margin-bottom: var(--s-8);
 }
 
+/* Section header: mono eyebrow, Anton title, thick paper rule under it */
 .section__head {
     margin-bottom: var(--s-5);
 }
 
+.section__head > p {
+    max-width: 62ch;
+}
+
+.section__head h1,
+.section__head h2 {
+    margin-bottom: var(--s-3);
+}
+
 .section__eyebrow {
     display: inline-block;
-    margin-bottom: var(--s-2);
-    color: var(--c-accent);
-    font-size: 0.75rem;
+    margin-bottom: var(--s-3);
+    padding: 0.2em 0.6em;
+    background: var(--acid);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.7rem;
     font-weight: 700;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
+}
+
+/* An eyebrow inside a card is a plain mono caption */
+.card .section__eyebrow {
+    padding: 0;
+    background: none;
+    color: var(--acid);
 }
 
 .grid {
     display: grid;
-    gap: var(--s-4);
+    gap: var(--s-5);
+}
+
+.grid > * {
+    min-width: 0;
 }
 
 .grid--3 {
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
 }
 
 .grid--2 {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.grid--spaced {
+    margin-top: var(--s-5);
 }
 
 /* --------------------------------------------------------------- footer */
 .site-footer {
-    border-top: 1px solid var(--c-line);
-    background: var(--c-bg-alt);
+    border-top: var(--rule) solid var(--paper);
+    background: var(--ink);
     padding-block: var(--s-5);
 }
 
@@ -208,17 +265,41 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--s-3);
-    color: var(--c-text-faint);
-    font-size: 0.85rem;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.site-footer__inner p {
+    margin: 0;
+    color: var(--dim);
 }
 
 .site-footer__links {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--s-4);
+}
+
+.site-footer__links a {
+    color: var(--paper);
+}
+
+.site-footer__links a:hover,
+.site-footer__links a:focus-visible {
+    color: var(--acid);
 }
 
 /* ------------------------------------------------------------ responsive */
 @media (max-width: 860px) {
+    .site-header__inner {
+        min-height: 60px;
+        gap: var(--s-3);
+    }
+
     .nav__toggle {
         display: block;
     }
@@ -226,16 +307,32 @@
     .nav__list {
         position: absolute;
         top: 100%;
-        right: var(--s-4);
-        left: var(--s-4);
+        right: 0;
+        left: 0;
         flex-direction: column;
         align-items: stretch;
-        gap: var(--s-1);
-        padding: var(--s-3);
-        border: 1px solid var(--c-line);
-        border-radius: var(--radius-lg);
-        background: var(--c-surface);
-        box-shadow: var(--shadow);
+        gap: 0;
+        padding: var(--s-2) var(--s-5) var(--s-4);
+        border-bottom: var(--rule) solid var(--paper);
+        background: var(--ink);
+    }
+
+    .nav__list li {
+        border-bottom: var(--rule-thin) solid var(--ink-4);
+    }
+
+    .nav__link {
+        padding: 0.8rem 0;
+    }
+
+    .nav__link.is-active {
+        box-shadow: none;
+    }
+
+    .nav__cta {
+        display: block;
+        margin: var(--s-3) 0 0;
+        text-align: center;
     }
 
     .nav__list[hidden] {
@@ -243,14 +340,28 @@
     }
 
     .nav__user {
-        padding-left: 0;
+        padding: var(--s-3) 0 0;
         margin-left: 0;
         border-left: 0;
-        border-top: 1px solid var(--c-line);
-        padding-top: var(--s-3);
+        justify-content: space-between;
     }
 }
 
-.grid--spaced {
-    margin-top: var(--s-4);
+@media (max-width: 520px) {
+    .page {
+        width: min(1180px, 100% - 2 * var(--s-4));
+    }
+
+    .brand {
+        font-size: 1.3rem;
+    }
+
+    .main {
+        padding-block: var(--s-6);
+    }
+
+    .site-footer__inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
