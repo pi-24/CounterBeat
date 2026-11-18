@@ -1,7 +1,7 @@
 /**
  * MenuScreen.js
  *
- * Song select, the daily challenge, the player's own songs and settings,
+ * The main menu's data, song select, the player's own songs and settings,
  * drawn as an HTML overlay above a slowly drifting view of an arena.
  *
  * Every official track offers four difficulties.  Tracks open on star totals
@@ -13,9 +13,13 @@ import {
     TRACKS, DIFFICULTIES, ARENAS, resolveChart, dailyChartId, dailyDate,
     buildCustomChart,
 } from '../rules/charts.js';
-import { themeProvider, trackProvider } from '../providers/index.js';
+import { trackProvider } from '../providers/index.js';
 import { el } from '../../ui/format.js';
-import { accountStatus, isDesktop } from '../../platform/platform.js';
+import { BeatMap } from '../rules/BeatMap.js';
+import { SongSelect } from '../../ui/SongSelect.js';
+import { buildSongRows, initialSelection } from '../../ui/songSelectModel.js';
+import { buildMenuPreview, chipsModel } from '../../ui/menuPreview.js';
+import { isDesktop } from '../../platform/platform.js';
 import { CUSTOM_LABEL, CUSTOM_NOTE } from '../../ui/CustomSongs.js';
 import { STAR_DIFFICULTIES, STARS_PER_CHART, CAMPAIGN_TRACK_IDS } from '../progress/stars.js';
 import { chartPlayable } from '../modes/practice.js';
@@ -33,7 +37,8 @@ export class MenuScreen {
     }
 
     async enter() {
-        const daily = resolveChart(dailyChartId());
+        this.daily = resolveChart(dailyChartId());
+        const daily = this.daily;
         this.exited = false;
         this.showcase = null;
         // The 3D backdrop appears once the engine has loaded; the menu itself does not wait for it.
@@ -44,13 +49,13 @@ export class MenuScreen {
             }
         }, () => {});
 
-        this.app.mainMenu?.showRoot();
         this.renderHeader();
-        this.renderDaily(daily);
         this.renderTracks();
         this.bindLibrary();
         this.renderLibrary();
         this.overlay.hidden = false;
+        // While the Play splash is still up it keeps the focus; it hands it over when it closes.
+        this.app.mainMenu?.showRoot({ focus: this.app.startOverlay?.hidden !== false });
         if (typeof performance !== 'undefined' && performance.mark) {
             performance.mark('cb-menu-ready');
         }
@@ -94,151 +99,138 @@ export class MenuScreen {
 
     // ----------------------------------------------------------- header ----
 
+    /** Player / rank / level chips in the top bar. */
     renderHeader() {
-        const name = this.app.services.getPlayerName();
-        const logged = this.app.services.isLoggedIn();
-        const status = this.overlay.querySelector('#menuStatus');
-        const account = accountStatus({ logged, name, desktop: isDesktop() });
-        status.textContent = account.text;
-        status.className = `menu__status ${account.ok ? 'menu__status--ok' : 'menu__status--warn'}`;
-        const stars = this.overlay.querySelector('#menuStars');
-        if (stars) {
-            stars.textContent = `★ ${this.app.services.progress.total} / ${CAMPAIGN_STAR_TOTAL} stars`;
+        const services = this.app.services;
+        const chips = this.overlay.querySelector('#menuChips');
+        if (!chips) {
+            return;
         }
+        const model = chipsModel({
+            name: services.getPlayerName(),
+            bestRank: services.history?.bestRank() ?? null,
+            stars: services.progress.total,
+        });
+        chips.replaceChildren(...model.map((chip) => {
+            const node = el('div', 'chip');
+            node.append(el('span', 'chip__label', chip.label), el('span', 'chip__value', chip.value));
+            return node;
+        }));
+    }
+
+    // ---------------------------------------------------------- preview ----
+
+    /** @returns {import('../../ui/menuPreview.js').PreviewContext} real data for the preview panel */
+    previewContext() {
+        const services = this.app.services;
+        const progress = services.progress;
+        const history = services.history;
+        const ids = TRACKS.map((t) => t.id);
+        const states = trackStates(ids, progress.total);
+        const open = ids.filter((id) => states[id].unlocked);
+        const locked = ids.map((id) => states[id]).find((s) => !s.unlocked);
+        const last = history?.last ?? null;
+        const chart = this.daily;
+        const settings = this.app.settings;
+        return {
+            stars: progress.total,
+            starTotal: CAMPAIGN_STAR_TOTAL,
+            tracksOpen: open.length,
+            trackCount: ids.length,
+            nextGate: locked ? locked.gate : null,
+            bestRank: history?.bestRank() ?? null,
+            bestAccuracy: history?.bestAccuracy() ?? 0,
+            last,
+            lastRank: last ? history.bestRankFor(last.chartId) : null,
+            daily: chart ? {
+                trackId: chart.trackId, trackName: chart.trackName, difficulty: chart.difficulty.name, bpm: chart.bpm,
+                best: services.getPersonalBest(chart.chartId), date: chart.date, windows: chart.lanes,
+            } : null,
+            dailyClock: this.dailyClockText(),
+            songs: this.songCount ?? null,
+            loggedIn: services.isLoggedIn(),
+            desktop: isDesktop(),
+            focusTrackId: open.length ? open[open.length - 1] : ids[0],
+            settings: {
+                sensitivity: settings.get('sensitivity'),
+                fov: settings.get('fov'),
+                offsetMs: Math.round((settings.get('audioOffset') ?? 0) * 1000),
+            },
+        };
+    }
+
+    /** @param {string} id the focused main-menu entry @returns {import('../../ui/menuPreview.js').PreviewModel} */
+    previewFor(id) {
+        return buildMenuPreview(id, this.previewContext());
     }
 
     // ------------------------------------------------------------ daily ----
 
-    /** @param {object|undefined} chart */
-    renderDaily(chart) {
-        const host = this.overlay.querySelector('#dailyCard');
-        host.replaceChildren();
-        if (!chart) {
-            return;
-        }
-        this.daily = chart;
-        const best = this.app.services.getPersonalBest(chart.chartId);
-        const card = el('button', 'daily__card');
-        card.type = 'button';
-        const art = document.createElement('img');
-        art.className = 'daily__thumb';
-        art.src = themeProvider.resolveArena(chart.arena).thumb;
-        art.alt = '';
-        const body = el('span', 'daily__body');
-        body.append(
-            el('span', 'daily__key', `DAILY CHALLENGE · ${chart.date}`),
-            el('span', 'daily__name', `${chart.trackName} · ${chart.difficulty.name}`),
-            el('span', 'daily__meta', `${chart.bpm} BPM  •  ${chart.lanes} windows  •  one chart for everyone, its own leaderboard`),
-            el('span', 'daily__foot', best ? `Your best today: ${best.toLocaleString('en-GB')}` : 'Not played yet today'),
-        );
-        const clock = el('span', 'daily__clock mono', '');
-        clock.id = 'dailyClock';
-        card.append(art, body, clock);
-        card.addEventListener('click', () => this.start(chart.chartId));
-        host.append(card);
-        this.renderDailyClock();
-    }
-
-    renderDailyClock() {
-        const clock = this.overlay.querySelector('#dailyClock');
-        if (!clock || !this.daily) {
-            return;
-        }
-        if (this.daily.date !== dailyDate()) {
-            // Midnight passed while the menu was open.
-            this.renderDaily(resolveChart(dailyChartId()));
-            return;
-        }
+    /** @returns {string} "RESETS 06:12", the time until the daily changes (UTC midnight) */
+    dailyClockText() {
         const now = new Date();
         const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
         const left = Math.max(0, reset - now.getTime());
         const hours = Math.floor(left / 3600000);
         const minutes = Math.floor((left % 3600000) / 60000);
-        clock.textContent = `resets in ${hours}h ${String(minutes).padStart(2, '0')}m`;
+        return `RESETS ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    renderDailyClock() {
+        if (this.daily && this.daily.date !== dailyDate()) {
+            // Midnight passed while the menu was open.
+            this.daily = resolveChart(dailyChartId());
+        }
+        this.app.mainMenu?.refreshPreview();
     }
 
     // ----------------------------------------------------------- tracks ----
 
+    /** (Re)builds song select for the current mode. Practice opens every track. */
     renderTracks() {
-        const host = this.overlay.querySelector('#trackList');
-        host.replaceChildren();
-
-        const tutorial = resolveChart('tutorial');
-        host.append(this.trackCard({
-            key: 'T', name: 'Tutorial', mood: 'Learn the counter-strafe (cannot be failed, not ranked)',
-            bpm: tutorial.bpm, thumb: themeProvider.theme('range').thumb,
-        }, [{ label: 'Start', chart: tutorial, unlocked: true, best: 0, passed: false }]));
-
-        const progress = this.app.services.progress;
-        const states = trackStates(TRACKS.map((t) => t.id), progress.total);
-        for (const track of TRACKS) {
-            const state = states[track.id];
-            const options = DIFFICULTIES.map((difficulty) => {
-                const chart = resolveChart(`t:${track.id}:${difficulty.id}`);
-                return {
-                    label: difficulty.name,
-                    chart,
-                    unlocked: chartPlayable(this.app.playMode, state.unlocked),
-                    best: this.app.services.getPersonalBest(chart.chartId),
-                    passed: this.app.services.hasPassed(chart.chartId),
-                    lockNote: `Earn ${state.gate} stars to open this track (you have ${progress.total})`,
-                    stars: STAR_DIFFICULTIES.includes(difficulty.id) ? progress.starsFor(track.id, difficulty.id) : null,
-                };
-            });
-            host.append(this.trackCard({
-                key: `${track.bpm} BPM`, name: track.name, mood: track.mood, bpm: track.bpm,
-                thumb: themeProvider.theme(ARENAS[track.arena].theme).thumb, trackId: track.id,
-            }, options));
+        const host = this.overlay.querySelector('#songSelect');
+        if (!host) {
+            return;
         }
+        const services = this.app.services;
+        const progress = services.progress;
+        const states = trackStates(TRACKS.map((t) => t.id), progress.total);
+        const rows = buildSongRows(TRACKS, states, {
+            playable: (unlocked) => chartPlayable(this.app.playMode, unlocked),
+            stars: progress.total,
+            placeholder: (id) => trackProvider.isPlaceholder(id),
+        });
+        const difficultyIds = DIFFICULTIES.map((d) => d.id);
+        const selection = initialSelection(rows, difficultyIds, services.history?.last ?? null);
+        const bots = new Map();
+        this.songSelect = new SongSelect(host, {
+            rows,
+            difficulties: DIFFICULTIES,
+            theme: (trackId) => ARENAS[TRACKS.find((t) => t.id === trackId).arena].theme,
+            cell: (trackId, difficultyId) => {
+                const chart = resolveChart(`t:${trackId}:${difficultyId}`);
+                if (!bots.has(chart.chartId)) {
+                    bots.set(chart.chartId, new BeatMap(chart).total);
+                }
+                return {
+                    chartId: chart.chartId,
+                    rank: services.history?.bestRankFor(chart.chartId) ?? null,
+                    best: services.getPersonalBest(chart.chartId),
+                    stars: STAR_DIFFICULTIES.includes(difficultyId) ? progress.starsFor(trackId, difficultyId).slice(0, STARS_PER_CHART) : null,
+                    bots: bots.get(chart.chartId),
+                };
+            },
+            onSelect: (trackId) => {
+                // Warm the music cache while the player reads the page.
+                this.app.audio.ensure(`music-${trackId}`, trackProvider.musicUrls(trackId));
+            },
+            onPlay: (chartId) => (chartId ? this.start(chartId) : this.app.audio.play('sfx-miss', { volume: 0.4 })),
+        }, selection);
     }
 
-    /**
-     * @param {{key:string, name:string, mood:string, bpm:number, thumb:string, trackId?:string}} info
-     * @param {Array<{label:string, chart:object, unlocked:boolean, best:number, passed:boolean, lockNote?:string, stars?:boolean[]|null}>} options
-     */
-    trackCard(info, options) {
-        const card = el('div', 'track');
-        const thumb = document.createElement('img');
-        thumb.className = 'track__thumb';
-        thumb.src = info.thumb;
-        thumb.alt = '';
-        const head = el('div', 'track__head');
-        head.append(
-            el('span', 'track__key', info.key),
-            el('span', 'track__name', info.name),
-            el('span', 'track__mood', info.mood),
-            ...(info.trackId && trackProvider.isPlaceholder(info.trackId)
-                ? [el('span', 'track__placeholder', 'Placeholder music')]
-                : []),
-        );
-        const row = el('div', 'track__difficulties');
-        for (const option of options) {
-            const button = el('button', `diff diff--${option.chart.difficulty.id}${option.unlocked ? '' : ' is-locked'}${option.passed ? ' is-passed' : ''}`);
-            button.type = 'button';
-            button.disabled = !option.unlocked;
-            button.title = option.unlocked
-                ? `${option.chart.name}: ${option.chart.lanes} windows, ±${Math.round(option.chart.timing.perfect * 1000)} ms perfect window`
-                : option.lockNote;
-            button.append(
-                el('span', 'diff__label', option.label),
-                el('span', 'diff__best mono', option.unlocked
-                    ? (option.best ? option.best.toLocaleString('en-GB') : '-')
-                    : 'locked'),
-                ...(option.unlocked && option.stars
-                    ? [el('span', 'diff__stars', option.stars.slice(0, STARS_PER_CHART).map((on) => (on ? '★' : '☆')).join(''))]
-                    : []),
-            );
-            button.addEventListener('click', () => this.start(option.chart.chartId));
-            if (info.trackId) {
-                button.addEventListener('pointerenter', () => {
-                    // Warm the music cache while the player reads the card.
-                    this.app.audio.ensure(`music-${info.trackId}`, trackProvider.musicUrls(info.trackId));
-                }, { once: true });
-            }
-            row.append(button);
-        }
-        card.append(thumb, head, row);
-        return card;
+    /** Called when the song-select panel opens: the selected row takes focus. */
+    focusSongSelect() {
+        this.songSelect?.focusSelected();
     }
 
     // ---------------------------------------------------------- library ----
@@ -299,6 +291,8 @@ export class MenuScreen {
             console.warn(error);
             return;
         }
+        this.songCount = songs.length;
+        this.app.mainMenu?.refreshPreview();
         if (songs.length === 0) {
             host.append(el('p', 'song-list__empty', 'No songs yet. Add an MP3, OGG, WAV or FLAC and it will appear here with a chart at every difficulty.'));
             return;

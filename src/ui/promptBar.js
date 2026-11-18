@@ -13,6 +13,7 @@ import { padLabel } from '../input/padBindings.js';
 export const MENU_PROMPTS = Object.freeze([
     { label: 'Navigate', keys: ['W', 'S'], pad: ['D-PAD'] },
     { label: 'Select', keys: ['ENTER'], pad: ['A'] },
+    { label: 'Help', keys: ['H'], pad: ['Y'] },
     { label: 'Back', keys: ['ESC'], pad: ['B'] },
 ]);
 
@@ -80,3 +81,19 @@ export function renderPromptBar(doc, items, options = {}) {
     if (options.right) bar.append(node(doc, 'span', 'prompt-bar__right', options.right));
     return bar;
 }
+
+/** Song select: track, difficulty, play. */
+export const SONG_PROMPTS = Object.freeze([
+    { label: 'Track', keys: ['W', 'S'], pad: ['D-PAD'] },
+    { label: 'Difficulty', keys: ['Q', 'E'], pad: ['LB', 'RB'] },
+    { label: 'Play', keys: ['ENTER'], pad: ['A'] },
+    { label: 'Help', keys: ['H'], pad: ['Y'] },
+    { label: 'Back', keys: ['ESC'], pad: ['B'] },
+]);
+
+/** Settings and Your songs. */
+export const PANEL_PROMPTS = Object.freeze([
+    { label: 'Navigate', keys: ['W', 'S'], pad: ['D-PAD'] },
+    { label: 'Select', keys: ['ENTER'], pad: ['A'] },
+    { label: 'Back', keys: ['ESC'], pad: ['B'] },
+]);

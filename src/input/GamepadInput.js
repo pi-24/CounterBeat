@@ -315,6 +315,9 @@ export class GamepadInput {
             this.emit('nav', 'confirm');
         }
         if (edge(PAD_BUTTON.B)) this.emit('nav', 'back');
+        if (edge(PAD_BUTTON.LB)) this.emit('nav', 'prev');
+        if (edge(PAD_BUTTON.RB)) this.emit('nav', 'next');
+        if (edge(PAD_BUTTON.Y)) this.emit('nav', 'help');
         if (edge(PAD_BUTTON.Start)) this.emit('pause');
         const dir = navDirection(pad, GAMEPAD.menuDeadzone);
         if (dir !== this.nav.dir) {

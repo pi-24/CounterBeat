@@ -10,6 +10,7 @@
 import { resolveChart, TRACKS } from './rules/charts.js';
 import { BeatMap } from './rules/BeatMap.js';
 import { ProgressStore } from './progress/store.js';
+import { RunHistory } from '../ui/runHistory.js';
 import { ATLAS_SCENES, parseAtlasParams, parseAtlasClean } from './atlasParams.js';
 
 export { ATLAS_SCENES, parseAtlasParams, parseAtlasClean };
@@ -34,6 +35,7 @@ export function memoryStorage() {
 export function atlasServices(base, options = {}) {
     return {
         progress: new ProgressStore(memoryStorage()),
+        history: new RunHistory(memoryStorage()),
         getPlayerName: () => (options.clean ? 'Player' : 'Guest'),
         isLoggedIn: () => Boolean(options.clean),
         hasPassed: () => false,

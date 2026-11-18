@@ -56,6 +56,7 @@ export function pickNext(items, currentId, direction) {
  * @property {(id:string) => void} activate  click / toggle
  * @property {(id:string, step:number) => boolean} adjust  nudge a slider or select; false if not adjustable
  * @property {() => boolean} back            close / go up one level; false if there is nowhere to go
+ * @property {(step:number) => boolean} [shoulder]  LB / RB: step the screen's segmented control; false if it has none
  */
 
 export class MenuNavigator {
@@ -65,12 +66,14 @@ export class MenuNavigator {
     }
 
     /**
-     * @param {'up'|'down'|'left'|'right'|'confirm'|'back'} event
+     * @param {'up'|'down'|'left'|'right'|'confirm'|'back'|'prev'|'next'} event prev / next are LB / RB (Q / E) and step surface.shoulder
      * @returns {boolean} whether the event did anything
      */
     handle(event) {
         const { surface } = this;
         if (event === 'back') return surface.back();
+        // LB / RB (Q / E): step a segmented control such as the difficulty bar.
+        if (event === 'prev' || event === 'next') return surface.shoulder?.(event === 'next' ? 1 : -1) ?? false;
         const items = surface.items();
         if (items.length === 0) return false;
         const current = surface.focusedId();
@@ -97,7 +100,7 @@ export class MenuNavigator {
 }
 
 /** Selector for everything the pad can land on. */
-const FOCUSABLE = 'button, a[href], input:not([type="hidden"]):not([type="file"]), select, [tabindex="0"]';
+const FOCUSABLE = 'button:not([data-nofocus]), a[href], input:not([type="hidden"]):not([type="file"]), select, [tabindex="0"]';
 /**
  * Overlays carry `data-pad-overlay="<priority>"` in the markup; the visible one
  * with the highest priority takes the pad.  A modal dialog (`aria-modal="true"`
@@ -108,7 +111,7 @@ const FOCUSABLE = 'button, a[href], input:not([type="hidden"]):not([type="file"]
 const OVERLAY_SELECTOR = '[data-pad-overlay]';
 const MODAL_SELECTOR = '[aria-modal="true"], [data-pad-modal]';
 /** What "back" clicks inside the active scope, in order of preference. */
-const BACK_SELECTOR = '[data-pad-back], [data-action="menu-back"], [data-action="credits-close"], [data-action="cal-close"], [data-action="resume"], [data-action="menu"]';
+const BACK_SELECTOR = '[data-pad-back], [data-action="menu-back"], [data-action="credits-close"], [data-action="cal-close"], [data-action="help-close"], [data-action="resume"], [data-action="menu"]';
 
 /** @param {Element} element */
 const shown = (element) => !element.hidden && !element.closest('[hidden]') && element.getClientRects().length > 0;
@@ -202,6 +205,16 @@ export function domSurface(doc) {
             element.dispatchEvent(new Event('input', { bubbles: true }));
             element.dispatchEvent(new Event('change', { bubbles: true }));
             return true;
+        },
+        shoulder(step) {
+            const scope = root();
+            if (!scope) return false;
+            const target = scope.querySelector(step > 0 ? '[data-shoulder-next]' : '[data-shoulder-prev]');
+            if (target && shown(target)) {
+                target.click();
+                return true;
+            }
+            return false;
         },
         back() {
             const scope = root();

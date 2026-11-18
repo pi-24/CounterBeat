@@ -12,12 +12,12 @@ import { store } from '../core/Storage.js';
 import { applyPlatform, setDesktopWindowed } from '../platform/platform.js';
 import { initNavigation } from '../ui/Navigation.js';
 import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
-import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
-import { GRADE_LABEL } from '../game/rules/config.js';
+import { resolveChart } from '../game/rules/charts.js';
 import { bootCloudSave } from '../progress/cloudSave.js';
 import { settings } from '../game/Settings.js';
 import { ProgressStore } from '../game/progress/store.js';
-import { formatScore, formatAccuracy, el } from '../ui/format.js';
+import { formatScore } from '../ui/format.js';
+import { RunHistory } from '../ui/runHistory.js';
 import { toast } from '../ui/Toast.js';
 import { early } from './game-early.js';
 import { parseAtlasParams, parseAtlasClean, atlasServices, memoryStorage, showAtlasScene, markAtlasReady } from '../game/atlasHook.js';
@@ -57,14 +57,6 @@ if (!atlasParams) {
 }
 
 const user = backend.currentUser();
-const guestNotice = document.getElementById('guestNotice');
-const sessionLog = document.getElementById('sessionLog');
-const personalBests = document.getElementById('personalBests');
-
-if (!user) {
-    guestNotice.hidden = false;
-}
-
 /**
  * Best score and pass state per chart over every run the player has stored
  * (not just the recent ones), cached so the menu can read it synchronously.
@@ -74,6 +66,9 @@ let progress = user ? await loadProgress() : new Map();
 
 /** Durable local bests and passes for runs that are never ranked (guests; Easy, Normal, Campaign). */
 const localBests = new LocalBestStore(store, user ? user.id : 'guest');
+
+/** Last session and best ranks, for the main menu's preview panel (local only). */
+const history = new RunHistory(store);
 
 /** @returns {Promise<Map<string, object>>} */
 async function loadProgress() {
@@ -113,6 +108,7 @@ async function pendingReplay() {
 /** @type {import('../game/GameApp.js').GameServices} */
 const services = {
     progress: starProgress,
+    history,
 
     getPlayerName() {
         return user ? user.displayName : 'Guest';
@@ -139,9 +135,9 @@ const services = {
     },
 
     async onRunComplete(record, log, runToken) {
+        history.record(record, { mode: log?.mode });
         if (!user) {
             const { personalBest } = localBests.record(record);
-            renderPersonalBests();
             toast.info('Guest run finished. Log in before playing to save scores to the rankings.');
             return { saved: false, localOnly: true, reason: 'guest', personalBest, score: record.score };
         }
@@ -152,7 +148,6 @@ const services = {
         if (!gate.ok) {
             runToken?.catch?.(() => {});
             const { personalBest } = localBests.record(record);
-            renderPersonalBests();
             return { saved: true, localOnly: true, reason: gate.reason, personalBest, score: record.score };
         }
 
@@ -172,7 +167,6 @@ const services = {
         }
 
         progress = await loadProgress();
-        renderPersonalBests();
         if (record.kind === 'custom') {
             toast.success(result.personalBest
                 ? `New personal best on ${record.levelName}: ${formatScore(result.score)} (your own song, not ranked).`
@@ -185,67 +179,8 @@ const services = {
         return { saved: true, personalBest: result.personalBest, score: result.score };
     },
 
-    onJudgement(judgement) {
-        appendToSessionLog(judgement);
-    },
+    onJudgement() {},
 };
-
-/** @param {object} judgement */
-function appendToSessionLog(judgement) {
-    if (sessionLog.dataset.ready !== 'true') {
-        sessionLog.replaceChildren();
-        sessionLog.dataset.ready = 'true';
-    }
-    const row = el('div', 'session-log__row');
-    const flags = [judgement.counterStrafed ? '+CS' : '', judgement.headshot ? 'HS' : '']
-        .filter(Boolean).join(' ');
-    const label = flags ? `${GRADE_LABEL[judgement.grade]} ${flags}` : GRADE_LABEL[judgement.grade];
-    const detail = judgement.grade === 'miss'
-        ? judgement.reason
-        : `${judgement.timingError >= 0 ? '+' : ''}${Math.round(judgement.timingError * 1000)} ms  ${Math.round(judgement.speed)} u/s`;
-    row.append(el('span', `session-log__grade--${judgement.grade}`, label), el('span', '', detail));
-    sessionLog.prepend(row);
-    while (sessionLog.childElementCount > 40) {
-        sessionLog.lastElementChild.remove();
-    }
-}
-
-function renderPersonalBests() {
-    personalBests.replaceChildren();
-    const list = el('ul', 'rail__list');
-    for (const track of TRACKS) {
-        let best = 0;
-        let bestDifficulty = null;
-        for (const difficulty of DIFFICULTIES) {
-            const score = services.getPersonalBest(`t:${track.id}:${difficulty.id}`);
-            if (score > best) {
-                best = score;
-                bestDifficulty = difficulty;
-            }
-        }
-        const item = document.createElement('li');
-        item.append(
-            el('span', '', track.name),
-            el('span', 'mono', best ? `${formatScore(best)} · ${bestDifficulty.name}` : '-'),
-        );
-        list.append(item);
-    }
-    personalBests.append(list);
-
-    let best = null;
-    for (const entry of progress.values()) {
-        if ((entry.kind === 'track' || entry.kind === 'daily') && (best === null || entry.maxAccuracy > best.maxAccuracy)) {
-            best = entry;
-        }
-    }
-    if (best && best.maxAccuracy > 0) {
-        const name = resolveChart(best.chartId)?.name ?? best.chartId;
-        personalBests.append(el('p', 'card__foot',
-            `Best accuracy so far: ${formatAccuracy(best.maxAccuracy)} on ${name}.`));
-    }
-}
-
-renderPersonalBests();
 
 /** Embedded launch (Play on the web pages): chrome hidden, a way back to the site. */
 function setupEmbedded() {

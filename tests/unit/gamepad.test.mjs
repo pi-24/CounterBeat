@@ -284,6 +284,17 @@ test('menu navigator: left/right nudge a focused slider, otherwise move focus', 
     assert.equal(new MenuNavigator(fakeSurface([])).handle('down'), false);
 });
 
+test('menu navigator: LB / RB (Q / E) step the screen shoulder control, and do nothing without one', () => {
+    const surface = fakeSurface(grid);
+    const steps = [];
+    surface.shoulder = (step) => { steps.push(step); return true; };
+    const nav = new MenuNavigator(surface);
+    assert.equal(nav.handle('next'), true);
+    assert.equal(nav.handle('prev'), true);
+    assert.deepEqual(steps, [1, -1]);
+    assert.equal(new MenuNavigator(fakeSurface(grid)).handle('next'), false);
+});
+
 test('pad nav events from the stick and d-pad drive the navigator, with hold-to-repeat', () => {
     const { step, events } = rig({ context: 'menu' });
     step(pad({ down: [PAD_BUTTON.Down] }));

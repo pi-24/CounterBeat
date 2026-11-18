@@ -4,55 +4,16 @@
    form and the side rail.
    ========================================================================== */
 
-.game-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: var(--s-5);
-    align-items: start;
-}
-
-@media (max-width: 1100px) {
-    .game-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-.game-column {
-    min-width: 0;
-}
-
-/* ------------------------------------------------------------- stage bar */
-.stage-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s-3);
-    margin-bottom: var(--s-3);
-}
-
-.stage-bar__hint {
-    color: var(--c-text-faint);
-    font-size: 0.85rem;
-}
-
 /* ----------------------------------------------------------------- stage */
 .stage {
-    position: relative;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius-lg);
-    background: var(--c-bg);
-    box-shadow: var(--shadow);
-    overflow: hidden;
-    aspect-ratio: 16 / 9;
-    user-select: none;
-}
-
-.stage:fullscreen {
-    border: 0;
-    border-radius: 0;
-    aspect-ratio: auto;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
     width: 100vw;
     height: 100vh;
+    background: var(--c-bg);
+    overflow: hidden;
+    user-select: none;
 }
 
 .stage__canvas {
@@ -144,65 +105,7 @@
 }
 
 /* ------------------------------------------------------------------ menu */
-.menu {
-    width: min(920px, 100%);
-}
-
-.menu__head {
-    margin-bottom: var(--s-4);
-}
-
-.menu__title {
-    margin: 0;
-    font-size: clamp(2.2rem, 5vw, 3.4rem);
-    letter-spacing: 0.1em;
-    color: var(--c-text);
-}
-
-.menu__title span {
-    color: var(--c-accent);
-}
-
-.menu__tag {
-    margin: var(--s-1) 0 var(--s-2);
-    color: var(--c-text-dim);
-    font-size: 0.95rem;
-}
-
-.menu__status {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-}
-
-.menu__stars {
-    margin: var(--s-1) 0 0;
-    font-size: 0.9rem;
-    letter-spacing: 0.06em;
-    color: var(--c-accent, var(--c-text));
-}
-
-.menu__status--ok {
-    color: var(--c-primary);
-}
-
-.menu__status--warn {
-    color: var(--c-warn);
-}
-
-.menu__panel {
-    display: none;
-}
-
-.menu__panel.is-active {
-    display: block;
-}
-
-.menu__hint {
-    margin: var(--s-4) 0 0;
-    color: var(--c-text-faint);
-    font-size: 0.85rem;
-}
+/* Layout of the menu overlay lives with the Direction C menu rules near the end of this file. */
 
 /* level picks */
 .level-picks {
@@ -1083,29 +986,6 @@
     color: var(--c-primary);
 }
 
-/* ------------------------------------------------------------- side rail */
-.rail {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-4);
-}
-
-.rail__panel {
-    padding: var(--s-4);
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius-lg);
-    background: var(--c-surface);
-}
-
-.rail__title {
-    margin-bottom: var(--s-3);
-    color: var(--c-text-faint);
-    font-family: var(--font-display);
-    font-size: 0.75rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-}
-
 .cs-demo {
     display: grid;
     gap: var(--s-2);
@@ -1135,46 +1015,6 @@
     font-family: var(--font-mono);
     font-size: 0.78rem;
     font-weight: 700;
-}
-
-.session-log {
-    max-height: 210px;
-    overflow-y: auto;
-}
-
-.session-log__row {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--s-2);
-    padding: 0.3rem 0;
-    border-bottom: 1px dashed var(--c-line);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    color: var(--c-text-dim);
-}
-
-.session-log__row:last-child {
-    border-bottom: 0;
-}
-
-.session-log__grade--perfect {
-    color: var(--c-primary);
-}
-
-.session-log__grade--good {
-    color: var(--c-primary);
-}
-
-.session-log__grade--ok {
-    color: var(--c-warn);
-}
-
-.session-log__grade--miss {
-    color: var(--c-danger);
-}
-
-.result__score-label.is-rejected {
-    color: var(--c-danger);
 }
 
 /* ----------------------------------------------------------- calibration */
@@ -1237,155 +1077,6 @@
 
 .settings__readout-inline strong {
     color: var(--c-primary);
-}
-
-/* ------------------------------------------------------------ daily card */
-.daily {
-    margin-bottom: var(--s-4);
-}
-
-.daily__card {
-    display: grid;
-    grid-template-columns: 120px 1fr auto;
-    align-items: center;
-    gap: var(--s-4);
-    width: 100%;
-    padding: 0;
-    overflow: hidden;
-    border: 2px solid var(--c-primary);
-    border-radius: var(--radius-lg);
-    background: linear-gradient(90deg, var(--mix-prim-14), var(--mix-surf-94) 55%);
-    color: var(--c-text);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: transform var(--transition), box-shadow var(--transition);
-}
-
-.daily__card:hover,
-.daily__card:focus-visible {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 30px var(--mix-prim-18);
-}
-
-.daily__thumb {
-    display: block;
-    width: 120px;
-    height: 100%;
-    min-height: 92px;
-    object-fit: cover;
-}
-
-.daily__body {
-    display: grid;
-    gap: 2px;
-    padding: var(--s-3) 0;
-}
-
-.daily__key {
-    color: var(--c-primary);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-}
-
-.daily__name {
-    font-family: var(--font-display);
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
-.daily__meta {
-    color: var(--c-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-}
-
-.daily__foot {
-    color: var(--c-primary);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-}
-
-.daily__clock {
-    padding: 0 var(--s-4);
-    color: var(--c-text-dim);
-    font-size: 0.8rem;
-    white-space: nowrap;
-}
-
-@media (max-width: 760px) {
-    .daily__card {
-        grid-template-columns: 1fr;
-    }
-
-    .daily__thumb {
-        height: 70px;
-        width: 100%;
-    }
-
-    .daily__body,
-    .daily__clock {
-        padding: var(--s-2) var(--s-3);
-    }
-}
-
-/* ------------------------------------------------------------ track list */
-.track-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--s-3);
-}
-
-@media (max-width: 760px) {
-    .track-list {
-        grid-template-columns: 1fr;
-    }
-}
-
-.track {
-    display: grid;
-    grid-template-columns: 96px 1fr;
-    grid-template-rows: auto auto;
-    overflow: hidden;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius-lg);
-    background: var(--mix-surf-94);
-    text-align: left;
-}
-
-.track__thumb {
-    grid-row: 1 / span 2;
-    width: 96px;
-    height: 100%;
-    min-height: 96px;
-    object-fit: cover;
-    border-right: 1px solid var(--c-line);
-}
-
-.track__head {
-    display: grid;
-    gap: 1px;
-    padding: var(--s-3) var(--s-3) var(--s-2);
-}
-
-.track__key {
-    color: var(--c-accent);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    font-weight: 700;
-}
-
-.track__name {
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-.track__mood {
-    color: var(--c-text-dim);
-    font-size: 0.8rem;
 }
 
 .track__difficulties {
@@ -1634,51 +1325,6 @@
     100% { opacity: 0.3; }
 }
 
-/* ------------------------------------------------- main menu (root list) */
-/* The root list replaces the panels until one is opened. */
-.menu--root .menu__panel {
-    display: none;
-}
-
-.menu:not(.menu--root) .mainmenu {
-    display: none;
-}
-
-.menu--root .mainmenu__back {
-    display: none;
-}
-
-.mainmenu {
-    display: grid;
-    width: min(560px, 100%);
-    margin: var(--s-3) auto;
-    border-top: var(--rule) solid var(--paper);
-}
-
-/* Slab rows (components.css) sized for the embedded play surface. */
-.mainmenu .slab {
-    padding-block: var(--s-1);
-    padding-left: 3.25rem;
-    gap: var(--s-3);
-}
-
-.mainmenu .slab__title {
-    font-size: clamp(1.5rem, 3vw, 2rem);
-}
-
-.mainmenu .slab__index {
-    order: -1;
-    width: 1.75rem;
-    margin-left: 0;
-    padding-left: 0;
-}
-
-.mainmenu__item--minor .slab__title,
-.mainmenu__item--minor.slab .slab__title {
-    font-size: 1.15rem;
-    color: var(--dim);
-}
-
 /* ----------------------------------------------- play splash, lock prompt */
 .overlay--start {
     z-index: 20;
@@ -1852,47 +1498,11 @@
     background: var(--c-bg);
 }
 
-.is-embedded,
-.is-desktop {
+/* The game is the whole window: no site header, footer, banner or sidebars around the stage. */
+body.game-shell {
+    margin: 0;
     overflow: hidden;
-}
-
-/* Desktop shell: the stage IS the window (no page layout, side rail or scrollbar around it). */
-.is-desktop .rail {
-    display: none;
-}
-
-.is-desktop .game-layout {
-    display: block;
-}
-
-.is-embedded .stage,
-.is-desktop .stage {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    width: 100vw;
-    height: 100vh;
-    aspect-ratio: auto;
-    border: 0;
-    border-radius: 0;
-}
-
-.embed-exit {
-    position: absolute;
-    top: var(--s-3);
-    left: var(--s-3);
-    z-index: 5;
-}
-
-.is-embedded .site-header,
-.is-embedded .site-footer,
-.is-embedded .notice,
-.is-desktop .site-header,
-.is-desktop .site-footer,
-.is-desktop .notice,
-.is-desktop .stage-bar {
-    display: none;
+    background: var(--ink);
 }
 
 .lockprompt__sub kbd {
@@ -1965,19 +1575,6 @@
     border-top: var(--rule-thin) solid var(--c-line);
 }
 
-.track__placeholder {
-    margin-left: auto;
-    padding: 1px 8px;
-    border: 1px solid var(--c-placeholder);
-    border-radius: 0;
-    color: var(--c-placeholder);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.desktop-quit { position: absolute; top: 16px; right: 16px; z-index: 5; }
-.desktop-quit[hidden] { display: none; }
 
 /* Credits overlay */
 .credits {
@@ -2020,4 +1617,835 @@ body[data-input="pad"] :focus {
 
 body[data-input="pad"] input[type="range"]:focus {
     box-shadow: none;
+}
+
+/* ==========================================================================
+   Direction C game shell: main menu, song select, help (docs/design/ui-direction-c.html)
+   ========================================================================== */
+.cover {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.cv-a { fill: var(--acid); }
+.cv-k { fill: var(--ink); }
+.cv-p { fill: var(--paper); }
+
+.overlay--menu {
+    display: flex;
+    flex-direction: column;
+    place-content: initial;
+    gap: 0;
+    padding: 0;
+    text-align: left;
+    overflow: hidden;
+    background: linear-gradient(90deg, var(--mix-bg-96) 0%, var(--mix-bg-86) 50%, var(--mix-bg-70) 100%);
+}
+
+/* The prompt bar is the last flex child (never sticky): no negative margins, so no sideways overflow. */
+.overlay--menu > .prompt-bar--sticky {
+    position: static;
+    flex: none;
+    margin: 0;
+    padding-inline: clamp(20px, 4vw, 64px);
+}
+
+
+.overlay--menu .menu {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1480px;
+    min-height: 0;
+    margin: 0 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--acid) var(--ink-3);
+    padding: clamp(14px, 3vh, 32px) clamp(20px, 4vw, 64px) var(--s-6);
+}
+
+.menu__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin: 0;
+}
+
+.menu__head-end {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+.lockup {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+.lockup__mark {
+    width: 1.05rem;
+    height: 1.05rem;
+    background: var(--acid);
+    transform: rotate(45deg);
+}
+
+.menu__title {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 1.7rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    color: var(--paper);
+}
+
+.chips {
+    display: flex;
+    border: var(--rule) solid var(--paper);
+}
+
+.chip {
+    display: grid;
+    gap: 1px;
+    min-width: 4.5rem;
+    padding: 0.2rem 0.7rem;
+    border-right: var(--rule) solid var(--paper);
+}
+
+.chip:last-child {
+    border-right: 0;
+}
+
+.chip__label {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+.chip__value {
+    max-width: 12ch;
+    overflow: hidden;
+    font-family: var(--display);
+    font-size: 1.25rem;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.helpbtn {
+    gap: var(--s-2);
+}
+
+/* Root view: the list on the left, the preview on the right. Panels replace it. */
+.menu--root .menu__panel,
+.menu--root .menu__panel.is-active,
+.menu--root .panelbar,
+.menu:not(.menu--root) .menu__root,
+.menu:not(.menu--root) .menu__head {
+    display: none;
+}
+
+.menu__root {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: start;
+    gap: clamp(24px, 5vw, 88px);
+    margin-top: clamp(12px, 3vh, 36px);
+}
+
+.mainmenu {
+    min-width: 0;
+}
+
+.mainmenu__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--s-2);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+.mainmenu__primary {
+    border-top: var(--rule) solid var(--paper);
+}
+
+.mainmenu__primary .slab {
+    padding-block: 0.1rem;
+    padding-left: 3.25rem;
+    border-bottom: 0;
+}
+
+.mainmenu__primary .slab--long .slab__title {
+    font-size: clamp(1.5rem, min(5.4vh, 2.6vw), 3rem);
+}
+
+.mainmenu__primary .slab__title {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: clamp(2rem, min(7.6vh, 3.6vw), 4.2rem);
+}
+
+.mainmenu__primary .slab__meta {
+    flex: 0 1 11rem;
+    min-width: 0;
+}
+
+.mainmenu__primary .slab__index {
+    order: -1;
+    width: 1.75rem;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+.mainmenu__more {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    margin-top: var(--s-3);
+    border-top: var(--rule-thick) solid var(--paper);
+}
+
+@media (max-width: 900px) {
+    .menu__root {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .preview {
+        display: none;
+    }
+
+    .mainmenu__more {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.moreitem {
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    padding: 0.55rem 0.5rem 0.7rem;
+    border: 0;
+    background: transparent;
+    color: var(--paper);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.moreitem__index {
+    order: -1;
+    color: var(--mute);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.moreitem__name {
+    font-family: var(--display);
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.moreitem__beta {
+    justify-self: start;
+    padding: 0 0.3em;
+    font-size: 0.55rem;
+}
+
+.moreitem:hover .moreitem__name {
+    color: var(--acid);
+}
+
+.moreitem:focus {
+    outline: none;
+}
+
+.moreitem:focus-visible,
+.moreitem.is-focus,
+body[data-input="pad"] .moreitem:focus {
+    background: var(--acid);
+    color: var(--ink);
+    outline: none;
+    box-shadow: none;
+}
+
+.moreitem.is-focus .moreitem__name,
+.moreitem.is-focus .moreitem__index,
+.moreitem:focus-visible .moreitem__name,
+.moreitem:focus-visible .moreitem__index,
+body[data-input="pad"] .moreitem:focus .moreitem__name,
+body[data-input="pad"] .moreitem:focus .moreitem__index {
+    color: var(--ink);
+}
+
+.moreitem.is-focus .moreitem__beta,
+.moreitem:focus-visible .moreitem__beta,
+body[data-input="pad"] .moreitem:focus .moreitem__beta {
+    background: var(--ink);
+    color: var(--acid);
+}
+
+/* Preview panel: an outline index number over a paper card of real data */
+.preview {
+    position: relative;
+    min-width: 0;
+}
+
+.preview__num {
+    margin-bottom: var(--s-2);
+    color: transparent;
+    font-family: var(--display);
+    font-size: clamp(6rem, 30vh, 14rem);
+    line-height: 0.85;
+    text-align: right;
+    -webkit-text-stroke: 3px var(--paper);
+}
+
+.preview__kicker {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-bottom: var(--s-2);
+    border-bottom: var(--rule) solid var(--paper);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.preview__card {
+    margin-top: var(--s-3);
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.preview__main {
+    display: grid;
+    grid-template-columns: clamp(72px, 12vh, 112px) minmax(0, 1fr);
+    gap: var(--s-3);
+    padding: var(--s-3);
+}
+
+.preview__cover {
+    aspect-ratio: 1;
+}
+
+.preview__title {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(1.4rem, 4vh, 2.2rem);
+    font-weight: 400;
+    line-height: 1.02;
+    text-transform: uppercase;
+}
+
+.preview__body {
+    margin: var(--s-1) 0 0;
+    color: var(--ink);
+    font-size: 0.85rem;
+    line-height: 1.35;
+}
+
+.preview__stats {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    border-top: var(--rule) solid var(--ink);
+}
+
+.preview__stats[hidden] {
+    display: none;
+}
+
+.preview__stat {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: var(--s-2) var(--s-3);
+    border-right: var(--rule) solid var(--ink);
+}
+
+.preview__stat:last-child {
+    border-right: 0;
+}
+
+.preview__stat-label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.preview__stat-value {
+    overflow: hidden;
+    font-family: var(--display);
+    font-size: 1.5rem;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Panel bar over song select / your songs / settings */
+.panelbar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    padding-bottom: var(--s-3);
+    border-bottom: var(--rule-thick) solid var(--paper);
+}
+
+.panelbar__title {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 1.9rem;
+    font-weight: 400;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.panelbar__caption {
+    margin-left: auto;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.menu__panel {
+    display: none;
+}
+
+.menu__panel.is-active {
+    display: block;
+    margin-top: var(--s-4);
+}
+
+/* Song select (frame 02) */
+.songselect {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.5fr);
+    align-items: start;
+    gap: clamp(20px, 3vw, 48px);
+}
+
+.songselect__side {
+    min-width: 0;
+}
+
+.songselect__cover {
+    position: relative;
+    width: min(100%, 46vh);
+    aspect-ratio: 1;
+}
+
+.songselect__art {
+    width: 100%;
+    height: 100%;
+}
+
+.songselect__rank {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    min-width: 22%;
+    padding: 0.2rem 0.5rem;
+    background: var(--paper);
+    color: var(--ink);
+    text-align: center;
+}
+
+.songselect__rank b {
+    font-family: var(--display);
+    font-size: 2.4rem;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.songselect__rank span {
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+}
+
+.songselect__sidelabel {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    padding: 0.15rem 0.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.playbtn {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    width: min(100%, 46vh);
+    margin-top: var(--s-3);
+    padding: 0.15rem 1rem;
+    border: 0;
+    background: var(--acid);
+    box-shadow: 6px 6px 0 var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.playbtn__arrow {
+    width: 0;
+    height: 0;
+    border-top: 0.9rem solid transparent;
+    border-bottom: 0.9rem solid transparent;
+    border-left: 1.4rem solid var(--ink);
+}
+
+.playbtn__label {
+    font-family: var(--display);
+    font-size: clamp(2rem, 6vh, 3rem);
+    line-height: 1.15;
+}
+
+.playbtn:disabled {
+    background: var(--ink-3);
+    box-shadow: none;
+    color: var(--mute);
+    cursor: not-allowed;
+}
+
+.playbtn:disabled .playbtn__arrow {
+    border-left-color: var(--mute);
+}
+
+.playbtn:focus-visible {
+    outline: 3px solid var(--paper);
+    outline-offset: 3px;
+}
+
+.songselect__lock {
+    margin: var(--s-2) 0 0;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+}
+
+.songselect__main {
+    min-width: 0;
+}
+
+.songselect__eyebrow {
+    margin: 0;
+    color: var(--dim);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.songselect__titlerow {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+.songselect__title {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(2.4rem, 8vh, 4.6rem);
+    font-weight: 400;
+    line-height: 1.02;
+    text-transform: uppercase;
+}
+
+.songselect__placeholder {
+    border: 2px solid var(--c-placeholder);
+    background: transparent;
+    color: var(--c-placeholder);
+}
+
+.songselect__placeholder[hidden] {
+    display: none;
+}
+
+.songselect__mood {
+    margin: 0 0 var(--s-3);
+    color: var(--paper-2);
+    font-size: 0.9rem;
+}
+
+.songselect__facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: var(--rule) solid var(--paper);
+    border-bottom: var(--rule) solid var(--paper);
+}
+
+.songselect__fact {
+    display: grid;
+    gap: 1px;
+    padding: var(--s-2) var(--s-3) var(--s-2) 0;
+}
+
+.songselect__fact-label {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.songselect__fact-value {
+    overflow: hidden;
+    font-family: var(--display);
+    font-size: clamp(1.2rem, 3.5vh, 1.8rem);
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diffbar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin: var(--s-3) 0;
+}
+
+.diffbar__segs {
+    display: grid;
+    flex: 1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: var(--rule) solid var(--paper);
+}
+
+.diffbar__seg {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--s-2);
+    padding: 0.3rem 0.4rem;
+    border: 0;
+    border-right: var(--rule) solid var(--paper);
+    background: transparent;
+    color: var(--paper);
+    cursor: pointer;
+}
+
+.diffbar__seg:last-child {
+    border-right: 0;
+}
+
+.diffbar__name {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+}
+
+.diffbar__meta {
+    color: var(--dim);
+    font-size: 0.62rem;
+}
+
+.diffbar__seg.is-selected {
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.diffbar__seg.is-selected .diffbar__meta {
+    color: var(--ink);
+}
+
+.diffbar__seg:focus-visible {
+    outline: 3px solid var(--acid);
+    outline-offset: -3px;
+}
+
+.diffbar__cap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.tracklist__head,
+.trow {
+    display: grid;
+    grid-template-columns: 2rem 1.9rem minmax(0, 1fr) 3.2rem 3.2rem 2.6rem 4.6rem;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 0 var(--s-2);
+}
+
+.tracklist__head {
+    padding-bottom: 4px;
+    border-bottom: var(--rule-thin) solid var(--ink-4);
+    color: var(--mute);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.trow {
+    width: 100%;
+    height: clamp(2rem, 5.6vh, 2.6rem);
+    border: 0;
+    border-bottom: var(--rule-thin) solid var(--ink-4);
+    background: transparent;
+    color: var(--paper);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.trow__idx,
+.trow__bpm,
+.trow__len,
+.trow__rank,
+.trow__stars {
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.trow__idx {
+    color: var(--mute);
+}
+
+.trow__cover {
+    display: block;
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.trow__name {
+    overflow: hidden;
+    font-family: var(--display);
+    font-size: 1.15rem;
+    letter-spacing: 0.01em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.trow__bpm,
+.trow__len,
+.tracklist__head span:nth-child(4),
+.tracklist__head span:nth-child(5) {
+    text-align: right;
+}
+
+.trow__rank,
+.tracklist__head span:nth-child(6) {
+    text-align: center;
+}
+
+.trow.is-locked {
+    color: var(--mute);
+}
+
+.trow:hover:not(.is-selected) .trow__name {
+    color: var(--acid);
+}
+
+.trow:focus {
+    outline: none;
+}
+
+.trow.is-selected,
+.trow:focus-visible,
+body[data-input="pad"] .trow:focus {
+    background: var(--acid);
+    color: var(--ink);
+    outline: none;
+    box-shadow: none;
+}
+
+.trow.is-selected .trow__idx,
+.trow.is-selected .trow__name {
+    color: var(--ink);
+}
+
+@media (max-width: 900px) {
+    .songselect {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .songselect__cover,
+    .playbtn {
+        width: min(100%, 220px);
+    }
+}
+
+/* Help overlay: sits over the menu and the pause screen */
+.overlay--help {
+    z-index: 8;
+    place-content: center;
+    text-align: left;
+    background: var(--mix-bg-96);
+}
+
+.help {
+    width: min(920px, 100%);
+}
+
+.help__cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(20px, 4vw, 56px);
+}
+
+@media (max-width: 760px) {
+    .help__cols {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.help__h {
+    margin: 0 0 var(--s-2);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.help__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.help__list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: 0.35rem 0;
+    border-bottom: var(--rule-thin) solid var(--ink-4);
+}
+
+.help__keys {
+    display: flex;
+    gap: 4px;
+}
+
+.help__foot {
+    margin: var(--s-3) 0 0;
+    color: var(--dim);
+    font-size: 0.85rem;
 }

@@ -142,7 +142,7 @@ async function runSmoke() {
         const splash = await js(`
             const until = async (fn) => { for (let i = 0; i < 300; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 100)); } return false; };
             const shown = (el) => !!el && !el.hidden && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
-            const up = await until(() => shown(document.getElementById('startOverlay')) && document.querySelector('#trackList')?.children.length > 0);
+            const up = await until(() => shown(document.getElementById('startOverlay')) && document.querySelector('[data-menu-item="campaign"]'));
             // Returning player: skip the first-run calibration/tutorial so the click lands on the menu.
             localStorage.setItem('counterbeat:onboarding', JSON.stringify({ done: true, how: 'skipped', version: 1 }));
             const b = document.querySelector('#startOverlay [data-action="start-play"]').getBoundingClientRect();
@@ -160,7 +160,7 @@ async function runSmoke() {
             const until = async (fn) => { for (let i = 0; i < 150; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 100)); } return false; };
             const visible = (el) => !!el && !el.hidden && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
             const splashGone = await until(() => document.getElementById('startOverlay').hidden);
-            const menuUp = await until(() => visible(document.getElementById('menuOverlay')) && document.querySelector('#trackList')?.children.length > 0);
+            const menuUp = await until(() => visible(document.getElementById('menuOverlay')) && visible(document.querySelector('[data-menu-item="campaign"]')));
             const top = document.elementFromPoint(Math.round(innerWidth / 2), Math.round(innerHeight / 2));
             return {
                 splashGone,
@@ -175,7 +175,7 @@ async function runSmoke() {
                 stageBarVisible: visible(document.querySelector('.stage-bar')),
                 railVisible: visible(document.querySelector('.rail')),
                 pageScrolls: document.documentElement.scrollHeight > document.documentElement.clientHeight,
-                quitVisible: visible(document.querySelector('.desktop-quit')),
+                quitVisible: visible(document.querySelector('[data-menu-item="quit"]')),
                 url: location.href,
             };
         `);

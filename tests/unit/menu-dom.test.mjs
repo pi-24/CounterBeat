@@ -20,8 +20,15 @@ class Node {
         for (const k of kids) k.parent = this.parent;
         this.parent.children.splice(i, 0, ...kids);
     }
+    replaceWith(next) {
+        const i = this.parent.children.indexOf(this);
+        next.parent = this.parent;
+        this.parent.children[i] = next;
+    }
+    replaceChildren(...kids) { this.children = []; this.append(...kids.filter((k) => typeof k !== 'string')); }
     addEventListener(type, fn) { this.listeners[type] = fn; }
     click() { this.listeners.click?.(); }
+    focus() { this.focused = true; this.listeners.focus?.(); }
     setAttribute() {}
     all(pred, out = []) { for (const c of this.children) { if (pred(c)) out.push(c); c.all(pred, out); } return out; }
     querySelectorAll(sel) {
@@ -45,14 +52,19 @@ test('the rendered main menu lists exactly the seven configured entries, in orde
     new MainMenu(overlay, { onDaily() {}, onTutorial() {} }).mount();
 
     const nav = menu.querySelector('.mainmenu');
-    const main = nav.children.filter((b) => !b.className.includes('mainmenu__item--minor'));
-    const labels = main.map((b) => b.children[0].textContent);
-    assert.deepEqual(labels, ['Campaign', 'Quick Play', 'Daily', 'Ranked/Leaderboards', 'Custom (Beta)', 'Practice', 'Settings']);
-    assert.deepEqual(labels, MENU_ITEMS.map((i) => i.label));
+    const primary = nav.querySelector('.mainmenu__primary').children;
+    const more = nav.querySelector('.mainmenu__more').children;
+    assert.deepEqual(primary.map((b) => b.children[0].textContent), ['Campaign', 'Quick Play', 'Daily', 'Ranked/Leaderboards']);
+    // the ruled row: the remaining modes plus Shop, Credits and Quit (extras, not modes)
+    assert.deepEqual(more.map((b) => b.dataset.menuItem), ['custom', 'practice', 'shop', 'settings', 'credits', 'quit']);
+    const modes = [...primary, ...more].filter((b) => MENU_ITEMS.some((i) => i.id === b.dataset.menuItem));
+    assert.deepEqual(modes.map((b) => b.dataset.menuItem), MENU_ITEMS.map((i) => i.id), 'the seven modes keep their order');
+    assert.equal(MENU_ITEMS.length, 7);
+    const main = primary;
     assert.ok(menu.classList.contains('menu--root'), 'the menu opens on the root list');
     // C design system: every row is a focus slab, and the prompt bar is mounted on the overlay
     assert.ok(main.every((b) => b.className.split(' ').includes('slab')), 'rows are slabs');
-    assert.deepEqual(main.map((b) => b.children.at(-1).textContent), ['01', '02', '03', '04', '05', '06', '07']);
+    assert.deepEqual(main.map((b) => b.children.at(-1).textContent), ['01', '02', '03', '04']);
     assert.ok(overlay.querySelector('.prompt-bar'), 'prompt bar mounted');
 });
 
@@ -74,7 +86,40 @@ test('Campaign, Quick Play and Practice open the track list in their own mode', 
     new MainMenu(overlay, { onDaily() {}, onTutorial() {}, onMode: (m) => modes.push(m) }).mount();
     const nav = menu.querySelector('.mainmenu');
     for (const id of ['campaign', 'quickplay', 'practice']) {
-        nav.children.find((b) => b.dataset.menuItem === id).click();
+        nav.all((b) => b.dataset.menuItem === id)[0].click();
     }
     assert.deepEqual(modes, ['campaign', 'quickPlay', 'practice']);
+});
+
+test('Settings and Custom open their panel without switching the play mode or rebuilding song select', async () => {
+    globalThis.document = { createElement: (tag) => new Node(tag) };
+    const { MainMenu } = await import('../../src/ui/MainMenu.js');
+    const overlay = new Node('div');
+    const menu = new Node('div'); menu.className = 'menu';
+    const panel = new Node('div'); panel.className = 'menu__panel'; panel.dataset.panel = 'settings';
+    menu.append(panel); overlay.append(menu);
+    const modes = [];
+    const panels = [];
+    new MainMenu(overlay, { onDaily() {}, onTutorial() {}, onMode: (m) => modes.push(m), onPanel: (p) => panels.push(p) }).mount();
+    const nav = menu.querySelector('.mainmenu');
+    for (const id of ['settings', 'custom']) {
+        nav.all((b) => b.dataset.menuItem === id)[0].click();
+    }
+    assert.deepEqual(modes, []);
+    assert.deepEqual(panels, ['settings', 'library']);
+});
+
+test('hovering an entry gives it DOM focus, so mouse, keyboard and pad share one cursor', async () => {
+    globalThis.document = { createElement: (tag) => new Node(tag) };
+    const { MainMenu } = await import('../../src/ui/MainMenu.js');
+    const overlay = new Node('div');
+    const menu = new Node('div'); menu.className = 'menu';
+    const panel = new Node('div'); panel.className = 'menu__panel'; panel.dataset.panel = 'play';
+    menu.append(panel); overlay.append(menu);
+    new MainMenu(overlay, { onDaily() {}, onTutorial() {} }).mount();
+    const nav = menu.querySelector('.mainmenu');
+    const daily = nav.all((b) => b.dataset.menuItem === 'daily')[0];
+    daily.listeners.mouseenter();
+    assert.equal(daily.focused, true);
+    assert.ok(daily.classList.contains('is-focus'));
 });

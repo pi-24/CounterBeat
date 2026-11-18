@@ -41,10 +41,10 @@ test('platform flag comes from the preload bridge and hides web chrome', () => {
     assert.equal(applyPlatform(web), 'web');
 });
 
-test('CSS hides header, guest banner under .is-desktop; main/preload wired', () => {
-    const css = readFileSync('src/styles/game.css', 'utf8');
-    assert.match(css, /\.is-desktop \.site-header/);
-    assert.match(css, /\.is-desktop \.notice/);
+test('the game page carries no site header or guest banner; main/preload wired', () => {
+    // T25: the play view is a full-screen game shell, so there is nothing to hide on desktop.
+    const html = readFileSync('game.html', 'utf8');
+    assert.doesNotMatch(html, /site-header|class="notice|guestNotice|<nav class="site/);
     assert.match(readFileSync('electron/preload.js', 'utf8'), /contextBridge/);
     assert.match(readFileSync('electron/main.js', 'utf8'), /protocol.handle/);
     assert.doesNotMatch(readFileSync('electron/main.js', 'utf8'), /new BrowserWindow[\s\S]*new BrowserWindow/);

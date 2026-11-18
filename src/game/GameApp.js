@@ -15,6 +15,7 @@ import { Input } from './Input.js';
 import { GamepadInput } from '../input/GamepadInput.js';
 import { activeDevice, padControlRows } from '../input/prompts.js';
 import { MenuNavigator, domSurface } from '../input/menuFocus.js';
+import { menuKeyEvent } from '../input/menuKeys.js';
 import { loadStreamed } from '../audio/streamLoader.js';
 import { audio as sharedAudio } from './audio/AudioEngine.js';
 import { settings as sharedSettings } from './Settings.js';
@@ -29,6 +30,8 @@ import { CosmeticsPanel } from './screens/CosmeticsPanel.js';
 import { toast } from '../ui/Toast.js';
 import { store } from '../core/Storage.js';
 import { MainMenu } from '../ui/MainMenu.js';
+import { HelpOverlay } from '../ui/HelpOverlay.js';
+import { isDesktop } from '../platform/platform.js';
 import { TutorialPanel } from '../ui/Tutorial.js';
 import { mountGameSettings } from '../ui/Settings.js';
 import { shouldAutoStart, markOnboardingDone } from './onboarding/firstRun.js';
@@ -110,13 +113,21 @@ export class GameApp {
         this.playMode = 'quickPlay';
         this.mainMenu = new MainMenu(this.menuOverlay, {
             onMode: (mode) => {
+                if (mode === this.playMode) return; // song select is already built for this mode
                 this.playMode = mode;
                 this.current?.renderTracks?.(); // Practice opens every track
             },
             onDaily: () => this.current?.start?.(dailyChartId()),
             onTutorial: () => this.startTutorial(),
             onCredits: () => this.openCredits(),
+            onShop: () => toast.info('The shop is coming soon: bots, skins and crosshairs, bought with coins earned on every level.'),
+            onQuit: () => this.quitGame(),
+            getPreview: (id) => this.current?.previewFor?.(id) ?? null,
+            onPanel: (name) => {
+                if (name === 'play') this.current?.focusSongSelect?.();
+            },
         });
+        this.help = new HelpOverlay(document.getElementById('helpOverlay'), { onTutorial: () => this.startTutorial() });
         mountGameSettings(options.settingsForm.querySelector('#gameSettings'), this.settings, {
             onCalibrate: () => this.calibration.open({ auto: false }),
             onTutorial: () => this.startTutorial(),
@@ -257,6 +268,7 @@ export class GameApp {
             if (shouldAutoStart(this.storage)) {
                 this.runFirstRun();
             } else {
+                this.mainMenu.focusCurrent();
                 this.playMenuMusicWhenReady();
             }
         };
@@ -441,7 +453,13 @@ export class GameApp {
             },
         });
         const navigator = new MenuNavigator(domSurface(document));
+        this.menuNavigator = navigator;
         this.gamepad.on('nav', (event) => {
+            if (event === 'help') {
+                // Y opens Help from the menus and the pause screen, and closes it again.
+                if (this.helpAvailable()) this.help.toggle();
+                return;
+            }
             // While the calibration test is counting taps, A is a tap, not a click on Skip.
             if (event === 'confirm' && this.calibration?.active) return;
             navigator.handle(event);
@@ -505,7 +523,7 @@ export class GameApp {
             const action = document.createElement('span');
             action.textContent = row.action;
             const keys = document.createElement('span');
-            keys.className = 'rail__keys';
+            keys.className = 'help__keys';
             for (const text of row.keys) {
                 const key = document.createElement('kbd');
                 key.textContent = text;
@@ -538,7 +556,7 @@ export class GameApp {
             if (play.paused) {
                 // A click on the arena resumes; the pause menu's own buttons
                 // must not, or "quit" would un-pause instead of quitting.
-                if (onStage && !this.pauseOverlay.contains(event.target)) {
+                if (onStage && !this.pauseOverlay.contains(event.target) && !this.help.overlay.contains(event.target)) {
                     play.resume();
                 }
                 return;
@@ -557,6 +575,9 @@ export class GameApp {
 
         this.input.onPress((code, event) => {
             if (Input.isTyping(event)) {
+                return;
+            }
+            if (this.handleMenuKey(code, event)) {
                 return;
             }
             const play = this.play;
@@ -628,13 +649,65 @@ export class GameApp {
             });
         }
 
-        const fullscreenButton = document.getElementById('fullscreenBtn');
-        if (fullscreenButton) {
-            fullscreenButton.addEventListener('click', () => this.toggleFullscreen());
-        }
         document.addEventListener('fullscreenchange', () => {
             window.setTimeout(() => this.engine?.resize(), 50);
         });
+    }
+
+    /** @returns {boolean} Help can open: on the menus and over the pause screen, never mid-run. */
+    helpAvailable() {
+        const play = this.play;
+        return this.help.isOpen || (play ? play.paused && !play.replay : this.current instanceof MenuScreen);
+    }
+
+    /**
+     * Keyboard menu navigation, the same events a pad sends (W S / arrows move, Q E step the
+     * difficulty, Esc backs out, H opens Help).  Only on the menus, over a paused run and
+     * inside Help; never during play, where A / D / arrows are the strafe keys.
+     * @returns {boolean} whether the key was consumed
+     */
+    handleMenuKey(code, event) {
+        const action = menuKeyEvent(code);
+        if (!action) {
+            return false;
+        }
+        if (this.help.isOpen) {
+            if (action === 'back' || action === 'help') {
+                this.help.close();
+            } else if (['up', 'down', 'left', 'right'].includes(action)) {
+                this.menuNavigator.handle(action);
+            } else {
+                return false;
+            }
+            event.preventDefault();
+            return true;
+        }
+        const play = this.play;
+        const onMenu = this.current instanceof MenuScreen;
+        const onPause = Boolean(play && play.paused && !play.replay);
+        if (!onMenu && !onPause) {
+            return false;
+        }
+        if (action === 'help') {
+            this.help.open();
+        } else if (onPause && !['up', 'down', 'left', 'right'].includes(action)) {
+            return false; // Q quits and Esc belongs to the pointer lock while paused
+        } else {
+            this.menuNavigator.handle(action);
+        }
+        event.preventDefault();
+        return true;
+    }
+
+    /** Quit: the desktop app closes; the web build goes back to the website (or out of its embedding page). */
+    quitGame() {
+        if (isDesktop()) {
+            window.counterbeatDesktop?.quit?.();
+        } else if (window.parent !== window) {
+            window.parent.postMessage({ type: 'counterbeat-exit' }, window.location.origin);
+        } else {
+            window.location.href = 'index.html';
+        }
     }
 
     enterFullscreen() {
