@@ -41,6 +41,7 @@ import {
     realTimeErrorMs, practiceHintText, recordLoopPass,
 } from '../modes/practice.js';
 import { Arena } from '../fps/Arena.js';
+import { hudDetail, isLightSky } from '../fps/hudText.js';
 import { isCosmeticUnlocked } from '../progress/unlocks.js';
 import { TargetField } from '../fps/TargetField.js';
 import { Viewmodel } from '../fps/Viewmodel.js';
@@ -185,9 +186,10 @@ export class PlayScreen {
         camera.update(Arena.toWorldX(this.body.x), 0, 0);
 
         hud.show();
+        hud.root.classList.toggle('hud--light', isLightSky(themeProvider.resolveArena(this.level.arena).sky));
         const placeholderTag = !this.atlasClean && this.level.trackId && !this.level.custom && trackProvider.isPlaceholder(this.level.trackId)
             ? ' · placeholder music' : '';
-        hud.setLevel(`${this.replay && !this.atlasDemo ? `REPLAY · ${this.level.name}` : this.level.name}${placeholderTag}`, this.level.bpm);
+        hud.setLevel(this.level.trackName ?? this.level.name, this.level.bpm, hudDetail(this.level, this.replay && !this.atlasDemo, placeholderTag !== ''));
         hud.buildLanes(this.lanes.count);
         hud.applyCrosshair(settings);
         hud.applyVisibility(settings);
@@ -195,6 +197,8 @@ export class PlayScreen {
         hud.setScore(0, 0, 1);
         hud.setAccuracy(0);
         hud.setProgress(0, this.beatMap.total);
+        hud.resetRecent();
+        this.updateHudStats();
         hud.setHint(this.practice ? this.practiceHint() : '');
         hud.buildHighway(this.lanes.count);
 
@@ -338,7 +342,7 @@ export class PlayScreen {
             this.viewmodel.update(dt); // hit-stop is cosmetic: only the viewmodel holds still
         }
 
-        hud.setVelocity(this.body.velocity, this.movement.maxSpeed, SPEED_GRADE.pinPoint, SPEED_GRADE.tight);
+        hud.setVelocity(this.body.velocity, SPEED_GRADE);
         const stopped = this.body.speed <= SPEED_GRADE.pinPoint;
         if (stopped && this.wasMoving && songTime - this.lastPerfectStopAt >= this.conductor.secondsPerBeat) {
             this.lastPerfectStopAt = songTime; // at most one flash per beat, independent of any shot
@@ -793,6 +797,13 @@ export class PlayScreen {
         audio.playTone(judgement.headshot ? hz * 2 : hz, { volume: (perfect ? 0.45 : 0.3) * master });
     }
 
+    /** Headshots over bots hit, and the projected rank (read-only views of the scorer). */
+    updateHudStats() {
+        const { tally } = this.scorer;
+        const hits = tally[GRADE.PERFECT] + tally[GRADE.GOOD] + tally[GRADE.OK];
+        this.app.hud.setStats({ headshots: this.scorer.headshots, hits, rank: this.scorer.rank, judged: this.scorer.judged });
+    }
+
     /**
      * @param {object} note
      * @param {object|null} entry
@@ -831,11 +842,14 @@ export class PlayScreen {
             }
         }
 
-        hud.showJudgement(judgement.grade, judgement.reason, result.points, result.bonus);
+        hud.showJudgement(judgement.grade, judgement.reason, result.points, result.bonus, {
+            timingError: judgement.timingError, headshot: judgement.headshot,
+        });
         hud.setScore(this.scorer.score, this.scorer.combo, this.scorer.multiplier);
         hud.setAccuracy(this.scorer.accuracy);
         hud.setFocus(this.scorer.focus / 100);
         hud.setProgress(this.scorer.judged, this.beatMap.total);
+        this.updateHudStats();
 
         if (hit) {
             this.playHitSound(note, judgement);
@@ -971,6 +985,8 @@ export class PlayScreen {
         hud.setScore(0, 0, 1);
         hud.setAccuracy(0);
         hud.setProgress(0, this.beatMap.total);
+        hud.resetRecent();
+        this.updateHudStats();
         hud.setHint(this.practiceHint());
         audio.playMusic(this.level.musicKey, false, this.sectionStartSeconds, PRACTICE_SPEED);
         this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm, settings.get('audioOffset'), this.level.gridOffset);

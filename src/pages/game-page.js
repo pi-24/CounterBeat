@@ -85,6 +85,24 @@ function bestOf(chartId) {
     return progress.get(chartId)?.bestScore ?? 0;
 }
 
+/**
+ * Loads a stored replay for playback, or null when it is unavailable.
+ * @param {string} runId
+ * @returns {Promise<{chartId:string, log:object, run:object}|null>}
+ */
+async function loadReplay(runId) {
+    try {
+        const found = await backend.replay(runId);
+        if (!found || !resolveChart(found.run.chartId) || !REPLAYABLE_VERSIONS.includes(found.log.version)) {
+            return null;
+        }
+        return { chartId: found.run.chartId, log: found.log, run: found.run };
+    } catch (error) {
+        console.warn(error);
+        return null;
+    }
+}
+
 /** A replay requested in the URL (?replay=<run id>), loaded before boot. */
 async function pendingReplay() {
     const runId = new URLSearchParams(window.location.search).get('replay');
@@ -112,6 +130,24 @@ const services = {
 
     getPlayerName() {
         return user ? user.displayName : 'Guest';
+    },
+
+    getUserId() {
+        return user ? user.id : null;
+    },
+
+    /** Best verified run per player on a chart, for the results leaderboard. */
+    async leaderboard(chartId) {
+        return backend.leaderboard(chartId);
+    },
+
+    /** A stored replay for the leaderboard's watch buttons (null with a toast when unavailable). */
+    async replay(runId) {
+        const found = await loadReplay(runId);
+        if (!found) {
+            toast.error("That replay isn't available. Only each player's best run on a chart keeps its replay.");
+        }
+        return found;
     },
 
     isLoggedIn() {

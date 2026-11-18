@@ -15,6 +15,12 @@ import { ATLAS_SCENES, parseAtlasParams, parseAtlasClean } from './atlasParams.j
 
 export { ATLAS_SCENES, parseAtlasParams, parseAtlasClean };
 
+/** Which results leaderboard to show: ?atlas_board=global|friends|daily|empty (anything else: global). */
+export function parseAtlasBoard(search) {
+    const value = new URLSearchParams(search).get('atlas_board');
+    return ['friends', 'daily', 'empty'].includes(value) ? value : 'global';
+}
+
 /** @returns {{write:Function, read:Function, remove:Function, writes:number}} storage that keeps nothing */
 export function memoryStorage() {
     const data = new Map();
@@ -37,6 +43,9 @@ export function atlasServices(base, options = {}) {
         progress: new ProgressStore(memoryStorage()),
         history: new RunHistory(memoryStorage()),
         getPlayerName: () => (options.clean ? 'Player' : 'Guest'),
+        getUserId: () => 'atlas-me',
+        leaderboard: async (chartId) => (sampleBoard.empty ? [] : demoLeaderboard(chartId, sampleBoard.run)),
+        replay: async () => null,
         isLoggedIn: () => Boolean(options.clean),
         hasPassed: () => false,
         getPersonalBest: () => 0,
@@ -45,6 +54,35 @@ export function atlasServices(base, options = {}) {
         onJudgement: () => {},
         base,
     };
+}
+
+/** What the sample leaderboard is built around: the run on screen, and whether the board is empty. Display only. */
+const sampleBoard = { run: null, empty: false };
+
+/**
+ * A made-up leaderboard for the screenshot hook (SAMPLE DATA; display only, nothing is submitted).
+ * Other players' scores bracket the run on screen, and the player's own row repeats that run's
+ * score, accuracy and best combo, so the board never contradicts the result beside it.
+ * @param {string} chartId
+ * @param {{score:number, accuracy:number, bestCombo:number}|null} [run]
+ */
+export function demoLeaderboard(chartId, run = null) {
+    const names = ['kovalski.cs', 'metronomad', 'deadstop', 'ferrofluid', 'tap_tap_jiggle', 'quietpeek', 'NEMO_', 'bpm_hunter', 'lowsens.exe'];
+    const base = run?.score ?? 412880;
+    const accuracy = run?.accuracy ?? 0.9731;
+    const combo = run?.bestCombo ?? 30;
+    // Six players above the run, two below; the run itself sits seventh.
+    const factors = [1.21, 1.18, 1.14, 1.1, 1.07, 1.03, 1, 0.97, 0.94];
+    return names.map((displayName, i) => {
+        const own = i === 6;
+        return {
+            runId: `demo-${chartId}-${i}`, userId: own ? 'atlas-me' : `demo-${i}`, displayName,
+            score: own ? base : Math.round(base * factors[i]),
+            accuracy: own ? accuracy : Math.min(0.9999, accuracy + (6 - i) * 0.004),
+            bestCombo: own ? combo : Math.max(1, combo + (6 - i) * 3),
+            hasReplay: true,
+        };
+    });
 }
 
 /** A chart id chosen by the seed (Normal: stars on offer, no fail-out). Neon and Vault tracks only: the pale Range look is the tutorial's. */
@@ -124,10 +162,16 @@ export function seedPracticeReadout(play) {
 export async function showAtlasScene(app, params) {
     if (params.scene === 'results') {
         const run = syntheticRun(params.seed);
+        const board = parseAtlasBoard(window.location.search);
+        sampleBoard.run = run.record;
+        sampleBoard.empty = board === 'empty';
         await app.showResults(run.record, run.chartId, { mode: 'quickPlay', ticks: [], inputs: [], shots: [] }, {
             runMode: 'quickPlay', stopQuality: run.stopQuality,
             timingErrorsMs: syntheticTimingErrors(params.seed),
         });
+        if (board === 'friends' || board === 'daily') {
+            document.querySelector(`[data-board-tab="${board}"]`)?.click();
+        }
     } else if (params.scene === 'practice') {
         const clock = { t: 0 };
         await app.switchToAtlasPractice(atlasChartId(params.seed), clock, ATLAS_PRACTICE_LOOP);

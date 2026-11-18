@@ -27,19 +27,37 @@
                     height="6"></rect>
             </svg>
 
-            <div class="hud__top">
-                <div class="hud__block hud__block--left">
-                    <span class="hud__level" id="hudLevel"></span>
-                    <span class="hud__sub" id="hudProgress"></span>
+            <div class="hud__tl">
+                <div class="hud__track" id="hudLevel"></div>
+                <div class="hud__meta"><span id="hudBpm"></span><span class="hud__diff" id="hudDiff"></span></div>
+            </div>
+
+            <div class="hud__tc">
+                <span class="hud__cap">BOT</span>
+                <div class="hud__bots"><b id="hudProgress">0</b><span id="hudTotal">/ 0</span></div>
+                <div class="hud__segs" id="botSegs" aria-hidden="true"></div>
+                <svg id="noteHighway" class="hud__highway" viewBox="0 0 600 110" aria-hidden="true"></svg>
+                <svg id="laneStrip" class="hud__lanes" viewBox="0 0 600 44" aria-hidden="true"></svg>
+            </div>
+
+            <div class="hud__tr">
+                <div class="hud__score" id="hudScore">0</div>
+                <div class="hud__stats">
+                    <div>ACCURACY<b id="hudAccuracy">0.00%</b></div>
+                    <div>HEAD<b id="hudHead">0/0</b></div>
+                    <div class="is-pace">PACE<b id="hudPace">&ndash;</b></div>
                 </div>
-                <div class="hud__block hud__block--centre">
-                    <span class="hud__score" id="hudScore">0</span>
-                    <span class="hud__combo" id="hudCombo"></span>
-                </div>
-                <div class="hud__block hud__block--right">
-                    <span class="hud__accuracy" id="hudAccuracy">0.0%</span>
-                    <span class="hud__sub">ACCURACY</span>
-                </div>
+            </div>
+
+            <div class="hud__bl">
+                <div class="hud__combo" id="hudCombo">0</div>
+                <div class="hud__combo-label">COMBO<b id="hudMult">&times;1</b>MULT</div>
+            </div>
+
+            <div class="hud__br">
+                <div class="hud__cap-row"><span>LAST 8</span><span>STOP</span></div>
+                <div class="hud__log" id="recentLog" aria-hidden="true"></div>
+                <div class="hud__cs" id="csNote"><span class="key key--hot">CS</span> COUNTER-STRAFE BONUS</div>
             </div>
 
             <div class="hud__centre" aria-hidden="true">
@@ -74,30 +92,38 @@
 
             <p class="hud__hint" id="hudHint"></p>
 
-            <div class="hud__judgement" id="judgement">
-                <span class="hud__judge-text" id="judgeText"></span>
-                <span class="hud__judge-reason" id="judgeReason"></span>
-            </div>
-
             <div class="hud__bottom">
-                <svg id="noteHighway" class="hud__highway" viewBox="0 0 600 110" aria-hidden="true"></svg>
-                <svg id="laneStrip" class="hud__lanes" viewBox="0 0 600 44" aria-hidden="true"></svg>
-                <div class="hud__velocity">
-                    <span class="hud__sub">VELOCITY</span>
-                    <svg id="velocity" class="hud__velocity-svg" viewBox="-2 -4 424 28" aria-hidden="true">
-                        <rect class="hud__velocity-track" x="0" y="0" width="420" height="20" rx="10"></rect>
-                        <rect data-part="tight" class="hud__velocity-tight" x="190" y="3" width="40"
-                            height="14"></rect>
-                        <rect data-part="pin" class="hud__velocity-pin" x="205" y="3" width="10" height="14">
-                        </rect>
-                        <line class="hud__velocity-centre" x1="210" y1="-2" x2="210" y2="22"></line>
-                        <rect data-part="marker" class="hud__velocity-marker hud__velocity-marker--pin"
-                            x="207" y="-2" width="6" height="24" rx="1"></rect>
+                <div class="hud__judgement" id="judgement">
+                    <span class="shape" id="judgeShape"></span>
+                    <b class="hud__judge-text" id="judgeText"></b>
+                    <span class="hud__judge-ms" id="judgeMs"></span>
+                    <em class="hud__judge-head" id="judgeHead" hidden>HEAD</em>
+                    <span class="hud__judge-reason" id="judgeReason"></span>
+                </div>
+                <div class="hud__meter">
+                    <div class="hud__meter-top"><span>&larr; A &nbsp;STOP METER</span><b id="velocityText">0 u/s</b><span>D &rarr;</span></div>
+                    <svg id="velocity" class="hud__meter-svg" viewBox="-4 -16 608 62" aria-hidden="true">
+                        <defs>
+                            <pattern id="hudLoosePattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                <rect width="3" height="8" class="hud__meter-hatch"></rect>
+                            </pattern>
+                        </defs>
+                        <rect class="hud__meter-bg" x="0" y="0" width="600" height="30"></rect>
+                        <rect data-part="loose" class="hud__meter-loose" x="0" y="0" width="600" height="30" fill="url(#hudLoosePattern)"></rect>
+                        <rect data-part="good" class="hud__meter-good" x="0" y="0" width="600" height="30"></rect>
+                        <rect data-part="perfect" class="hud__meter-perfect" x="0" y="0" width="600" height="30"></rect>
+                        <line class="hud__meter-centre" x1="300" y1="-8" x2="300" y2="38"></line>
+                        <rect class="hud__meter-frame" x="0" y="0" width="600" height="30"></rect>
+                        <g data-part="marker" class="hud__meter-marker hud__meter-marker--pin" transform="translate(300 0)">
+                            <rect x="-3" y="-8" width="6" height="46"></rect>
+                            <polygon points="-9,-18 9,-18 0,-8"></polygon>
+                        </g>
                     </svg>
-                    <span class="hud__velocity-text is-planted" id="velocityText">PLANTED &middot; FIRE</span>
+                    <div class="hud__legend" id="meterLegend"></div>
                 </div>
             </div>
         </div>
+
 
         <!-- Menu ------------------------------------------------------>
         <div class="overlay overlay--menu" id="menuOverlay" data-pad-overlay="10" hidden>
@@ -150,7 +176,7 @@
                                 <label class="settings__label" for="setDpi">Mouse DPI</label>
                                 <input class="settings__number" type="number" id="setDpi" name="dpi" min="100"
                                     max="32000" step="50">
-                                <span class="settings__value settings__value--muted">for cm/360</span>
+                                <span class="settings__value settings__value--muted">DPI</span>
                             </div>
                             <p class="settings__readout">
                                 Valorant equivalent <strong class="mono" id="sensVal">0.503</strong>
@@ -336,30 +362,61 @@
         <!-- Results --------------------------------------------------->
         <div class="overlay overlay--result" id="resultOverlay" data-pad-overlay="40" hidden>
             <div class="result">
-                <h2 class="result__headline" id="resultHeadline">CHART CLEARED</h2>
-                <p class="result__subtitle" id="resultSubtitle"></p>
-                <div class="result__body">
-                    <div class="result__rank">
-                        <div class="result__rank-ring"><span id="resultRank">A</span></div>
-                        <span class="result__rank-label">RANK</span>
-                        <span class="result__score mono" id="resultScore">0</span>
-                        <span class="result__score-label" id="resultScoreLabel">SCORE</span>
+                <div class="result__main">
+                    <header class="result__head">
+                        <h2 class="result__headline" id="resultHeadline">CHART CLEARED</h2>
+                        <span class="result__meta" id="resultSubtitle"></span>
+                    </header>
+                    <div class="result__hero">
+                        <div class="result__rank-wrap">
+                            <div class="result__rank-cap" id="resultRankCap">RANK</div>
+                            <div class="result__rank" id="resultRank">A</div>
+                        </div>
+                        <div class="result__scoreblock">
+                            <small class="result__score-label" id="resultScoreLabel">SCORE</small>
+                            <div class="result__score" id="resultScore">0</div>
+                            <span class="result__pb" id="resultPb" hidden></span>
+                            <div class="result__acc">
+                                <div><small>ACCURACY</small><b id="resultAcc">0.0%</b></div>
+                                <div><small>BEST COMBO</small><b id="resultCombo">0</b></div>
+                                <div id="resultStarsCell" hidden><small>STARS</small>
+                                    <div class="result__stars" id="resultStars"></div></div>
+                            </div>
+                        </div>
                     </div>
-                    <ul class="result__breakdown" id="resultBreakdown"></ul>
+                    <div class="result__jt" id="resultBreakdown"></div>
+                    <div class="result__lower">
+                        <ul class="result__ex" id="resultExtras">
+                            <li><span>COUNTER-STRAFE BONUS</span><b id="resultCs">0</b></li>
+                            <li><span>HEADSHOTS</span><b id="resultHeads">0</b></li>
+                            <li><span>GOOD STOPS</span><b id="resultStops">&ndash;</b></li>
+                        </ul>
+                        <div class="result__timing" id="resultTiming">
+                            <div class="result__hist-lbl"><span>&larr; EARLY</span><span id="resultOffset"></span><span>LATE &rarr;</span></div>
+                            <div class="result__hist" id="resultHist"></div>
+                        </div>
+                    </div>
+                    <p class="result__unlocked" id="resultUnlocked" hidden></p>
+                    <p class="result__guest" id="resultGuest" hidden>Guest run. Log in before playing to
+                        save this to the rankings.</p>
+                    <div class="overlay__actions result__actions">
+                        <button class="btn btn--primary" type="button" data-action="retry">Retry</button>
+                        <button class="btn btn--ghost" type="button" data-action="next">Next difficulty</button>
+                        <button class="btn btn--ghost" type="button" data-action="menu">Song select</button>
+                    </div>
                 </div>
-                <div class="result__stars" id="resultStars" hidden></div>
-                <div class="result__timing" id="resultTiming">
-                    <div class="result__hist" id="resultHist"></div>
-                    <p class="result__offset mono" id="resultOffset"></p>
-                    <p class="result__stops mono" id="resultStops"></p>
-                </div>
-                <p class="result__guest" id="resultGuest" hidden>Guest run. Log in before playing to
-                    save this to the rankings.</p>
-                <div class="overlay__actions">
-                    <button class="btn btn--ghost" type="button" data-action="retry">Retry</button>
-                    <button class="btn btn--primary" type="button" data-action="next">Next difficulty</button>
-                    <button class="btn btn--ghost" type="button" data-action="menu">Song select</button>
-                </div>
+                <aside class="board" id="resultBoard" aria-label="Leaderboard">
+                    <div class="board__tabs" id="boardTabs" role="tablist"></div>
+                    <div class="board__meta"><span id="boardTitle"></span><span id="boardTop"></span></div>
+                    <div class="board__rows" id="boardRows"></div>
+                    <p class="board__empty" id="boardEmpty" hidden></p>
+                    <div class="board__place" id="boardPlace" hidden>
+                        <small>YOUR PLACE</small>
+                        <b id="boardPlaceNum">-</b>
+                        <span id="boardPlaceOf"></span>
+                    </div>
+                    <div class="board__foot"><span>&#9654; = WATCH REPLAY</span></div>
+                </aside>
             </div>
         </div>
 

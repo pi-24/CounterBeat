@@ -208,6 +208,7 @@
 .settings {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
     gap: var(--s-4);
     text-align: left;
 }
@@ -247,7 +248,7 @@
 
 .settings__row {
     display: grid;
-    grid-template-columns: 110px 1fr auto;
+    grid-template-columns: minmax(80px, 110px) minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--s-3);
     margin-bottom: var(--s-3);
@@ -292,8 +293,10 @@
 }
 
 .settings__value--muted {
+    min-width: 0;
     color: var(--c-text-faint);
     font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .settings__readout {
@@ -347,205 +350,657 @@
 }
 
 /* --------------------------------------------------------------- results */
+/* Direction C, frame 04: the rank letter is the poster, the "why" sits under it, and the leaderboard is a
+   paper sheet on the right so it reads as a separate surface. */
+.overlay--result {
+    place-content: stretch;
+    padding: 0;
+    text-align: left;
+    background: var(--mix-bg-96);
+}
+
 .result {
-    width: min(760px, 100%);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) min(532px, 42vw);
+    width: 100%;
+    min-height: 100%;
+}
+
+.result__main {
+    display: grid;
+    align-content: start;
+    gap: var(--s-4);
+    padding: var(--s-6) var(--s-7) var(--s-6) 48px;
+    min-width: 0;
+}
+
+.result__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding-bottom: 8px;
+    border-bottom: var(--rule-thick) solid var(--paper);
 }
 
 .result__headline {
     margin: 0;
-    font-size: clamp(1.6rem, 4vw, 2.6rem);
-    letter-spacing: 0.06em;
+    font: 400 1.9rem / 1 var(--display);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
 }
 
 .result__headline--pass {
-    color: var(--c-primary);
+    color: var(--paper);
 }
 
-.result__headline--warn {
-    color: var(--c-warn);
-}
-
+.result__headline--warn,
 .result__headline--fail {
-    color: var(--c-danger);
+    color: var(--dim);
 }
 
-.result__subtitle {
-    margin: var(--s-1) 0 var(--s-4);
-    color: var(--c-text-dim);
-    font-size: 0.9rem;
+.result__meta {
+    color: var(--dim);
+    font: 700 0.75rem / 1.3 var(--mono);
+    letter-spacing: 0.06em;
+    text-align: right;
 }
 
-.result__body {
+.result__hero {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--s-5);
-    align-items: center;
-    text-align: left;
+    align-items: start;
 }
 
-@media (max-width: 640px) {
-    .result__body {
-        grid-template-columns: 1fr;
-        text-align: center;
-    }
+.result__rank-wrap {
+    display: grid;
+    justify-items: start;
 }
 
 .result__rank {
+    color: var(--acid);
+    font: 400 clamp(180px, 26vw, 340px) / 0.82 var(--display);
+    letter-spacing: -0.02em;
+}
+
+.result__rank-cap {
+    margin-bottom: var(--s-2);
+    padding-bottom: 4px;
+    border-bottom: 3px solid var(--acid);
+    color: var(--dim);
+    font: 700 0.7rem var(--mono);
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+}
+
+.result__scoreblock {
     display: grid;
-    justify-items: center;
+    align-content: start;
+    justify-items: start;
     gap: 2px;
+    padding-top: 6px;
 }
 
-.result__rank-ring {
-    display: grid;
-    place-items: center;
-    width: 150px;
-    height: 150px;
-    border: 6px solid var(--c-accent);
-    border-radius: 50%;
-    box-shadow: 0 0 0 10px color-mix(in srgb, var(--c-primary) 12%, transparent);
-    font-family: var(--font-display);
-    font-size: 4.2rem;
-    font-weight: 700;
-    color: var(--c-text);
-}
-
-.result__rank-label {
-    margin-top: var(--s-2);
-    color: var(--c-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-}
-
-.result__score {
-    margin-top: var(--s-2);
-    color: var(--c-accent);
-    font-size: 2rem;
-    font-weight: 700;
-}
-
-.result__score-label {
-    color: var(--c-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
+.result__score-label,
+.result__acc small,
+.result__jt small {
+    color: var(--dim);
+    font: 700 0.7rem var(--mono);
+    letter-spacing: 0.14em;
 }
 
 .result__score-label.is-best {
-    color: var(--c-primary);
+    color: var(--acid);
+}
+
+.result__score-label.is-rejected {
+    color: var(--paper);
+}
+
+.result__score {
+    font: 400 clamp(54px, 7vw, 92px) / 0.9 var(--display);
+    font-variant-numeric: tabular-nums;
+}
+
+.result__pb {
+    margin-top: 6px;
+    padding: 2px 6px;
+    background: var(--acid);
+    color: var(--ink);
+    font: 700 0.7rem var(--mono);
+    letter-spacing: 0.1em;
+}
+
+.result__pb[hidden] {
+    display: none;
+}
+
+.result__acc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-5);
+    margin-top: var(--s-3);
+    padding-top: 8px;
+    border-top: var(--rule) solid var(--paper);
+}
+
+.result__acc > div[hidden] {
+    display: none;
+}
+
+.result__acc b {
+    display: block;
+    font: 400 2.4rem / 1 var(--display);
+    font-variant-numeric: tabular-nums;
 }
 
 .result__stars {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    color: var(--ink-4);
+    font-size: 1.9rem;
+    line-height: 1.2;
+}
+
+.result__star.is-on {
+    color: var(--acid);
+}
+
+.result__star.is-new {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 4px;
+}
+
+.result__star-total {
+    margin-left: var(--s-2);
+    color: var(--dim);
+    font: 700 0.7rem var(--mono);
+    letter-spacing: 0.1em;
+}
+
+.result__jt {
     display: grid;
-    gap: var(--s-2);
-    margin: var(--s-3) 0;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: var(--rule) solid var(--paper);
+    border-bottom: var(--rule) solid var(--paper);
+}
+
+.result__jt > div {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    border-right: 1px solid var(--ink-4);
+}
+
+.result__jt > div:first-child {
+    padding-left: 0;
+}
+
+.result__jt > div:last-child {
+    border-right: 0;
+}
+
+.result__jt small {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--paper);
+}
+
+.result__jt b {
+    margin-top: 2px;
+    font: 400 2.75rem / 1 var(--display);
+}
+
+.result__jt > div:first-child b {
+    color: var(--acid);
+}
+
+.result__lower {
+    display: grid;
+    grid-template-columns: minmax(200px, 300px) minmax(0, 1fr);
+    gap: var(--s-6);
+    align-items: start;
+}
+
+.result__ex {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--paper-2);
+    font: 700 0.75rem var(--mono);
+}
+
+.result__ex li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--ink-3);
+}
+
+.result__ex b {
+    color: var(--paper);
+    font: 400 1.25rem / 1 var(--display);
+    letter-spacing: 0.04em;
+}
+
+.result__hist-lbl {
+    display: flex;
+    justify-content: space-between;
+    color: var(--dim);
+    font: 700 0.62rem var(--mono);
+    letter-spacing: 0.12em;
+}
+
+.result__offset,
+#resultOffset {
+    color: var(--paper);
+}
+
+.result__hist-bars {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 56px;
+    margin-top: 6px;
+    border-bottom: var(--rule) solid var(--paper);
+}
+
+.result__hist-bar {
+    flex: 1;
+    min-height: 1px;
+    background: var(--paper);
+}
+
+.result__hist-bar.is-beat {
+    background: var(--acid);
+}
+
+.result__hist-zero {
+    position: absolute;
+    top: -6px;
+    bottom: 0;
+    left: 50%;
+    border-left: 2px dashed var(--dim);
+}
+
+.result__hist-mean {
+    position: absolute;
+    top: -10px;
+    bottom: -3px;
+    width: 3px;
+    margin-left: -1px;
+    background: var(--acid);
+}
+
+.result__hist-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    color: var(--mute);
+    font: 700 0.62rem var(--mono);
+}
+
+.result__unlocked {
+    margin: 0;
+    padding: 4px 8px;
+    background: var(--acid);
+    color: var(--ink);
+    font: 700 0.75rem var(--mono);
+    letter-spacing: 0.08em;
+    justify-self: start;
+}
+
+.result__unlocked[hidden] {
+    display: none;
+}
+
+.result__guest {
+    margin: 0;
+    color: var(--dim);
+    font: 700 0.75rem var(--mono);
+}
+
+.result__actions {
+    justify-content: flex-start;
+    margin-top: var(--s-2);
+}
+
+/* leaderboard: a printed paper sheet; the player's own row is the only inked line */
+.board {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 28px 32px 28px;
+    background: var(--paper);
+    color: var(--ink);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.board__place {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: var(--s-3);
+    align-items: end;
+    margin-top: auto;
+    padding-top: var(--s-5);
+}
+
+.board__place[hidden] {
+    display: none;
+}
+
+.board__place small {
+    grid-column: 1 / -1;
+    color: var(--mute);
+    font: 700 0.68rem var(--mono);
+    letter-spacing: 0.12em;
+}
+
+.board__place b {
+    font: 400 clamp(56px, 8vw, 96px) / 0.85 var(--display);
+}
+
+.board__place span {
+    padding-bottom: 8px;
+    font: 400 1.6rem / 1 var(--display);
+    color: var(--ink-4);
+}
+
+.board__tabs {
+    display: flex;
+    border-bottom: var(--rule-thick) solid var(--ink);
+}
+
+.board__tab {
+    position: relative;
+    padding: 0 14px 8px 0;
+    border: 0;
+    background: none;
+    color: var(--mute);
+    font: 400 1.4rem / 1 var(--display);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.board__tab.is-on {
+    color: var(--ink);
+}
+
+.board__tab.is-on::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 14px;
+    bottom: -6px;
+    height: 6px;
+    background: var(--acid);
+}
+
+.board__tab:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+}
+
+.board__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: 8px 0;
+    color: var(--ink-4);
+    font: 700 0.68rem var(--mono);
+    letter-spacing: 0.08em;
+}
+
+.board__row {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 92px 64px 40px 30px;
+    align-items: center;
+    column-gap: 8px;
+    height: 38px;
+    border-bottom: 1px solid var(--paper-2);
+    font: 700 0.75rem var(--mono);
+}
+
+.board__row--head {
+    height: 24px;
+    border-bottom: var(--rule) solid var(--ink);
+    color: var(--mute);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+}
+
+.board__row .pos {
+    font: 400 1.4rem / 1 var(--display);
+}
+
+.board__row .name {
+    overflow: hidden;
+    font: 800 0.88rem var(--body);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.board__row .name small {
+    margin-left: 6px;
+    color: var(--mute);
+    font: 700 0.62rem var(--mono);
+}
+
+.board__row .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.board__row.is-top .pos {
+    width: 36px;
+    padding: 4px 0;
+    background: var(--ink);
+    color: var(--acid);
     text-align: center;
 }
 
-.result__star-row {
+.board__row.is-me {
+    height: 46px;
+    margin: 0 -12px;
+    padding: 0 12px;
+    border: 0;
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: inset 8px 0 0 var(--acid);
+}
+
+.board__row.is-me .pos {
+    padding-left: 6px;
+    color: var(--acid);
+}
+
+.board__row.is-me .name small {
+    padding: 1px 4px;
+    background: var(--acid);
+    color: var(--ink);
+}
+
+.board__row--gap {
     display: flex;
     justify-content: center;
-    gap: var(--s-4);
-    flex-wrap: wrap;
+    height: 22px;
+    border-bottom: 0;
+    color: var(--mute);
+    font-size: 0.9rem;
+    letter-spacing: 0.4em;
 }
 
-.result__star {
-    color: var(--c-text-dim);
-    font-size: 0.85rem;
+.board__replay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 22px;
+    padding: 0;
+    border: 2px solid currentColor;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    pointer-events: auto;
 }
 
-.result__star.is-on { color: var(--c-accent); }
-.result__star.is-new { color: var(--c-primary); font-weight: 700; }
-
-.result__star-total,
-.result__unlocked {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--c-text-dim);
+.board__replay::after {
+    content: "";
+    margin-left: 2px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid currentColor;
 }
 
-.result__unlocked { color: var(--c-primary); }
+.board__replay:disabled {
+    opacity: 0.25;
+    cursor: default;
+}
+
+.board__row.is-me .board__replay {
+    color: var(--acid);
+}
+
+.board__empty {
+    margin: var(--s-4) 0;
+    color: var(--ink-4);
+    font: 700 0.8rem / 1.5 var(--mono);
+}
+
+.board__empty[hidden] {
+    display: none;
+}
+
+.board__foot {
+    margin-top: var(--s-4);
+    padding-top: 8px;
+    border-top: var(--rule) solid var(--ink);
+    color: var(--ink-4);
+    font: 700 0.68rem var(--mono);
+}
+
+@media (max-width: 900px) {
+    .result {
+        grid-template-columns: 1fr;
+    }
+
+    .result__hero,
+    .result__lower {
+        grid-template-columns: 1fr;
+    }
+
+    .result__main {
+        padding: var(--s-4);
+    }
+}
+
+/* Short screens (720 to ~820 px high): the poster shrinks and the column tightens, so the whole
+   results sheet, the UNLOCKED chip and the actions included, fits without scrolling. */
+@media (min-width: 901px) and (max-height: 820px) {
+    .result__main {
+        gap: 10px;
+        padding: 14px 32px 10px 40px;
+    }
+
+    .result__head {
+        padding-bottom: 4px;
+    }
+
+    .result__headline {
+        font-size: 1.5rem;
+    }
+
+    .result__rank {
+        font-size: clamp(120px, min(26vw, 25vh), 340px);
+    }
+
+    .result__score {
+        font-size: clamp(48px, min(7vw, 9vh), 92px);
+    }
+
+    .result__jt b {
+        font-size: 2.1rem;
+    }
+
+    .result__jt > div {
+        padding: 5px 12px;
+    }
+
+    .overlay--result .result__actions.overlay__actions {
+        margin-top: 0;
+        padding: 6px 0;
+    }
+}
 
 .settings__cosmetics {
     display: grid;
     gap: var(--s-2);
 }
 
-.result__breakdown {
-    margin: 0;
-    padding: var(--s-3) var(--s-4);
-    list-style: none;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius-lg);
-    background: var(--mix-surf-94);
-}
-
-.result__breakdown li {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--s-3);
-    padding: 0.4rem 0;
-    margin: 0;
-    border-bottom: 1px dashed var(--c-line);
-    color: var(--c-text-dim);
-    font-size: 0.9rem;
-}
-
-.result__breakdown li:last-child {
-    border-bottom: 0;
-}
-
-.result__value {
-    color: var(--c-text);
-}
-
-.result__value--perfect {
-    color: var(--c-primary);
-}
-
-.result__value--good {
-    color: var(--c-primary);
-}
-
-.result__value--ok {
-    color: var(--c-warn);
-}
-
-.result__value--miss {
-    color: var(--c-danger);
-}
-
-.result__value--cs {
-    color: var(--c-accent);
-}
-
-.result__guest {
-    margin: var(--s-3) 0 0;
-    color: var(--c-warn);
-    font-size: 0.85rem;
-}
-
 /* ------------------------------------------------------------------- HUD */
+/* Direction C, frame 03. Everything is laid out on the 1280x720 design grid and scaled by --u (one
+   design pixel). Four corner blocks hold the persistent data, the stop meter and judgement plate share
+   one bottom-centre column, and the centre third stays clear for the bot, the approach ring and the crosshair. */
 .hud {
+    --u: max(min(100vw / 1280, 100vh / 720), 0.55px);
     position: absolute;
     inset: 0;
     z-index: 3;
     pointer-events: none;
-    color: var(--c-text);
-    font-family: var(--font-body);
+    color: var(--paper);
+    font-family: var(--body);
 }
 
 .hud[hidden] {
     display: none;
 }
 
-.hud__sub {
-    display: block;
-    color: var(--mix-ink-92);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-shadow: 0 1px 3px var(--mix-shade-80);
+/* A pale arena (the Range): every corner block (and the meter) is printed on its own ink plate, so
+   the numerals, captions and judgement shapes keep their contrast whatever sits behind them. The
+   centre third is left clear. */
+.hud--light .hud__tl,
+.hud--light .hud__tc,
+.hud--light .hud__tr,
+.hud--light .hud__bl,
+.hud--light .hud__br,
+.hud--light .hud__meter {
+    padding: calc(10 * var(--u)) calc(14 * var(--u));
+    background: var(--mix-bg-86);
+}
+
+.hud--light .hud__tl {
+    padding-left: calc(14 * var(--u));
+}
+
+.hud--light .hud__combo {
+    color: var(--dim);
+}
+
+.hud--light .hud__combo.is-live {
+    color: var(--paper);
+}
+
+.hud--light .hud__log .shape {
+    opacity: 0.75;
+    --j-miss: var(--dim);
+}
+
+.hud--light .hud__log .shape.is-latest {
+    opacity: 1;
 }
 
 .hud__focus {
@@ -553,82 +1008,240 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 6px;
+    height: calc(6 * var(--u));
 }
 
 .hud__focus-track {
-    fill: var(--mix-line-80);
+    fill: var(--ink-3);
 }
 
 .hud__focus-fill--ok {
-    fill: var(--c-primary);
+    fill: var(--acid);
 }
 
 .hud__focus-fill--warn {
-    fill: var(--c-warn);
+    fill: var(--paper);
 }
 
 .hud__focus-fill--danger {
-    fill: var(--c-danger);
+    fill: var(--mute);
 }
 
-.hud__top {
+/* top-left: track + BPM + difficulty, hung off an acid rule */
+.hud__tl {
     position: absolute;
-    top: 14px;
-    right: 18px;
-    left: 18px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: start;
-    gap: var(--s-3);
+    top: calc(28 * var(--u));
+    left: calc(32 * var(--u));
+    padding-left: calc(14 * var(--u));
+    border-left: calc(8 * var(--u)) solid var(--acid);
 }
 
-.hud__block {
-    display: grid;
-    gap: 1px;
-    align-self: start;
-    padding: 6px 12px;
-    color: var(--c-text);
-    background: var(--mix-bg-72);        /* legible on the bright Range and on neon alike */
-    border-radius: 0;
-    text-shadow: 0 1px 2px var(--mix-shade-95), 0 0 3px var(--mix-shade-80);
+.hud__track {
+    font: 400 calc(44 * var(--u)) / 0.9 var(--display);
+    text-transform: uppercase;
 }
 
-.hud__block--centre {
+.hud__meta {
+    display: flex;
+    align-items: center;
+    gap: calc(10 * var(--u));
+    margin-top: calc(8 * var(--u));
+    font: 700 calc(13 * var(--u)) var(--mono);
+    letter-spacing: 0.06em;
+}
+
+.hud__diff {
+    color: var(--dim);
+    text-transform: uppercase;
+}
+
+/* top-centre: bot n / total and the segmented progress rule */
+.hud__tc {
+    position: absolute;
+    top: calc(28 * var(--u));
+    left: 50%;
+    display: grid;
     justify-items: center;
+    transform: translateX(-50%);
+    text-align: center;
 }
 
-.hud__block--right {
-    justify-items: end;
+.hud__cap {
+    font: 700 calc(11 * var(--u)) var(--mono);
+    letter-spacing: 0.14em;
+    color: var(--dim);
+}
+
+.hud__bots {
+    margin-top: calc(2 * var(--u));
+    font: 400 calc(34 * var(--u)) / 1 var(--display);
+    font-variant-numeric: tabular-nums;
+}
+
+.hud__bots span {
+    margin-left: 0.3em;
+    color: var(--dim);
+    font-size: 0.65em;
+}
+
+.hud__segs {
+    display: flex;
+    gap: calc(2 * var(--u));
+    width: calc(300 * var(--u));
+    margin-top: calc(6 * var(--u));
+}
+
+.hud__segs i {
+    flex: 1;
+    height: calc(6 * var(--u));
+    background: var(--ink-4);
+}
+
+.hud__segs i.is-done {
+    background: var(--paper);
+}
+
+.hud__segs i.is-now {
+    background: var(--acid);
+}
+
+/* top-right: score, then accuracy / head / pace under a thick rule */
+.hud__tr {
+    position: absolute;
+    top: calc(24 * var(--u));
+    right: calc(32 * var(--u));
     text-align: right;
 }
 
-.hud__level {
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-    font-weight: 700;
+.hud__score {
+    font: 400 calc(72 * var(--u)) / 0.9 var(--display);
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
 }
 
-.hud__score {
-    font-family: var(--font-mono);
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1;
+.hud__stats {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: calc(8 * var(--u));
+    border-top: var(--rule) solid var(--paper);
+}
+
+.hud__stats div {
+    padding: calc(6 * var(--u)) 0 0 calc(18 * var(--u));
+    font: 700 calc(11 * var(--u)) var(--mono);
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    text-align: right;
+}
+
+.hud__stats b {
+    display: block;
+    color: var(--paper);
+    font: 400 calc(26 * var(--u)) / 1 var(--display);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.hud__stats .is-pace b {
+    padding: 0 calc(6 * var(--u));
+    background: var(--acid);
+    color: var(--ink);
+}
+
+/* bottom-left: the combo numeral */
+.hud__bl {
+    position: absolute;
+    bottom: calc(28 * var(--u));
+    left: calc(32 * var(--u));
+    display: flex;
+    align-items: flex-end;
+    gap: calc(10 * var(--u));
 }
 
 .hud__combo {
-    min-height: 1.1rem;
-    color: var(--c-accent);
-    font-size: 0.85rem;
-    font-weight: 700;
+    color: var(--dim);
+    font: 400 calc(128 * var(--u)) / 0.78 var(--display);
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
 }
 
-.hud__accuracy {
-    color: var(--c-primary);
-    font-family: var(--font-mono);
-    font-size: 1.3rem;
-    font-weight: 700;
-    line-height: 1;
+.hud__combo.is-live {
+    color: var(--paper);
+}
+
+.hud__combo-label {
+    padding-bottom: calc(2 * var(--u));
+    font: 700 calc(11 * var(--u)) / 1.6 var(--mono);
+    letter-spacing: 0.14em;
+    color: var(--dim);
+}
+
+.hud__combo-label b {
+    display: block;
+    color: var(--acid);
+    font: 400 calc(26 * var(--u)) / 1 var(--display);
+    letter-spacing: 0.02em;
+}
+
+/* bottom-right: the last eight judgements as shapes, and the counter-strafe note */
+.hud__br {
+    position: absolute;
+    right: calc(32 * var(--u));
+    bottom: calc(28 * var(--u));
+    width: calc(280 * var(--u));
+    text-align: right;
+}
+
+.hud__cap-row {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: calc(4 * var(--u));
+    border-bottom: var(--rule) solid var(--paper);
+    font: 700 calc(11 * var(--u)) var(--mono);
+    letter-spacing: 0.14em;
+    color: var(--dim);
+}
+
+.hud__log {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: calc(10 * var(--u));
+    min-height: 1.4rem;
+    margin-top: calc(10 * var(--u));
+}
+
+.hud__log .shape {
+    opacity: 0.4;
+}
+
+.hud__log .shape:nth-last-child(-n + 4) {
+    opacity: 0.7;
+}
+
+.hud__log .shape.is-latest {
+    opacity: 1;
+}
+
+.hud__cs {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: calc(8 * var(--u));
+    margin-top: calc(12 * var(--u));
+    font: 700 calc(12 * var(--u)) var(--mono);
+    letter-spacing: 0.06em;
+    visibility: hidden;
+}
+
+.hud__cs.is-on {
+    visibility: visible;
+}
+
+.hud__cs .key {
+    height: 1.4rem;
+    min-width: 1.4rem;
+    font-size: 0.7rem;
 }
 
 /* centre: crosshair, beat ring, hitmarker, countdown */
@@ -738,13 +1351,13 @@
     left: 50%;
     transform: translateX(-50%);
     opacity: 0;
-    color: var(--mix-ink-85);
-    font-family: var(--font-display);
+    padding: 0 0.3em;
+    background: var(--ink);
+    color: var(--acid);
+    font-family: var(--display);
     font-size: 3.4rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     white-space: nowrap;
-    text-shadow: 0 2px 10px var(--mix-shade-80);
     transition: opacity 180ms ease;
 }
 
@@ -752,88 +1365,221 @@
     opacity: 1;
 }
 
-/* judgement popup */
-.hud__judgement {
+/* bottom-centre column: judgement plate directly above the stop meter */
+.hud__bottom {
     position: absolute;
-    top: 30%;
+    bottom: calc(28 * var(--u));
     left: 50%;
     display: grid;
     justify-items: center;
-    gap: 2px;
+    gap: calc(16 * var(--u));
+    width: calc(600 * var(--u));
     transform: translateX(-50%);
+}
+
+.hud__judgement {
+    display: flex;
+    align-items: center;
+    gap: calc(14 * var(--u));
+    min-height: calc(58 * var(--u));
+    padding: calc(6 * var(--u)) calc(16 * var(--u)) calc(6 * var(--u)) calc(12 * var(--u));
+    border: var(--rule) solid var(--acid);
+    background: var(--ink);
     opacity: 0;
-    text-shadow: 0 2px 8px var(--mix-shade-85);
     white-space: nowrap;
 }
 
 .hud__judgement.is-live {
-    animation: judgement 560ms ease-out forwards;
+    animation: judgement 700ms ease-out forwards;
 }
 
+/* Fade only: no pop or lift, so the plate never competes with the bot or flickers under reduced flash. */
 @keyframes judgement {
-    0% {
-        opacity: 1;
-        transform: translateX(-50%) scale(0.92);
-    }
-
-    20% {
-        transform: translateX(-50%) scale(1.06);
-    }
-
-    70% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 0;
-        transform: translateX(-50%) scale(1.12) translateY(-10px);
-    }
+    0% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 .hud__judge-text {
-    font-family: var(--font-display);
-    font-size: 2.2rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font: 400 calc(46 * var(--u)) / 1 var(--display);
+    letter-spacing: 0.04em;
+    color: var(--acid);
+}
+
+.hud__judge-ms {
+    font: 700 calc(22 * var(--u)) var(--mono);
+    color: var(--paper);
+}
+
+.hud__judge-head {
+    padding: 2px 6px;
+    background: var(--paper);
+    color: var(--ink);
+    font: 700 calc(11 * var(--u)) var(--mono);
+    font-style: normal;
+    letter-spacing: 0.08em;
+}
+
+.hud__judge-head[hidden] {
+    display: none;
 }
 
 .hud__judge-reason {
-    color: var(--mix-ink-85);
-    font-size: 0.9rem;
+    color: var(--dim);
+    font: 700 calc(12 * var(--u)) var(--mono);
+    letter-spacing: 0.06em;
 }
 
-.hud__judgement--perfect .hud__judge-text {
-    color: var(--c-primary);
+.hud__judge-reason:empty {
+    display: none;
+}
+
+.hud__judgement--good {
+    border-color: var(--paper);
+}
+
+.hud__judgement--ok {
+    border-color: var(--dim);
+}
+
+.hud__judgement--miss,
+.hud__judgement--wild {
+    border-color: var(--mute);
 }
 
 .hud__judgement--good .hud__judge-text {
-    color: var(--c-primary);
+    color: var(--paper);
 }
 
 .hud__judgement--ok .hud__judge-text {
-    color: var(--c-warn);
+    color: var(--dim);
 }
 
 .hud__judgement--miss .hud__judge-text,
 .hud__judgement--wild .hud__judge-text {
-    color: var(--c-danger);
+    color: var(--mute);
 }
 
-/* tutorial hint */
+.hud__meter {
+    width: 100%;
+}
+
+.hud__meter-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: calc(6 * var(--u));
+    font: 700 calc(11 * var(--u)) var(--mono);
+    letter-spacing: 0.12em;
+    color: var(--dim);
+}
+
+.hud__meter-top b {
+    color: var(--paper);
+    font-size: calc(13 * var(--u));
+}
+
+.hud__meter-top b.is-planted {
+    color: var(--acid);
+}
+
+.hud__meter-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.hud__meter-bg {
+    fill: var(--ink);
+    fill-opacity: 0.85;
+}
+
+.hud__meter-hatch {
+    fill: var(--dim);
+}
+
+.hud__meter-loose {
+    opacity: 0.8;
+}
+
+.hud__meter-good {
+    fill: var(--paper);
+    fill-opacity: 0.55;
+}
+
+.hud__meter-perfect {
+    fill: var(--acid);
+}
+
+.hud__meter-centre {
+    stroke: var(--paper);
+    stroke-width: 2;
+}
+
+.hud__meter-frame {
+    fill: none;
+    stroke: var(--paper);
+    stroke-width: 3;
+}
+
+.hud__meter-marker rect {
+    fill: var(--ink);
+    stroke: var(--paper);
+    stroke-width: 2;
+}
+
+.hud__meter-marker polygon {
+    fill: var(--paper);
+}
+
+.hud__meter-marker--pin polygon {
+    fill: var(--acid);
+}
+
+.hud__legend {
+    display: flex;
+    justify-content: center;
+    gap: calc(22 * var(--u));
+    margin-top: calc(10 * var(--u));
+    font: 700 calc(11 * var(--u)) var(--mono);
+    letter-spacing: 0.08em;
+    color: var(--paper-2);
+}
+
+.hud__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hud__legend .shape {
+    width: 0.7rem;
+    height: 0.7rem;
+}
+
+.hud__legend .shape--loose {
+    width: 0;
+    height: 0;
+    border-left-width: 0.4rem;
+    border-right-width: 0.4rem;
+    border-bottom-width: 0.7rem;
+}
+
+/* hint line (tutorial, practice, replay): below the top-centre block, outside the centre third */
 .hud__hint {
     position: absolute;
-    top: 96px;
+    top: calc(206 * var(--u));
     left: 50%;
     max-width: 70%;
     margin: 0;
     padding: 0.45rem 1rem;
     transform: translateX(-50%);
     opacity: 0;
-    border: 1px solid var(--mix-prim-50);
-    border-radius: 0;
-    background: var(--mix-bg-70);
-    color: var(--c-primary);
-    font-size: 0.9rem;
+    border: var(--rule) solid var(--acid);
+    background: var(--ink);
+    color: var(--paper);
+    font: 700 0.85rem var(--mono);
+    letter-spacing: 0.04em;
     text-align: center;
     transition: opacity 200ms ease;
 }
@@ -842,42 +1588,49 @@
     opacity: 1;
 }
 
-/* note highway: upcoming bots descending onto the lane strip */
+/* note highway and lane strip: a small, quiet strip under the bot counter (optional setting) */
 .hud__highway {
-    width: min(420px, 60%);
+    width: calc(300 * var(--u));
     height: auto;
-    margin-bottom: -4px;
+    margin-top: calc(10 * var(--u));
+    opacity: 0.85;
+}
+
+.hud__highway[hidden] {
+    display: none;
 }
 
 .hud__highway-column {
-    fill: var(--mix-surf-28);
+    fill: var(--ink-2);
+    fill-opacity: 0.7;
 }
 
 .hud__highway-beat {
-    stroke: var(--mix-dim-35);
+    stroke: var(--mute);
     stroke-width: 1;
     stroke-dasharray: 4 6;
 }
 
 .hud__highway-note {
-    fill: var(--mix-ink-55);
-    stroke: var(--mix-ink-80);
+    fill: var(--paper);
+    fill-opacity: 0.55;
+    stroke: var(--paper);
     stroke-width: 1.5;
 }
 
 /* Where bots step out: dots below this line have a bot on screen. */
 .hud__highway-spawn {
-    stroke: var(--c-primary);
+    stroke: var(--acid);
     stroke-width: 1.5;
     stroke-dasharray: 8 5;
     opacity: 0.8;
 }
 
-/* The note's bot is out: mint, ringed, with a short pop as it crosses the line. */
 .hud__highway-note.is-out {
-    fill: var(--c-primary);
-    stroke: var(--mix-prim-45);
-    stroke-width: 6;
+    fill: var(--acid);
+    fill-opacity: 1;
+    stroke: var(--ink);
+    stroke-width: 3;
     transform-box: fill-box;
     transform-origin: center;
     animation: highway-note-out 220ms ease-out;
@@ -890,100 +1643,39 @@
 
 .hud__highway-note--next,
 .hud__highway-note--next.is-out {
-    fill: var(--c-accent);
-    stroke: var(--c-text);
+    fill: var(--acid);
+    fill-opacity: 1;
+    stroke: var(--paper);
     stroke-width: 2;
 }
 
-/* bottom: lane strip and velocity meter */
-.hud__bottom {
-    position: absolute;
-    right: 32%;
-    bottom: 12px;
-    left: 0;
-    display: grid;
-    justify-items: center;
-    gap: 4px;
-}
-
 .hud__lanes {
-    width: min(420px, 60%);
+    width: calc(300 * var(--u));
     height: auto;
+    margin-top: 2px;
 }
 
 .hud__lane {
-    fill: var(--mix-surf-60);
-    stroke: var(--mix-dim-70);
+    fill: var(--ink-2);
+    stroke: var(--ink-4);
     stroke-width: 1.5;
 }
 
 .hud__lane--active {
-    fill: color-mix(in srgb, var(--c-primary) 35%, transparent);
-    stroke: var(--c-accent);
+    fill: var(--acid);
+    fill-opacity: 0.3;
+    stroke: var(--acid);
     stroke-width: 2.5;
 }
 
 .hud__lane-label {
-    fill: var(--mix-dim-90);
-    font-family: var(--font-mono);
+    fill: var(--dim);
+    font-family: var(--mono);
     font-size: 11px;
 }
 
 .hud__lane-player {
-    fill: var(--c-text);
-}
-
-.hud__velocity {
-    display: grid;
-    justify-items: center;
-    gap: 2px;
-}
-
-.hud__velocity-svg {
-    width: min(360px, 55%);
-    height: auto;
-}
-
-.hud__velocity-track {
-    fill: var(--mix-surf-78);
-    stroke: var(--mix-line-90);
-    stroke-width: 1;
-}
-
-.hud__velocity-tight {
-    fill: var(--mix-warn-22);
-}
-
-.hud__velocity-pin {
-    fill: var(--mix-prim-38);
-}
-
-.hud__velocity-centre {
-    stroke: var(--mix-dim-70);
-    stroke-width: 1;
-}
-
-.hud__velocity-marker--pin {
-    fill: var(--c-primary);
-}
-
-.hud__velocity-marker--tight {
-    fill: var(--c-warn);
-}
-
-.hud__velocity-marker--fast {
-    fill: var(--c-danger);
-}
-
-.hud__velocity-text {
-    color: var(--mix-ink-80);
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    text-shadow: 0 1px 3px var(--mix-shade-80);
-}
-
-.hud__velocity-text.is-planted {
-    color: var(--c-primary);
+    fill: var(--paper);
 }
 
 .cs-demo {
@@ -1357,9 +2049,11 @@
 }
 
 .lockprompt {
+    --u: max(min(100vw / 1280, 100vh / 720), 0.55px);
     position: absolute;
-    right: var(--s-4);
-    top: 90px;                  /* top-right: clear of the crosshair, the bots and the tutorial panel (top-left) */
+    left: 50%;
+    bottom: calc(236 * var(--u));   /* bottom-centre, just above the stop meter: clear of every HUD corner block and of the centre third */
+    transform: translateX(-50%);
     width: max-content;
     max-width: 340px;
     z-index: 4;
@@ -1512,54 +2206,6 @@ body.game-shell {
     vertical-align: baseline;
 }
 
-.result__timing {
-    display: grid;
-    gap: var(--s-2);
-    margin: var(--s-3) 0;
-    text-align: center;
-}
-
-.result__hist-bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    height: 56px;
-    border-bottom: 1px solid currentColor;
-}
-
-.result__hist-bar {
-    flex: 1;
-    min-height: 1px;
-    background: var(--c-primary);
-    opacity: 0.85;
-}
-
-.result__hist-bar.is-early { background: var(--c-secondary); }
-
-.result__hist-axis,
-.result__offset,
-.result__stops {
-    font-size: 0.8rem;
-    opacity: 0.8;
-}
-
-.result__offset.is-early { color: var(--c-primary); }
-.result__offset.is-late { color: var(--c-warn); }
-.result__offset.is-early::before { content: "\2190  "; }
-.result__offset.is-late::before { content: "\2192  "; }
-
-/* Results fit a 1280x800 window without scrolling: smaller ring, two-column breakdown. */
-@media (max-height: 860px) {
-    .overlay--result { padding: var(--s-3); gap: var(--s-2); }
-    .result__subtitle { margin-bottom: var(--s-2); }
-    .result__body { gap: var(--s-3); }
-    .result__rank-ring { width: 96px; height: 96px; border-width: 4px; font-size: 2.6rem; box-shadow: 0 0 0 6px color-mix(in srgb, var(--c-primary) 12%, transparent); }
-    .result__score { font-size: 1.5rem; margin-top: 0; }
-    .result__breakdown { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--s-4); }
-    .result__timing { margin: var(--s-2) 0; gap: var(--s-1); }
-    .result__hist-bars { height: 44px; }
-    .result__stars { margin: var(--s-2) 0; }
-}
 
 /* Results actions stay on screen at any frame height (the embedded, pre-fullscreen canvas is
    ~515 px tall, so viewport media queries cannot help): the row sticks to the overlay's bottom
@@ -2448,4 +3094,247 @@ body[data-input="pad"] .trow:focus {
     margin: var(--s-3) 0 0;
     color: var(--dim);
     font-size: 0.85rem;
+}
+
+/* ======================================================================
+   Direction C overlays: pause, settings, calibration, tutorial, credits and
+   the Play splash share one component language with the HUD and results:
+   ink panels, thick paper/acid rules, Anton titles, mono captions, square
+   corners, no glows. Acid only ever means "live" or "you".
+   ====================================================================== */
+.overlay__title {
+    font: 400 clamp(2.6rem, 7vw, 5rem) / 0.9 var(--display);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+}
+
+/* Pause: a left-aligned editorial slab over the dimmed arena */
+.overlay--pause {
+    place-content: center start;
+    padding-left: clamp(32px, 8vw, 120px);
+    text-align: left;
+    background: linear-gradient(90deg, var(--mix-bg-96), var(--mix-bg-70));
+}
+
+.overlay--pause .overlay__title {
+    padding-bottom: var(--s-3);
+    border-bottom: var(--rule-thick) solid var(--paper);
+}
+
+.overlay--pause .overlay__title::after {
+    content: "RUN HELD";
+    display: block;
+    margin-top: var(--s-2);
+    color: var(--dim);
+    font: 700 0.72rem var(--mono);
+    letter-spacing: 0.14em;
+}
+
+.overlay--pause .text-dim {
+    max-width: 44ch;
+    color: var(--paper-2);
+    font: 600 0.9rem / 1.4 var(--body);
+}
+
+.overlay--pause .overlay__actions {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: min(360px, 100%);
+}
+
+/* Settings: flat ruled sections instead of rounded cards */
+.settings__group {
+    border: 0;
+    border-top: var(--rule-thick) solid var(--paper);
+    border-radius: 0;
+    background: var(--mix-bg-70);
+}
+
+.settings__legend {
+    font-size: 1.5rem;
+    border-bottom: var(--rule-thin) solid var(--ink-4);
+}
+
+.settings__label {
+    color: var(--paper-2);
+    font: 700 0.72rem var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.settings__value {
+    color: var(--acid);
+    font-family: var(--mono);
+    font-weight: 700;
+}
+
+.settings__number,
+.settings__colour,
+.settings__preview {
+    border: var(--rule) solid var(--paper);
+    border-radius: 0;
+    background: var(--ink);
+}
+
+.settings__number:focus-visible,
+.settings__colour:focus-visible {
+    outline: 3px solid var(--acid);
+    outline-offset: 2px;
+}
+
+.settings__range,
+.settings__check input {
+    accent-color: var(--acid);
+}
+
+.settings__check {
+    color: var(--paper-2);
+    font: 600 0.85rem var(--body);
+}
+
+/* Calibration: the ring is flat acid on ink */
+.overlay--calibration {
+    background: var(--ink);
+}
+
+.cal__ring-track {
+    stroke: var(--ink-4);
+    stroke-width: 3;
+}
+
+.cal__ring {
+    stroke: var(--acid);
+    stroke-width: 4;
+}
+
+.cal__ring-core {
+    fill: var(--paper);
+}
+
+.cal__status {
+    color: var(--paper);
+    font: 700 0.9rem / 1.4 var(--mono);
+    letter-spacing: 0.04em;
+}
+
+.cal__result {
+    color: var(--acid);
+    font: 700 0.95rem / 1.4 var(--mono);
+}
+
+/* Tutorial coach: ink panel hung off an acid rule, like the track block in the HUD */
+.tutorial {
+    top: calc(120 * var(--u, 1px));
+    left: 32px;
+    gap: var(--s-2);
+    width: min(360px, 40%);
+    padding: var(--s-3) var(--s-4);
+    border: 0;
+    border-left: 8px solid var(--acid);
+    background: var(--ink);
+    text-align: left;
+}
+
+.tutorial__title {
+    color: var(--paper);
+    font: 400 1.5rem / 1 var(--display);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.tutorial__pips {
+    gap: 4px;
+}
+
+.tutorial__pip {
+    width: 22px;
+    height: 6px;
+    background: var(--ink-4);
+}
+
+.tutorial__pip.is-on {
+    background: var(--acid);
+}
+
+.tutorial__text {
+    color: var(--paper);
+    font: 600 0.9rem / 1.4 var(--body);
+}
+
+.tutorial__text.is-fail {
+    color: var(--dim);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+}
+
+.tutorial__thresholds {
+    color: var(--dim);
+    font: 700 0.68rem var(--mono);
+}
+
+/* Credits: a printed paper sheet, the same surface as the leaderboard */
+.credits {
+    background: var(--mix-bg-92);
+}
+
+.credits__card {
+    border: 0;
+    border-top: var(--rule-thick) solid var(--acid);
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.credits__title {
+    margin: 0 0 var(--s-3);
+    padding-bottom: var(--s-2);
+    border-bottom: var(--rule-thick) solid var(--ink);
+    color: var(--ink);
+    font: 400 2.6rem / 1 var(--display);
+    text-transform: uppercase;
+}
+
+.credits__cat {
+    margin: var(--s-4) 0 var(--s-1);
+    padding-bottom: 2px;
+    border-bottom: var(--rule) solid var(--ink);
+    color: var(--ink);
+    font: 400 1.25rem / 1 var(--display);
+    letter-spacing: 0.03em;
+}
+
+.credits__list {
+    list-style: none;
+    padding-left: 0;
+    color: var(--ink-4);
+    font: 700 0.72rem / 1.5 var(--mono);
+}
+
+.credits__item {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--paper-2);
+}
+
+.credits__hint {
+    color: var(--ink-4);
+    font: 700 0.68rem var(--mono);
+    letter-spacing: 0.08em;
+    opacity: 1;
+}
+
+/* Play splash */
+.start__title {
+    font: 400 clamp(3.2rem, 11vw, 8rem) / 0.88 var(--display);
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+}
+
+.start__title span {
+    color: var(--acid);
+}
+
+.start__tag,
+.start__hint {
+    font: 700 0.75rem var(--mono);
+    letter-spacing: 0.16em;
 }

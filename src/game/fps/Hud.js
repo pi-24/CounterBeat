@@ -13,14 +13,20 @@
  * only reaches the DOM when the value actually changed: an unchanged
  * attribute or class still costs a style recalculation if it is written.
  */
-import { APPROACH_BEATS, GRADE_LABEL } from '../rules/config.js';
-import { paletteFor, GRADE_ICONS } from '../feel/judgementPalette.js';
-import { progressLabel } from './hudText.js';
+import { APPROACH_BEATS, GRADE_LABEL, SPEED_GRADE } from '../rules/config.js';
+import { paletteFor } from '../feel/judgementPalette.js';
+import {
+    botCounter, progressSegments, multiplierLabel, headLabel, paceLabel, stopMeterLayout, meterMarkerX,
+    stopReadout, judgementPlate, pushRecent,
+} from './hudText.js';
 import { arcColour, arcFill, arcTickSpeeds } from '../feel/speedArc.js';
 
 const ARC_RADIUS = 40;
 const ARC_START_DEG = 150;
 const ARC_SPAN_DEG = 240 / 2; // 120 degrees across the bottom of the crosshair
+
+/** Judgement grade -> the shape class that carries it (shape + brightness, never hue alone). */
+const GRADE_SHAPE = Object.freeze({ perfect: 'perfect', good: 'good', ok: 'loose', miss: 'miss', wild: 'miss' });
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** How far ahead the note strip shows, in beats (bots appear APPROACH_BEATS ahead). */
@@ -68,10 +74,21 @@ export class Hud {
         this.find = (id) => root.querySelector(`#${id}`);
 
         this.levelText = this.find('hudLevel');
+        this.bpmText = this.find('hudBpm');
+        this.diffText = this.find('hudDiff');
         this.progressText = this.find('hudProgress');
+        this.totalText = this.find('hudTotal');
+        this.segsEl = this.find('botSegs');
+        this.segments = [];
         this.scoreText = this.find('hudScore');
         this.comboText = this.find('hudCombo');
+        this.multText = this.find('hudMult');
         this.accuracyText = this.find('hudAccuracy');
+        this.headText = this.find('hudHead');
+        this.paceText = this.find('hudPace');
+        this.recentEl = this.find('recentLog');
+        this.csNote = this.find('csNote');
+        this.recent = [];
         this.focusFill = this.find('focusFill');
         this.beatRing = this.find('beatRing');
         this.beatCueEl = this.find('beatCue');
@@ -79,7 +96,10 @@ export class Hud {
         this.softCue = false;
         this.palette = paletteFor('default');
         this.judgeBox = this.find('judgement');
+        this.judgeShape = this.find('judgeShape');
         this.judgeText = this.find('judgeText');
+        this.judgeMs = this.find('judgeMs');
+        this.judgeHead = this.find('judgeHead');
         this.judgeReason = this.find('judgeReason');
         this.countdown = this.find('countdown');
         this.hitmarker = this.find('hitmarker');
@@ -87,6 +107,7 @@ export class Hud {
         this.laneStrip = this.find('laneStrip');
         this.velocitySvg = this.find('velocity');
         this.velocityText = this.find('velocityText');
+        this.meterLegend = this.find('meterLegend');
 
         this.speedArc = this.find('speedArc');
         this.arcFill = this.speedArc?.querySelector('[data-part="fill"]');
@@ -98,8 +119,12 @@ export class Hud {
         this.arcScale = 0;
         this.perfectFlash = this.find('perfectFlash');
         this.velocityMarker = this.velocitySvg.querySelector('[data-part="marker"]');
-        this.velocityTight = this.velocitySvg.querySelector('[data-part="tight"]');
-        this.velocityPin = this.velocitySvg.querySelector('[data-part="pin"]');
+        this.meterZones = {
+            perfect: this.velocitySvg.querySelector('[data-part="perfect"]'),
+            good: this.velocitySvg.querySelector('[data-part="good"]'),
+            loose: this.velocitySvg.querySelector('[data-part="loose"]'),
+        };
+        this.meterDrawn = false;
 
         this.hint = this.find('hudHint');
         this.highway = this.find('noteHighway');
@@ -111,8 +136,6 @@ export class Hud {
         this.highwayMarkers = new Map();
         this.highwayLines = [];
         this.highwayLanes = 1;
-        /** The maximum speed the velocity bands were last drawn for. */
-        this.velocityScale = 0;
     }
 
     /** @param {string} text an instruction line; empty hides it. */
@@ -234,26 +257,56 @@ export class Hud {
         this.root.hidden = true;
     }
 
-    /** @param {string} name @param {number} bpm */
-    setLevel(name, bpm) {
+    /**
+     * @param {string} name track title
+     * @param {number} bpm
+     * @param {string} [detail] difficulty and tags, e.g. "Hard" or "Hard · PLACEHOLDER MUSIC"
+     */
+    setLevel(name, bpm, detail = '') {
         this.levelText.textContent = name;
         this.bpm = bpm;
+        write(this.bpmText, 'text', `${Math.round(bpm)} BPM`);
+        write(this.diffText, 'text', detail);
     }
 
     /** @param {number} judged @param {number} total */
     setProgress(judged, total) {
-        write(this.progressText, 'text', progressLabel(judged, total, this.bpm));
+        const counter = botCounter(judged, total);
+        write(this.progressText, 'text', counter.current);
+        write(this.totalText, 'text', counter.total);
+        const { count, done } = progressSegments(judged, total);
+        if (this.segments.length !== count) {
+            this.segsEl.replaceChildren();
+            this.segments = [];
+            for (let i = 0; i < count; i += 1) {
+                const seg = document.createElement('i');
+                this.segsEl.append(seg);
+                this.segments.push(seg);
+            }
+        }
+        this.segments.forEach((seg, i) => write(seg, 'class', i < done ? 'is-done' : (i === done ? 'is-now' : '')));
     }
 
     /** @param {number} score @param {number} combo @param {number} multiplier */
     setScore(score, combo, multiplier) {
         write(this.scoreText, 'text', score.toLocaleString('en-GB'));
-        write(this.comboText, 'text', combo >= 2 ? `${combo} COMBO  ×${multiplier.toFixed(2)}` : '');
+        write(this.comboText, 'text', String(combo));
+        write(this.comboText, 'class', `hud__combo${combo >= 2 ? ' is-live' : ''}`);
+        write(this.multText, 'text', multiplierLabel(multiplier));
     }
 
     /** @param {number} fraction 0..1 */
     setAccuracy(fraction) {
-        write(this.accuracyText, 'text', `${(fraction * 100).toFixed(1)}%`);
+        write(this.accuracyText, 'text', `${(fraction * 100).toFixed(2)}%`);
+    }
+
+    /**
+     * Headshots over bots hit, and the projected rank.
+     * @param {{headshots:number, hits:number, rank:string, judged:number}} stats
+     */
+    setStats({ headshots, hits, rank, judged }) {
+        write(this.headText, 'text', headLabel(headshots, hits));
+        write(this.paceText, 'text', paceLabel(rank, judged));
     }
 
     /** @param {number} fraction 0..1 */
@@ -263,36 +316,64 @@ export class Hud {
         write(this.focusFill, 'class', `hud__focus-fill hud__focus-fill--${state}`);
     }
 
-    /**
-     * @param {number} velocity signed, track units per second
-     * @param {number} maxSpeed
-     * @param {number} pinPoint
-     * @param {number} tight
-     */
-    setVelocity(velocity, maxSpeed, pinPoint, tight) {
-        const width = 420;
-        const half = width / 2;
+    /** Clears the "last 8" log and the counter-strafe note (run start / restart). */
+    resetRecent() {
+        this.recent = [];
+        this.renderRecent();
+        this.csNote.classList.remove('is-on');
+    }
 
-        // The bands only depend on the run's top speed: draw them once.
-        if (this.velocityScale !== maxSpeed) {
-            this.velocityScale = maxSpeed;
-            const pinHalf = (pinPoint / maxSpeed) * half;
-            const tightHalf = (tight / maxSpeed) * half;
-            this.velocityPin.setAttribute('x', String(half - pinHalf));
-            this.velocityPin.setAttribute('width', String(Math.max(pinHalf * 2, 4)));
-            this.velocityTight.setAttribute('x', String(half - tightHalf));
-            this.velocityTight.setAttribute('width', String(tightHalf * 2));
+    renderRecent() {
+        const shapes = this.recent;
+        while (this.recentEl.children.length > shapes.length) {
+            this.recentEl.lastElementChild.remove();
         }
+        shapes.forEach((grade, i) => {
+            let node = this.recentEl.children[i];
+            if (!node) {
+                node = document.createElement('i');
+                this.recentEl.append(node);
+            }
+            write(node, 'class', `shape shape--${GRADE_SHAPE[grade] ?? 'miss'}${i === shapes.length - 1 ? ' is-latest' : ''}`);
+        });
+    }
 
-        const ratio = Math.max(-1, Math.min(1, velocity / maxSpeed));
+    /**
+     * The stop meter: signed strafe speed against the Perfect / Good / Loose zones, drawn to scale
+     * from the locked thresholds (SPEED_GRADE).
+     * @param {number} velocity signed, track units per second
+     * @param {{pinPoint:number, tight:number, loose:number}} [grades]
+     */
+    setVelocity(velocity, grades = SPEED_GRADE) {
+        // Keyed on the thresholds themselves, so an equal copy of the grades never forces a relayout.
+        const key = `${grades.pinPoint}/${grades.tight}/${grades.loose}`;
+        if (this.meterDrawn !== key) {
+            this.meterDrawn = key;
+            const layout = stopMeterLayout(grades);
+            for (const name of ['perfect', 'good', 'loose']) {
+                const zone = this.meterZones[name];
+                zone.setAttribute('x', layout[name].x.toFixed(1));
+                zone.setAttribute('width', layout[name].width.toFixed(1));
+            }
+            if (this.meterLegend) {
+                this.meterLegend.replaceChildren();
+                for (const [shape, label, speed] of [
+                    ['perfect', 'PERFECT', grades.pinPoint], ['good', 'GOOD', grades.tight], ['loose', 'LOOSE', grades.loose],
+                ]) {
+                    const item = document.createElement('span');
+                    const icon = document.createElement('i');
+                    icon.className = `shape shape--${shape}`;
+                    item.append(icon, `${label} ≤${speed}`);
+                    this.meterLegend.append(item);
+                }
+            }
+        }
         const speed = Math.abs(velocity);
-        write(this.velocityMarker, 'x', (half + ratio * half - 3).toFixed(1));
-        const state = speed <= pinPoint ? 'pin' : (speed <= tight ? 'tight' : 'fast');
-        write(this.velocityMarker, 'class', `hud__velocity-marker hud__velocity-marker--${state}`);
-
-        const planted = speed <= pinPoint;
-        write(this.velocityText, 'text', planted ? 'PLANTED · FIRE' : `${Math.round(speed)} u/s`);
-        write(this.velocityText, 'class', `hud__velocity-text${planted ? ' is-planted' : ''}`);
+        write(this.velocityMarker, 'transform', `translate(${meterMarkerX(velocity, grades).toFixed(1)} 0)`);
+        const state = speed <= grades.pinPoint ? 'pin' : (speed <= grades.tight ? 'tight' : (speed <= grades.loose ? 'loose' : 'fast'));
+        write(this.velocityMarker, 'class', `hud__meter-marker hud__meter-marker--${state}`);
+        write(this.velocityText, 'text', stopReadout(velocity));
+        write(this.velocityText, 'class', speed <= grades.pinPoint ? 'is-planted' : '');
     }
 
     /**
@@ -416,11 +497,17 @@ export class Hud {
      * @param {string} reason
      * @param {number} points
      * @param {boolean} bonus counter-strafe bonus earned
+     * @param {{timingError?:number, headshot?:boolean}} [shot] timing error (s, negative = early) and head hit
      */
-    showJudgement(grade, reason, points, bonus) {
-        const name = bonus ? `${GRADE_LABEL[grade]}  +CS` : GRADE_LABEL[grade];
-        const label = GRADE_ICONS[grade] ? `${GRADE_ICONS[grade]} ${name}` : name;
-        this.flashJudgement(label, reason || (points ? `+${points}` : ''), grade);
+    showJudgement(grade, reason, points, bonus, shot = {}) {
+        const plate = judgementPlate({
+            grade, label: GRADE_LABEL[grade], timingError: shot.timingError, headshot: shot.headshot,
+            reason: reason || (points ? `+${points}` : ''),
+        });
+        this.recent = pushRecent(this.recent, grade);
+        this.renderRecent();
+        this.csNote.classList.toggle('is-on', Boolean(bonus));
+        this.paintPlate(plate);
     }
 
     /**
@@ -429,8 +516,15 @@ export class Hud {
      * @param {string} tone one of perfect/good/ok/miss/wild
      */
     flashJudgement(label, detail, tone) {
+        this.paintPlate(judgementPlate({ grade: tone, label, reason: detail }));
+    }
+
+    paintPlate({ tone, label, ms, head, reason }) {
         this.judgeText.textContent = label;
-        this.judgeReason.textContent = detail;
+        this.judgeMs.textContent = ms;
+        this.judgeHead.hidden = !head;
+        this.judgeReason.textContent = reason;
+        this.judgeShape.className = `shape shape--${GRADE_SHAPE[tone] ?? 'miss'}`;
         this.judgeBox.className = `hud__judgement hud__judgement--${tone} is-live`;
         this.judgeText.style.color = this.palette[tone] ?? '';
         replayAnimations(this.judgeBox);

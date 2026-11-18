@@ -97,3 +97,18 @@ test('the play scene bot records a real, clean run of the chart it shows', async
         assert.ok(log.ticks.length > 1000);
     }
 });
+
+test('the sample leaderboard repeats the run on screen as the player\'s own row', async () => {
+    const { demoLeaderboard, parseAtlasBoard } = await import('../../src/game/atlasHook.js');
+    const { buildBoardView } = await import('../../src/ui/leaderboardModel.js');
+    const run = syntheticRun(2).record;
+    const rows = demoLeaderboard(run.chartId, run);
+    const view = buildBoardView(rows, { userId: 'atlas-me', top: 6, around: 2 });
+    assert.equal(view.me.score, run.score);
+    assert.equal(view.me.combo, run.bestCombo);
+    assert.equal(view.me.pos, 7);
+    assert.equal(view.total, 9);
+    assert.equal(parseAtlasBoard('?atlas_board=daily'), 'daily');
+    assert.equal(parseAtlasBoard('?atlas_board=nope'), 'global');
+    assert.equal(parseAtlasBoard(''), 'global');
+});
