@@ -11,6 +11,7 @@
  *
  * The schema is in supabase/migrations; the function in supabase/functions.
  */
+import { buildSubmitBody } from '../../net/rankedSubmit.js';
 import { createClient } from '@supabase/supabase-js';
 
 /** Everything on a run row except the replay log, which is fetched on demand. */
@@ -192,8 +193,13 @@ export class SupabaseBackend {
         }
         const previous = await this.personalBest(this.user.id, record.chartId);
 
+        const built = await buildSubmitBody(record, log, token);
+        if (!built.ok) {
+            return { saved: false, accepted: false, rejected: true, reason: built.reason,
+                score: record.score, personalBest: false };
+        }
         const { data, error } = await this.client.functions.invoke('submit-run', {
-            body: { record, log, token },
+            body: built.body,
         });
         if (error) {
             return SupabaseBackend.submitFailure(error, record);
@@ -312,6 +318,7 @@ export class SupabaseBackend {
             displayName: row.display_name,
             mainGame: row.main_game || '-',
             chartId: row.chart_id,
+            chartVersion: row.chart_version ?? 0,
             levelId: row.level_id,
             levelName: row.level_name,
             score: row.score,
@@ -356,6 +363,32 @@ export class SupabaseBackend {
         }
         this.user.settings = values;
         await this.client.from('profiles').update({ settings: values }).eq('id', this.user.id);
+    }
+
+    // -------------------------------------------------------- progress ----
+    // Stars and cosmetics: local-first, synced here, never server-verified.
+
+    async loadProgress() {
+        if (!this.user) {
+            return null;
+        }
+        const { data, error } = await this.client.from('profiles').select('progress').eq('id', this.user.id).maybeSingle();
+        if (error) {
+            // Fail soft (e.g. migration 0004 not applied yet): progress stays local.
+            console.warn('Progress: could not load the account copy', error.message);
+            return null;
+        }
+        return data?.progress ?? null;
+    }
+
+    async saveProgress(values) {
+        if (!this.user) {
+            return;
+        }
+        const { error } = await this.client.from('profiles').update({ progress: values }).eq('id', this.user.id);
+        if (error) {
+            throw new Error(error.message);
+        }
     }
 
     // --------------------------------------------------------- helpers ----

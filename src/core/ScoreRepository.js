@@ -19,6 +19,9 @@
  * }
  */
 import { store } from './Storage.js';
+import { rowVersion } from '../net/submit.js';
+import { currentChartVersions } from '../net/versions.js';
+import { canSubmitRanked } from './customGate.js';
 
 const KEY = 'scores';
 const LOG_KEY = 'logs';
@@ -241,9 +244,10 @@ export class ScoreRepository {
      * One row per registered player: their highest-scoring ranked run.
      * @param {object[]} users the registered accounts to report on.
      * @param {string} [chartFilter] a chart id, or 'best' for any ranked chart.
+     * @param {Record<string, number>|null} [versions] active chart versions (default: the current ones); runs on older versions are hidden. Pass null to disable.
      * @returns {object[]}
      */
-    leaderboard(users, chartFilter = 'best') {
+    leaderboard(users, chartFilter = 'best', versions = currentChartVersions()) {
         const runs = this.all();
         const withLogs = this.logIds();
         const rows = [];
@@ -251,6 +255,7 @@ export class ScoreRepository {
         for (const user of users) {
             const candidates = runs.filter((run) => run.userId === user.id
                 && ScoreRepository.isRanked(run)
+                && (!versions || rowVersion(run) === (versions[run.chartId] ?? 0))
                 && (chartFilter === 'best' || run.chartId === chartFilter));
             if (candidates.length === 0) {
                 continue;
@@ -279,7 +284,7 @@ export class ScoreRepository {
 
     /** @param {object} run @returns {boolean} whether it belongs on the rankings. */
     static isRanked(run) {
-        return run.verified !== false && run.kind !== 'custom' && run.kind !== 'tutorial' && run.levelId > 0;
+        return run.verified !== false && canSubmitRanked(run).ok && run.kind !== 'tutorial' && run.levelId > 0;
     }
 }
 

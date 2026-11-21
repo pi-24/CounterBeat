@@ -1,0 +1,88 @@
+{
+  "version": 3,
+  "images": [
+    {
+      "id": "emblem",
+      "name": "CounterBeat emblem",
+      "path": "images/emblem.png",
+      "licence": "LICENSES/atlas-procedural-art.txt",
+      "author": "CounterBeat (generated for this project)",
+      "usage": "Home page hero and icon"
+    }
+  ],
+  "packs": [
+    {
+      "id": "particle-pack",
+      "name": "Kenney - Particle Pack (kenney.nl)",
+      "author": "Kenney (kenney.nl)",
+      "licence": "LICENSES/kenney-particle-pack.txt",
+      "note": "CC0 1.0, recoloured to the CounterBeat palette"
+    },
+    {
+      "id": "prototype-textures",
+      "name": "Kenney - Prototype Textures (kenney.nl)",
+      "author": "Kenney (kenney.nl)",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "note": "CC0 1.0, recoloured to the CounterBeat palette"
+    }
+  ],
+  "uiPalette": {
+    "note": "Direction C 'Bold Editorial' UI design system. Single source of truth is src/styles/tokens.css; tests and tools/validate-assets.mjs keep this list in sync. The 3D arena/tactical-range colours live in themes.json and are deliberately separate.",
+    "colours": {
+      "ink": "#0c0c0b",
+      "ink-2": "#161614",
+      "ink-3": "#22221f",
+      "ink-4": "#34332e",
+      "paper": "#efeadf",
+      "paper-2": "#d9d3c5",
+      "dim": "#a29d92",
+      "mute": "#6c6961",
+      "acid": "#e2ff1f",
+      "acid-dk": "#b8d000"
+    },
+    "judgements": {
+      "perfect": {
+        "token": "acid",
+        "shape": "diamond"
+      },
+      "good": {
+        "token": "paper",
+        "shape": "circle"
+      },
+      "loose": {
+        "token": "dim",
+        "shape": "triangle"
+      },
+      "miss": {
+        "token": "mute",
+        "shape": "cross"
+      }
+    }
+  },
+  "fonts": [
+    {
+      "id": "anton",
+      "name": "Anton",
+      "author": "The Anton Project Authors",
+      "licence": "LICENSES/font-anton-ofl.txt",
+      "role": "display",
+      "note": "SIL OFL 1.1, self-hosted from @fontsource/anton"
+    },
+    {
+      "id": "archivo",
+      "name": "Archivo",
+      "author": "The Archivo Project Authors",
+      "licence": "LICENSES/font-archivo-ofl.txt",
+      "role": "body",
+      "note": "SIL OFL 1.1, self-hosted from @fontsource/archivo"
+    },
+    {
+      "id": "space-mono",
+      "name": "Space Mono",
+      "author": "The Space Mono Project Authors",
+      "licence": "LICENSES/font-space-mono-ofl.txt",
+      "role": "mono",
+      "note": "SIL OFL 1.1, self-hosted from @fontsource/space-mono"
+    }
+  ]
+}

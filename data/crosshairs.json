@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "crosshairs": [
+    {
+      "id": "xh-dot",
+      "name": "Dot",
+      "shape": "dot",
+      "colour": "#ffffff",
+      "starCost": 0,
+      "coinPrice": 0,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-cross",
+      "name": "Cross",
+      "shape": "cross",
+      "colour": "#49e3ff",
+      "starCost": 0,
+      "coinPrice": 0,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-gap-cross",
+      "name": "Gap cross",
+      "shape": "gap-cross",
+      "colour": "#ff3fb4",
+      "starCost": 4,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-ring",
+      "name": "Ring",
+      "shape": "ring",
+      "colour": "#ffd23f",
+      "starCost": 6,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-chevron",
+      "name": "Chevron",
+      "shape": "chevron",
+      "colour": "#7dffbb",
+      "starCost": 8,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-hex",
+      "name": "Hex",
+      "shape": "hex",
+      "colour": "#ffffff",
+      "starCost": 10,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-diamond",
+      "name": "Diamond",
+      "shape": "diamond",
+      "colour": "#49e3ff",
+      "starCost": 12,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-t-bar",
+      "name": "T bar",
+      "shape": "t-bar",
+      "colour": "#ff3fb4",
+      "starCost": 14,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-square",
+      "name": "Square",
+      "shape": "square",
+      "colour": "#ffd23f",
+      "starCost": 16,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-dot-ring",
+      "name": "Dot ring",
+      "shape": "dot-ring",
+      "colour": "#7dffbb",
+      "starCost": 18,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    },
+    {
+      "id": "xh-bracket",
+      "name": "Bracket",
+      "shape": "bracket",
+      "colour": "#ffffff",
+      "starCost": 20,
+      "coinPrice": 100,
+      "licence": "LICENSES/atlas-procedural-art.txt"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+CounterBeat target bots (PULSE, WOOFER, IRIS, BULLSEYE, PHANTOM) and all their skins
+docs/design/bots/*.png (moved to public/images/bots/ by T28), source: docs/design/bots-source.html
+
+Original vector art generated for CounterBeat by the Atlas agent system (2026-11-18).
+No third-party assets were used. Released under the same terms the creator
+confirmed for Atlas-generated art on 2026-11-17: CC0 1.0 Universal
+(https://creativecommons.org/publicdomain/zero/1.0/).

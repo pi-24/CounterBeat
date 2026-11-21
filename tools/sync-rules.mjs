@@ -1,19 +1,47 @@
 /**
  * sync-rules.mjs
  *
- * Copies src/game/rules into supabase/functions/_shared/rules so the edge
- * function replays runs with exactly the code the client plays them with.
- * Run `npm run sync-rules` before `supabase functions deploy`.
+ * 1. Generates src/game/rules/rulesData.js from data/rules.json (the one
+ *    place the numbers are edited).
+ * 2. Copies src/game/rules into supabase/functions/_shared/rules so the edge
+ *    function replays runs with exactly the code the client plays them with.
+ * Run `npm run sync-rules` after editing rules or before
+ * `supabase functions deploy`.  tests/unit/rules-parity.test.mjs fails when
+ * any of these copies drift.
  */
-import { cpSync, rmSync, mkdirSync } from 'node:fs';
+import { cpSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { renderRulesData } from './lib/render-rules.mjs';
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+writeFileSync(
+    resolve(root, 'src/game/rules/rulesData.js'),
+    renderRulesData(readFileSync(resolve(root, 'data/rules.json'), 'utf8')),
+);
+
 const from = resolve(root, 'src/game/rules');
 const to = resolve(root, 'supabase/functions/_shared/rules');
 
 rmSync(to, { recursive: true, force: true });
 mkdirSync(to, { recursive: true });
 cpSync(from, to, { recursive: true });
+// The chart loader (and the bundled authored charts) sit beside rules/ so the
+// relative import '../charts/chartLoader.js' resolves the same way there.
+// The edge function must never see star/cosmetic progression data (AC27):
+// ship it a rulesData.js with the star config stripped.
+const edgeRules = JSON.parse(readFileSync(resolve(root, 'data/rules.json'), 'utf8'));
+delete edgeRules.stars;
+delete edgeRules.starGates;
+delete edgeRules.economy; // coins are local progression too
+writeFileSync(resolve(to, 'rulesData.js'), renderRulesData(JSON.stringify(edgeRules)));
+const chartsTo = resolve(root, 'supabase/functions/_shared/charts');
+rmSync(chartsTo, { recursive: true, force: true });
+cpSync(resolve(root, 'src/game/charts'), chartsTo, { recursive: true });
 console.log(`synced ${from} -> ${to}`);
+
+// The ranked submit gate is shared with the edge function too.
+mkdirSync(resolve(root, 'supabase/functions/_shared/net'), { recursive: true });
+cpSync(resolve(root, 'src/net/submit.js'), resolve(root, 'supabase/functions/_shared/net/submit.js'));

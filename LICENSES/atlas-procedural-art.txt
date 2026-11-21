@@ -1,0 +1,10 @@
+CounterBeat generated art
+
+Images listed in data/*.json under this licence (the emblem and the code-drawn
+crosshair shapes) were generated for this project from simple geometric shapes
+and the project palette (data/themes.json). They contain no third-party pack
+material.
+
+Release terms: released under CC0 1.0 Universal (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/) by the project creator.
+Confirmed by the creator on 2026-11-17 (recorded in docs/art-licences.md).

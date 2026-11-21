@@ -14,6 +14,16 @@ a replay of every player's best run, and a timing profile on your page.
 - Accounts, leaderboard, settings sync: [Supabase](https://supabase.com/) (optional — the game runs fully offline without it)
 - Anti-cheat: every run is recorded as an input log and replayed on the server; only the server-computed score is ranked
 
+## Fresh clone: install, build, test, run
+
+1. `npm install`
+2. `npm run build` (production build to `dist/`)
+3. `npm test` (replay validator, beat detector, unit tests; `npm run test:unit` runs only the unit tests)
+4. `npm run dev` (http://localhost:5173) or `npm run preview` (http://localhost:4173/game.html)
+
+In a clean clone the beat-detector test prints `SKIP` for each track because the
+raw WAVs are not committed; it only fails if WAVs exist and the result is wrong.
+
 ## Run it locally
 
 ```bash
@@ -32,7 +42,8 @@ Other scripts:
 npm run build        # production build to dist/
 npm run preview      # serve dist/ on http://localhost:4173
 npm run simulate     # play every chart with scripted bots and print scores
-npm test             # replay-validator + beat-detector suites (must say "all good")
+npm test             # design check, validators, build, unit tests, desktop smoke test
+npm run check:design # design-consistency check only (colours, fonts, tokens.css on every page)
 npm run sync-rules   # copy src/game/rules into the edge function (run before deploying it)
 ```
 
@@ -40,6 +51,28 @@ The beat-detector test needs the raw WAVs: `cd tools/asset-tools && python3
 gen_audio.py` renders every track and effect into `audio_raw/` (numpy, and
 scipy if present). Encode with ffmpeg into `public/audio/` as `.ogg` and
 `.mp3`.
+
+## How to play
+
+1. Press **Play** on the home page (or launch the desktop app). The game goes fullscreen and takes the mouse.
+2. First run: calibrate (skippable), then the three-step tutorial (Stop, Time, Aim; Skip is always visible).
+3. Pick a track and difficulty. **Strafe** with A / D (or the pad's left stick), **counter-strafe** by tapping the
+   opposite key until the speed arc turns acid, then **fire on the beat** as the approach ring closes on the bot.
+4. Judgements read by shape and brightness, never colour alone: Perfect = acid diamond, Good = paper circle,
+   Loose = dim triangle, Miss = grey cross.
+5. Esc or P pauses (R restarts, Q leaves to song select, H opens Help). Menus use W / S, Enter, Esc and
+   Q / E for difficulty; the bar along the bottom of every screen shows the keys or pad buttons for the device in use.
+6. Finish a chart to earn stars and coins; spend coins in the Shop on the other bots, crosshairs, arena themes and skins.
+
+## Design system
+
+The whole game and the website follow UI direction C ("Bold Editorial", `docs/design/ui-direction-c.html`):
+ink, paper, one acid accent, thick rules, flat fills, no glows. `src/styles/tokens.css` is the only place colours
+and font families are defined (`--ink`, `--paper`, `--acid`, `--display`, `--body`, `--mono`). Every other stylesheet,
+inline style and html page uses those tokens, and every html page links `tokens.css` first.
+`node tools/check-design-consistency.mjs` (part of `npm test`) fails on any raw hex / rgb / named colour,
+any other font family, or a page without `tokens.css`. Exempt: the 3D scene constants in `src/game/fps`,
+the JS mirror `src/ui/palette.js` (kept equal to the tokens by a unit test) and the rules data default.
 
 ## Project layout
 
@@ -134,6 +167,25 @@ when you do (the validator refuses older logs rather than misjudging them;
 the replay viewer still plays version 3 logs with the rules they were
 recorded under).
 
+## Stars, unlocks and tampering
+
+Campaign and full-speed Quick Play award up to 3 stars per chart on
+Easy/Normal/Hard (pass, rank S/A at 85%+, no misses or 80% Perfect/Good stops);
+Expert awards none. Star totals gate tracks 2-6 (3/8/14/21/28) and the
+crosshairs, themes and target skins (`starCost` in `data/*.json`).
+Code: `src/game/progress/`.
+
+Stars, equipped cosmetics and the calibrated flag are stored in local storage
+and synced to the Supabase profile (`profiles.progress`, migration 0004) when
+logged in. **Tamper risk:** they are not server-verified, so anyone can edit
+local storage or their profile row and unlock everything. This is accepted
+because stars are progression and visual only. Ranked scores stay
+server-verified; neither the ranked submit path nor the edge function reads
+star data (the synced edge copy of `rulesData.js` has the star config
+stripped, and `tests/unit/stars-not-server.test.mjs` enforces it).
+
+**Rank change:** the rank-A threshold moved from 90% to 85% accuracy (per the GDD), so letter ranks of older runs, including ranked ones, are now graded more leniently. Scores themselves are unchanged.
+
 ## How the anti-cheat works
 
 The client never decides a ranked score. While you play, `RunRecorder`
@@ -207,6 +259,20 @@ anything in `src/game/rules/`.
    commands whenever `src/game/rules/` changes, or the server will reject
    runs played with newer rules.
 
+   For Steam ranked sign-in (AC32) also set two function secrets, so the
+   desktop build's session tickets can be verified:
+
+   ```bash
+   supabase secrets set STEAM_WEB_API_SECRET=<publisher Web API key> STEAM_APP_ID=<app id>
+   ```
+
+   These live only in the function environment — never in `src/`, the
+   preload or the shipped bundle (`tests/unit/steam-ticket.test.mjs`
+   scans for them). Without them, desktop ranked submissions are
+   rejected and web submissions keep working unchanged. Apply
+   `supabase/migrations/0007_steam_id.sql` for the `profiles.steam_id`
+   link column.
+
 4. Auth settings (Authentication → URL Configuration): set **Site URL** to
    your deployed origin (e.g. `https://counterbeat.vercel.app`) and add
    `https://counterbeat.vercel.app/**` and `http://localhost:5173/**` to
@@ -255,6 +321,23 @@ Set `VITE_SENTRY_DSN` to a [Sentry](https://sentry.io) browser DSN. The SDK
 is only bundled when the variable is present at build time and loads as a
 separate chunk, so builds without it ship nothing extra. Errors are tagged
 with the page and backend kind; no personal data is sent.
+
+## Fullscreen and pointer lock
+
+Browsers leave fullscreen whenever the document navigates, so a plain link to
+`game.html` cannot arrive fullscreen. Play on the web pages therefore does not
+navigate: `src/pages/playLauncher.js` embeds the game (same origin, `?embed=1`,
+no site chrome) in a full-viewport frame on the same document and calls
+`requestFullscreen()` on that frame inside the Play click, so the game opens
+fullscreen from that one click. Ctrl/Cmd/middle clicks still open `game.html`
+normally. Leaving fullscreen (Esc) closes the frame and returns to the page. This is a browser limit (fullscreen cannot survive navigation), not an accepted deviation from AC1; where the embed is unavailable the splash's single "Click to play" enters fullscreen. The in-game splash then only unlocks audio. The "‹ Website" button on
+the menu returns to the page. In the Steam desktop shell
+(`creator_decisions_steam.md`) the game is fullscreen from launch.
+The mouse is captured when a run starts; if the
+lock is lost, an in-game "click to capture the mouse" prompt appears (no web-page
+hint). The menus need a free cursor, so the lock is not taken on the splash click.
+Screenshot hook scenes: `?atlas_scene=title|play|results|calibration|tutorial|settings`
+(in-memory only, nothing saved or submitted).
 
 ## Audio-offset calibration
 

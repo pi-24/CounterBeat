@@ -15,13 +15,14 @@
  */
 
 import { LOG_VERSION } from './rules/config.js';
+import { chartRef } from './charts/chartLoader.js';
 
 // Defined in rules/config.js so the replay validator (which the server runs)
 // and the recorder can never disagree about it.
 export { LOG_VERSION };
 
 /** Log versions the replay viewer can still play back (3 = before tick-clock judging). */
-export const REPLAYABLE_VERSIONS = Object.freeze([3, LOG_VERSION]);
+export const REPLAYABLE_VERSIONS = Object.freeze([3, 5, LOG_VERSION]);
 
 /** Aim is sampled at most this often (~125 Hz), so a 66 s run adds well under 150 KB. */
 const LOOK_INTERVAL_MS = 8;
@@ -34,9 +35,19 @@ export class RunRecorder {
      * @param {string} chartId
      * @param {{speed:number, accel:number}} [movement] the player's movement
      *   scale settings, so a replay or the server runs the same body.
+     * @param {string} [mode] the run's mode
      */
-    constructor(chartId, movement = { speed: 1, accel: 1 }) {
+    constructor(chartId, movement = { speed: 1, accel: 1 }, mode = 'quickPlay') {
         this.chartId = chartId;
+        /** campaign / quickPlay / daily / ranked: decides fail-out on the server. */
+        this.mode = mode;
+        /** Version and hash of the authored chart, so the server can reject a stale one. */
+        this.chartRef = chartRef(chartId);
+        // Authored (Hard/Expert track) charts must always carry a ref: if the
+        // loader regresses, log it and flag the run instead of crashing; the
+        // server rejects an unversioned Hard/Expert log, so it cannot rank.
+        this.unversioned = /^t:[a-z0-9-]+:(hard|expert)$/.test(chartId) && !this.chartRef;
+        if (this.unversioned) console.error(`no authored chart found for ${chartId}; run is unversioned`);
         this.movement = { speed: movement.speed, accel: movement.accel };
         /** @type {number[]} tick lengths in milliseconds, rounded. */
         this.ticks = [];
@@ -58,6 +69,14 @@ export class RunRecorder {
         this.startSongTime = null;
         this.lastDirection = 0;
         this.clockMs = 0;
+        /** Which device made the run: 'kbm', 'pad' or 'mixed' (null until an input arrives).  Analytics only, never validated. */
+        this.device = null;
+    }
+
+    /** @param {'kbm'|'pad'} device the device behind an input just recorded */
+    noteDevice(device) {
+        if (this.device === null) this.device = device;
+        else if (this.device !== device) this.device = 'mixed';
     }
 
     /**
@@ -139,12 +158,15 @@ export class RunRecorder {
         return {
             version: LOG_VERSION,
             chartId: this.chartId,
+            mode: this.mode,
+            ...(this.chartRef ? { chartVersion: this.chartRef.chartVersion, chartHash: this.chartRef.contentHash } : {}),
             movement: this.movement,
             startSongTime: this.startSongTime ?? 0,
             ticks: this.ticks,
             inputs: this.inputs,
             shots: this.shots,
             look: this.look,
+            device: this.device ?? 'kbm',
         };
     }
 }

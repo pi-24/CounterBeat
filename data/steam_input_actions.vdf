@@ -1,0 +1,100 @@
+// CounterBeat - Steam Input action manifest (game_actions_<AppID>.vdf).
+//
+// FOR THE CREATOR TO UPLOAD LATER: nothing here is uploaded or published by the
+// build. Once the real App ID exists, upload this file in Steamworks under
+// App Admin > Steam Input > "Steam Input Configurator" > "Add action manifest"
+// (or rename it game_actions_<AppID>.vdf and place it in the app's depot root),
+// then author a default "Gamepad" layout against these action names.
+//
+// The game itself reads the pad through the browser Gamepad API (the Chromium
+// inside Electron), which Steam Input presents as a standard Xbox controller, so
+// the game works with Steam's default Xbox layout even before this manifest is
+// uploaded. These actions are what lets players remap through Steam's own UI.
+//
+// Layout the game expects (matches src/input/padBindings.js defaults):
+//   Menu:  d-pad / left stick = move focus, A = confirm, B = back, Start = resume
+//   Play:  left stick X / d-pad = strafe, right stick = aim, RT = fire, Start = pause
+// The strafe stick is digitised in-game with a deadzone (no analog speed), so the
+// shared stop-grading rules are identical to keyboard play.
+"In Game Actions"
+{
+	"actions"
+	{
+		"MenuControls"
+		{
+			"title"		"#Set_Menu"
+			"StickPadGyro"
+			{
+				"menu_move"
+				{
+					"title"				"#Action_MenuMove"
+					"input_mode"		"joystick_move"
+				}
+			}
+			"Button"
+			{
+				"menu_up"			"#Action_MenuUp"
+				"menu_down"			"#Action_MenuDown"
+				"menu_left"			"#Action_MenuLeft"
+				"menu_right"		"#Action_MenuRight"
+				"menu_confirm"		"#Action_MenuConfirm"
+				"menu_back"			"#Action_MenuBack"
+				"menu_pause"		"#Action_MenuPause"
+			}
+		}
+		"PlayControls"
+		{
+			"title"		"#Set_Play"
+			"StickPadGyro"
+			{
+				"strafe"
+				{
+					"title"				"#Action_Strafe"
+					"input_mode"		"joystick_move"
+				}
+				"aim"
+				{
+					"title"				"#Action_Aim"
+					"input_mode"		"joystick_camera"
+				}
+			}
+			"AnalogTrigger"
+			{
+				"fire_trigger"
+				{
+					"title"				"#Action_Fire"
+					"input_mode"		"trigger"
+				}
+			}
+			"Button"
+			{
+				"strafe_left"		"#Action_StrafeLeft"
+				"strafe_right"		"#Action_StrafeRight"
+				"fire"				"#Action_Fire"
+				"pause"				"#Action_Pause"
+			}
+		}
+	}
+	"localization"
+	{
+		"english"
+		{
+			"Set_Menu"				"Menus"
+			"Set_Play"				"Play"
+			"Action_MenuMove"		"Move focus"
+			"Action_MenuUp"			"Focus up"
+			"Action_MenuDown"		"Focus down"
+			"Action_MenuLeft"		"Focus left / lower slider"
+			"Action_MenuRight"		"Focus right / raise slider"
+			"Action_MenuConfirm"	"Confirm"
+			"Action_MenuBack"		"Back"
+			"Action_MenuPause"		"Resume"
+			"Action_Strafe"			"Strafe (left stick)"
+			"Action_Aim"			"Aim (right stick)"
+			"Action_Fire"			"Fire"
+			"Action_StrafeLeft"		"Strafe left"
+			"Action_StrafeRight"	"Strafe right"
+			"Action_Pause"			"Pause"
+		}
+	}
+}

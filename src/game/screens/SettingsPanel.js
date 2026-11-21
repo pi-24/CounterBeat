@@ -28,6 +28,7 @@ export class SettingsPanel {
             ['dpi', 'change', (v) => Number(v)],
             ['fov', 'input', (v) => Number(v)],
             ['crosshairColour', 'input', (v) => String(v)],
+            ['hitVolume', 'input', (v) => Number(v)],
             ['crosshairLength', 'input', (v) => Number(v)],
             ['crosshairGap', 'input', (v) => Number(v)],
             ['crosshairThickness', 'input', (v) => Number(v)],
@@ -44,7 +45,7 @@ export class SettingsPanel {
                 this.refresh();
             });
         }
-        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway']) {
+        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway', 'reducedEffects', 'plainHitSounds', 'windowed']) {
             const control = this.field(name);
             if (control) {
                 control.addEventListener('change', () => {
@@ -79,13 +80,13 @@ export class SettingsPanel {
     refresh() {
         const s = this.settings;
         for (const name of ['sensitivity', 'dpi', 'fov', 'crosshairColour',
-            'crosshairLength', 'crosshairGap', 'crosshairThickness', 'moveSpeed', 'moveAccel']) {
+            'crosshairLength', 'crosshairGap', 'crosshairThickness', 'moveSpeed', 'moveAccel', 'hitVolume']) {
             const control = this.field(name);
             if (control) {
                 control.value = String(s.get(name));
             }
         }
-        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway']) {
+        for (const name of ['crosshairDot', 'viewBob', 'beatRing', 'noteHighway', 'reducedEffects', 'plainHitSounds', 'windowed']) {
             const control = this.field(name);
             if (control) {
                 control.checked = Boolean(s.get(name));

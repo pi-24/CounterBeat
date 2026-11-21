@@ -7,9 +7,11 @@
     <title>Rankings</title>
     <meta name="description" content="The top CounterBeat scores of every registered player, by level.">
     <link rel="icon" href="images/emblem.png" type="image/png">
+    <link rel="stylesheet" href="/src/styles/tokens.css">
     <link rel="stylesheet" href="/src/styles/base.css">
     <link rel="stylesheet" href="/src/styles/layout.css">
     <link rel="stylesheet" href="/src/styles/components.css">
+    <link rel="stylesheet" href="/src/styles/pages.css">
 </head>
 
 <body>
@@ -17,7 +19,7 @@
         <div class="page site-header__inner">
             <a class="brand" href="index.html">
                 <span class="brand__mark" aria-hidden="true"></span>
-                Counter<span class="brand__beat">Beat</span>
+                <span class="brand__name">Counter<span class="brand__beat">Beat</span></span>
             </a>
             <nav class="nav" aria-label="Main navigation">
                 <button class="nav__toggle" type="button" id="navToggle" aria-expanded="false"
@@ -39,61 +41,53 @@
     </header>
 
     <main class="main">
-        <div class="page">
-            <div class="section__head">
+        <div class="page rankings">
+            <div class="rankings__side">
                 <span class="section__eyebrow">Leaderboard</span>
-                <h1>Rankings</h1>
-                <p>The best verified run of every player. Every run is replayed on the server before it counts.</p>
+                <h1 class="rankings__title">Rankings</h1>
+                <p class="rankings__lead">The best verified run of every player. Every run is replayed on the server before it counts.</p>
+
+                <div class="stats stats--2" id="rankingStats"></div>
+
+                <div class="rankings__controls">
+                    <div class="field">
+                        <label class="field__label" for="levelFilter">Chart</label>
+                        <select class="field__control" id="levelFilter">
+                            <option value="best">Best of any chart</option>
+                            <option value="daily">Daily challenge (today)</option>
+                        </select>
+                    </div>
+                    <div class="rankings__pair">
+                        <div class="field">
+                            <label class="field__label" for="sortBy">Sort by</label>
+                            <select class="field__control" id="sortBy">
+                                <option value="score">Score</option>
+                                <option value="accuracy">Accuracy</option>
+                                <option value="combo">Best combo</option>
+                                <option value="counterStrafes">Counter-strafes</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="searchPlayer">Find a player</label>
+                            <input class="field__control" type="search" id="searchPlayer" placeholder="Display name">
+                        </div>
+                    </div>
+                    <button class="btn" type="button" id="refreshBtn">Refresh</button>
+                </div>
             </div>
 
-            <div class="stats" id="rankingStats"></div>
-
-            <div class="toolbar">
-                <div class="field">
-                    <label class="field__label" for="levelFilter">Chart</label>
-                    <select class="field__control" id="levelFilter">
-                        <option value="best">Best of any chart</option>
-                        <option value="daily">Daily challenge (today)</option>
-                    </select>
+            <section class="board board--page" aria-labelledby="rankingCaption">
+                <div class="board__tabs" role="tablist" aria-label="Leaderboard scope">
+                    <button class="board__tab" type="button" role="tab" data-board-tab="daily">Daily</button>
+                    <button class="board__tab" type="button" role="tab" data-board-tab="best">Best</button>
+                    <button class="board__tab" type="button" role="tab" data-board-tab="chart">Chart</button>
                 </div>
-                <div class="field">
-                    <label class="field__label" for="sortBy">Sort by</label>
-                    <select class="field__control" id="sortBy">
-                        <option value="score">Score</option>
-                        <option value="accuracy">Accuracy</option>
-                        <option value="combo">Best combo</option>
-                        <option value="counterStrafes">Counter-strafes</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label class="field__label" for="searchPlayer">Find a player</label>
-                    <input class="field__control" type="search" id="searchPlayer" placeholder="Display name">
-                </div>
-                <div class="toolbar__spacer"></div>
-                <button class="btn btn--ghost" type="button" id="refreshBtn">Refresh</button>
-            </div>
-
-            <div class="table-wrap">
-                <table class="table" id="rankingTable">
-                    <caption id="rankingCaption">Top scores</caption>
-                    <thead>
-                        <tr>
-                            <th scope="col" class="table__rank">#</th>
-                            <th scope="col">Player</th>
-                            <th scope="col">Game</th>
-                            <th scope="col">Chart</th>
-                            <th scope="col" class="table__num">Score</th>
-                            <th scope="col" class="table__num">Accuracy</th>
-                            <th scope="col" class="table__num">Best combo</th>
-                            <th scope="col" class="table__num">Counter-strafes</th>
-                            <th scope="col">Set</th>
-                            <th scope="col">Replay</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rankingBody"></tbody>
-                </table>
-                <p class="table__empty" id="rankingEmpty" hidden>No scores yet. <a href="game.html">Be the first.</a></p>
-            </div>
+                <div class="board__meta"><span id="rankingMeta">Loading…</span><span id="rankingCount"></span></div>
+                <h2 class="visually-hidden" id="rankingCaption">Top scores</h2>
+                <div class="board__rows" id="rankingBody" role="table" aria-labelledby="rankingCaption"></div>
+                <p class="board__empty" id="rankingEmpty" hidden>No scores yet. <a href="game.html">Be the first.</a></p>
+                <div class="board__foot board__foot--split"><span>&#9654; = WATCH REPLAY</span><span>VERIFIED ON THE SERVER</span></div>
+            </section>
         </div>
     </main>
 

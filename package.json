@@ -1,21 +1,44 @@
 {
   "name": "counterbeat",
   "version": "0.3.0",
+  "main": "electron/main.js",
+  "author": "CounterBeat",
   "description": "CounterBeat - a first-person counter-strafe rhythm game",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 4173",
+    "electron:dev": "vite build && electron electron/main.js",
+    "electron:build": "vite build && electron-builder --win --x64 --config electron-builder.json --publish never",
+    "depot": "node tools/build-depot.mjs",
+    "depot:stage": "node tools/build-depot.mjs --skip-build",
+    "steam:upload": "node tools/steam-upload.mjs",
     "simulate": "node tools/simulate.mjs",
+    "validate:tracks": "node tools/validate-tracks.mjs",
+    "validate:release": "node tools/validate-tracks.mjs --release",
     "sync-rules": "node tools/sync-rules.mjs",
-    "test": "node tools/test-validate.mjs && node tools/test-analyse.mjs"
+    "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
+    "test:desktop": "node --test tests/desktop/smoke.test.mjs",
+    "check:store": "node tools/check-store-assets.mjs",
+    "check:design": "node tools/check-design-consistency.mjs",
+    "test": "node tools/check-design-consistency.mjs && node tools/chart-hash.mjs --verify && node tools/chart-stats.mjs && node tools/validate-tracks.mjs && node tools/test-validate.mjs && node tools/test-analyse.mjs && npm run build && node --test \"tests/unit/**/*.test.mjs\" tests/desktop/smoke.test.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
     "@babylonjs/core": "^9.30.0",
+    "@fontsource/anton": "^5.3.0",
+    "@fontsource/archivo": "^5.3.0",
+    "@fontsource/space-mono": "^5.3.0",
     "@sentry/browser": "^11.6.0",
     "@supabase/supabase-js": "^2.117.3",
     "vite": "^8.3.4"
+  },
+  "optionalDependencies": {
+    "steamworks.js": "^0.4.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
   },
   "private": true,
   "type": "module"

@@ -5,10 +5,25 @@
  * the same leaderboard data the rankings page uses.  Scores are only
  * comparable on the same chart, so the panel shows one chart at a time.
  */
+import { isDesktop } from '../platform/platform.js';
 import { initNavigation } from '../ui/Navigation.js';
+import { bindPlayLinks } from './playLauncher.js';
 import { TRACKS, DIFFICULTIES, dailyChartId } from '../game/rules/charts.js';
-import { formatScore, formatAccuracy, el } from '../ui/format.js';
+import { el } from '../ui/format.js';
+import { coverSvg } from '../ui/trackCovers.js';
+import { rankRows, boardEntries, renderBoardRows } from '../ui/boardRows.js';
 
+// The desktop app has no home page: go straight into the game.
+if (isDesktop()) {
+    window.location.replace('game.html');
+}
+
+bindPlayLinks();
+
+// Track covers are the same geometric SVGs as the game's song select.
+for (const slot of document.querySelectorAll('[data-cover]')) {
+    slot.innerHTML = coverSvg(slot.dataset.cover);
+}
 const backend = await initNavigation('index');
 
 const chartSelect = document.getElementById('homeChart');
@@ -44,11 +59,11 @@ async function renderLeaders() {
 
     let rows;
     try {
-        rows = (await backend.leaderboard(chartFilter())).sort((a, b) => b.score - a.score).slice(0, 5);
+        rows = rankRows(await backend.leaderboard(chartFilter())).slice(0, 5);
     } catch (error) {
         console.warn(error);
         if (request === latestRequest) {
-            host.replaceChildren(el('p', 'text-dim', "Couldn't load scores right now."));
+            host.replaceChildren(el('p', 'board__empty', "Couldn't load scores right now."));
         }
         return;
     }
@@ -59,25 +74,22 @@ async function renderLeaders() {
     host.replaceChildren();
 
     if (rows.length === 0) {
-        const empty = el('p', 'text-dim', 'No scores on this chart yet. The board is wide open.');
+        const empty = el('p', 'board__empty', 'No scores on this chart yet. The board is wide open. ');
         const link = el('a', '', 'Play the first run →');
         link.href = 'game.html';
-        host.append(empty, link);
+        empty.append(link);
+        host.append(empty);
         return;
     }
 
-    const list = el('ul', 'rail__list');
-    rows.forEach((row, index) => {
-        const item = document.createElement('li');
-        const left = el('span', '', `${index + 1}. ${row.displayName}`);
-        const right = el('span', 'mono', `${formatScore(row.score)}  ·  ${formatAccuracy(row.accuracy)}`);
-        item.append(left, right);
-        list.append(item);
-    });
+    const currentUser = backend.currentUser();
+    const rowsHost = el('div', 'board__rows');
+    renderBoardRows(rowsHost, boardEntries(rows, { currentUserId: currentUser ? currentUser.id : null }));
+    host.append(rowsHost);
 
-    const link = el('a', '', 'Full rankings →');
+    const link = el('a', 'board__more', 'Full rankings →');
     link.href = `rankings.html?chart=${encodeURIComponent(chartSelect.value)}`;
-    host.append(list, link);
+    host.append(link);
 }
 
 chartSelect.addEventListener('change', renderLeaders);

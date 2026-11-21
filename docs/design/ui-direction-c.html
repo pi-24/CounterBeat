@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CounterBeat C Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0c0c0b; --ink-2:#161614; --ink-3:#22221f; --ink-4:#34332e;
+  --paper:#efeadf; --paper-2:#d9d3c5; --dim:#a29d92; --mute:#6c6961;
+  --acid:#e2ff1f; --acid-dk:#b8d000;
+  --display:'Anton',Impact,sans-serif;
+  --body:'Archivo',system-ui,sans-serif;
+  --mono:'Space Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#050505;color:var(--paper);font-family:var(--body)}
+body{padding:48px 16px 96px}
+.doc{max-width:1280px;margin:0 auto}
+.doc-head{display:grid;grid-template-columns:auto 1fr;gap:8px 32px;align-items:end;border-bottom:6px solid var(--paper);padding-bottom:20px;margin-bottom:28px}
+.doc-head .tag{font:700 13px var(--mono);letter-spacing:.12em;color:var(--ink);background:var(--acid);padding:4px 8px;grid-column:1/-1;justify-self:start}
+.doc-head h1{font:400 clamp(56px,9vw,128px)/.88 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+.doc-head p{font:600 clamp(16px,1.6vw,22px)/1.3 var(--body);color:var(--paper-2);max-width:520px}
+.doc-head p b{color:var(--acid);font-weight:800}
+.system{display:flex;flex-wrap:wrap;gap:24px;align-items:center;font:12px var(--mono);color:var(--dim);margin-bottom:40px}
+.sw{display:inline-flex;align-items:center;gap:8px}
+.sw i{width:28px;height:28px;display:inline-block;border:1px solid var(--ink-4)}
+.jl{display:inline-flex;align-items:center;gap:8px;color:var(--paper)}
+
+.plate{margin-bottom:64px}
+.plate-label{display:flex;align-items:baseline;gap:16px;margin-bottom:12px;font:700 13px var(--mono);letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.plate-label b{font:400 40px/1 var(--display);color:var(--paper);letter-spacing:0}
+.viewport{width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;background:var(--ink);outline:1px solid var(--ink-4)}
+.frame{position:absolute;left:0;top:0;width:1280px;height:720px;transform:scale(var(--s,1));transform-origin:0 0;overflow:hidden;background:var(--ink);font-family:var(--body);color:var(--paper)}
+.why{display:grid;grid-template-columns:120px 1fr;gap:16px;margin-top:14px;border-top:3px solid var(--paper);padding-top:12px}
+.why h4{font:700 12px var(--mono);letter-spacing:.12em;color:var(--acid);text-transform:uppercase}
+.why p{font:400 15px/1.5 var(--body);color:var(--paper-2);max-width:900px}
+@media (max-width:640px){.why{grid-template-columns:1fr}}
+
+/* ---------- shared game atoms ---------- */
+.abs{position:absolute}
+.mono{font-family:var(--mono)}
+.disp{font-family:var(--display);text-transform:uppercase;font-weight:400}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border:2px solid var(--paper);font:700 11px var(--mono);color:var(--paper);letter-spacing:.04em}
+.pad{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--paper);color:var(--ink);font:900 13px var(--body)}
+.pad.sq{border-radius:4px;width:auto;padding:0 6px;font-size:11px;white-space:nowrap}
+.prompts{position:absolute;left:0;right:0;bottom:0;height:60px;background:var(--ink);border-top:4px solid var(--paper);display:flex;align-items:center;gap:36px;padding:0 48px;font:800 13px var(--body);letter-spacing:.14em;text-transform:uppercase}
+.prompts .p{display:flex;align-items:center;gap:8px}
+.prompts .p .sl{color:var(--mute);font:400 14px var(--mono)}
+.prompts .right{margin-left:auto;white-space:nowrap;display:flex;align-items:center;gap:14px;font:700 12px var(--mono);letter-spacing:.06em;color:var(--dim)}
+.pips{display:inline-flex;gap:4px}
+.pips i{width:10px;height:10px;background:var(--ink-4);display:block}
+.pips i.on{background:var(--acid)}
+.j-p{color:var(--acid)} .j-g{color:var(--paper)} .j-l{color:var(--dim)} .j-m{color:var(--mute)}
+.shape{display:inline-block;width:14px;height:14px;flex:none}
+.sh-p{background:var(--acid);transform:rotate(45deg) scale(.82)}
+.sh-g{background:var(--paper);border-radius:50%}
+.sh-l{width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--dim)}
+.sh-m{position:relative}
+.sh-m::before,.sh-m::after{content:"";position:absolute;left:6px;top:-1px;width:3px;height:16px;background:var(--mute);transform:rotate(45deg)}
+.sh-m::after{transform:rotate(-45deg)}
+
+/* ---------- FRAME 1: menu ---------- */
+.f1 .bg{position:absolute;inset:0;opacity:.6}
+.f1 .fade{position:absolute;inset:0;background:linear-gradient(90deg,var(--ink) 0%,var(--ink) 44%,rgba(12,12,11,.55) 64%,rgba(12,12,11,.15) 100%)}
+.brand{position:absolute;left:56px;top:40px;display:flex;align-items:center;gap:14px}
+.brand .mark{width:30px;height:30px;background:var(--acid);position:relative}
+.brand .mark::after{content:"";position:absolute;left:8px;top:8px;width:14px;height:14px;background:var(--ink);transform:rotate(45deg)}
+.brand span{font:400 30px/1 var(--display);letter-spacing:.02em}
+.brand em{font:700 11px var(--mono);font-style:normal;color:var(--dim);border:1px solid var(--ink-4);padding:3px 6px}
+.player{position:absolute;right:56px;top:36px;display:flex;align-items:stretch;border:3px solid var(--paper)}
+.player>div{padding:6px 14px;display:flex;flex-direction:column;justify-content:center}
+.player>div+div{border-left:3px solid var(--paper)}
+.player small{font:700 10px var(--mono);color:var(--dim);letter-spacing:.1em}
+.player b{font:400 22px/1 var(--display);letter-spacing:.02em}
+.player .lv{background:var(--paper);color:var(--ink)}
+.player .lv small{color:var(--ink-4)}
+.menu{position:absolute;left:56px;top:112px;width:620px}
+.menu .eyebrow{font:700 12px var(--mono);letter-spacing:.14em;color:var(--dim);display:flex;justify-content:space-between;border-bottom:6px solid var(--paper);padding-bottom:8px;margin-bottom:6px}
+.mi{display:flex;align-items:center;height:80px;padding:0 16px 0 0;position:relative;cursor:pointer;border-bottom:1px solid var(--ink-3)}
+.mi .n{width:56px;font:700 13px var(--mono);color:var(--mute)}
+.mi .t{font:400 68px/1 var(--display);text-transform:uppercase;letter-spacing:.005em;color:var(--paper)}
+.mi .meta{margin-left:auto;font:700 11px var(--mono);color:var(--dim);letter-spacing:.06em;text-align:right;line-height:1.5}
+.mi:hover .t{color:var(--acid)}
+.mi.focus{background:var(--acid);margin-left:-56px;padding-left:56px;width:calc(100% + 56px)}
+.mi.focus .n,.mi.focus .t,.mi.focus .meta{color:var(--ink)}
+.mi.focus::before{content:"";position:absolute;left:18px;top:50%;width:0;height:0;border-top:14px solid transparent;border-bottom:14px solid transparent;border-left:20px solid var(--ink);transform:translateY(-50%)}
+.mi.focus::after{content:"";position:absolute;right:-10px;top:-10px;bottom:-10px;width:10px;background:var(--acid)}
+.sub{display:grid;grid-template-columns:repeat(5,1fr);border-top:6px solid var(--paper);margin-top:18px}
+.sub a{display:block;padding:12px 0 0;text-decoration:none;color:var(--paper);font:800 15px var(--body);letter-spacing:.08em;text-transform:uppercase;border-right:1px solid var(--ink-3);padding-left:10px;cursor:pointer}
+.sub a:first-child{padding-left:0}
+.sub a small{display:block;font:700 11px var(--mono);color:var(--mute);margin-bottom:4px;letter-spacing:.06em}
+.sub a:hover{color:var(--acid)}
+.beta{font:700 9px var(--mono);background:var(--paper);color:var(--ink);padding:1px 4px;margin-left:4px;vertical-align:2px;letter-spacing:.06em}
+.bignum{position:absolute;right:40px;top:96px;font:400 300px/.8 var(--display);color:transparent;-webkit-text-stroke:3px var(--paper);opacity:.9}
+.context{position:absolute;right:56px;top:356px;width:400px;background:var(--paper);color:var(--ink)}
+.context .hd{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:4px solid var(--ink);font:700 11px var(--mono);letter-spacing:.12em}
+.context .bd{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:16px}
+.context .bd svg{width:120px;height:120px;display:block}
+.context h3{font:400 40px/.95 var(--display);text-transform:uppercase}
+.context p{font:600 13px/1.4 var(--body);color:var(--ink-3);margin-top:6px}
+.context .row{display:flex;gap:0;border-top:2px solid var(--ink);font:700 11px var(--mono)}
+.context .row div{flex:1;padding:8px 16px;border-right:2px solid var(--ink)}
+.context .row div:last-child{border-right:0}
+.context .row b{display:block;font:400 24px/1.1 var(--display)}
+
+/* ---------- FRAME 2: song select ---------- */
+.f2 .topbar{position:absolute;left:56px;right:56px;top:28px;height:44px;display:flex;align-items:center;gap:18px;border-bottom:6px solid var(--paper)}
+.f2 .topbar h2{font:400 34px/1 var(--display);text-transform:uppercase;padding-bottom:6px}
+.f2 .topbar .crumb{font:700 12px var(--mono);color:var(--dim);letter-spacing:.1em;padding-bottom:4px}
+.f2 .topbar .sort{margin-left:auto;font:700 12px var(--mono);color:var(--dim);display:flex;gap:10px;align-items:center;padding-bottom:6px}
+.cover-xl{position:absolute;left:56px;top:96px;width:440px;height:440px}
+.cover-xl svg{width:100%;height:100%;display:block}
+.cover-xl .stamp{position:absolute;right:-14px;top:-14px;background:var(--paper);color:var(--ink);font:400 64px/1 var(--display);width:84px;height:84px;display:flex;align-items:center;justify-content:center;border:4px solid var(--ink)}
+.cover-xl .stamp small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font:700 9px var(--mono);background:var(--ink);color:var(--paper);letter-spacing:.1em;padding:2px 0}
+.cover-xl .side{position:absolute;left:0;bottom:0;background:var(--ink);font:700 11px var(--mono);padding:6px 10px;letter-spacing:.1em}
+.play{position:absolute;left:56px;top:556px;width:440px;height:84px;background:var(--acid);color:var(--ink);display:flex;align-items:center;padding:0 24px;cursor:pointer;box-shadow:10px 10px 0 var(--paper)}
+.play b{font:400 60px/1 var(--display);letter-spacing:.02em}
+.play .tri{width:0;height:0;border-top:20px solid transparent;border-bottom:20px solid transparent;border-left:30px solid var(--ink);margin-right:18px}
+.play .g{margin-left:auto;display:flex;gap:6px;align-items:center}
+.play .g .key{border-color:var(--ink);color:var(--ink)}
+.play .g .pad{background:var(--ink);color:var(--acid)}
+.play:hover{transform:translate(-3px,-3px);box-shadow:13px 13px 0 var(--paper)}
+.detail{position:absolute;left:536px;right:56px;top:84px}
+.detail .no{font:700 12px var(--mono);color:var(--dim);letter-spacing:.12em}
+.detail h3{font:400 112px/.86 var(--display);text-transform:uppercase;letter-spacing:-.005em;margin-top:6px}
+.detail .by{font:600 14px var(--body);color:var(--paper-2);margin-top:8px;letter-spacing:.02em}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:3px solid var(--paper);border-bottom:3px solid var(--paper);margin-top:16px}
+.stats div{padding:8px 14px 10px;border-right:1px solid var(--ink-4)}
+.stats div:first-child{padding-left:0}
+.stats div:last-child{border-right:0}
+.stats small{display:block;font:700 10px var(--mono);color:var(--dim);letter-spacing:.12em}
+.stats b{font:400 34px/1 var(--display)}
+.stats .stars{font:400 26px/1.5 var(--body);letter-spacing:2px;color:var(--acid)}
+.stats .stars s{color:var(--ink-4);text-decoration:none}
+.diff{display:flex;align-items:stretch;margin-top:14px;gap:0}
+.diff .lb{display:flex;align-items:center;padding-right:12px}
+.diff .rb{display:flex;align-items:center;padding-left:12px}
+.diff button{flex:1;height:48px;background:transparent;border:3px solid var(--paper);margin-left:-3px;color:var(--paper);font:400 22px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;justify-content:space-between;padding:0 12px;cursor:pointer}
+.diff button small{font:700 11px var(--mono);color:var(--dim)}
+.diff button:hover{background:var(--ink-3)}
+.diff button.on{background:var(--paper);color:var(--ink)}
+.diff button.on small{color:var(--ink)}
+.diff button.on::after{content:"";width:12px;height:12px;background:var(--ink);transform:rotate(45deg);margin-left:8px}
+.list{margin-top:12px}
+.list .hd,.tr{display:grid;grid-template-columns:40px 36px 1fr 70px 70px 56px 90px;align-items:center;column-gap:12px}
+.list .hd{font:700 10px var(--mono);color:var(--mute);letter-spacing:.12em;padding:0 10px 6px;border-bottom:3px solid var(--paper)}
+.tr{height:34px;padding:0 10px;border-bottom:1px solid var(--ink-3);font:700 12px var(--mono);color:var(--paper-2);cursor:pointer}
+.tr svg{width:28px;height:28px;display:block}
+.tr .tt{font:400 22px/1 var(--display);text-transform:uppercase;color:var(--paper);letter-spacing:.02em}
+.tr .rk{font:400 22px/1 var(--display);color:var(--paper)}
+.tr .st{color:var(--acid);letter-spacing:1px;font-size:14px}
+.tr .st s{color:var(--ink-4);text-decoration:none}
+.tr:hover{background:var(--ink-2)}
+.tr:hover .tt{color:var(--acid)}
+.tr.sel{background:var(--paper);color:var(--ink);outline:4px solid var(--acid);outline-offset:-4px;position:relative}
+.tr.sel .tt,.tr.sel .rk{color:var(--ink)}
+.tr.sel .st{color:var(--ink)}
+.tr.sel .st s{color:var(--dim)}
+.tr.sel::before{content:"";position:absolute;left:-22px;top:50%;transform:translateY(-50%);border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:14px solid var(--acid)}
+.tr .lock{color:var(--mute)}
+
+/* ---------- FRAME 3: HUD ---------- */
+.f3 .bg{position:absolute;inset:0}
+.hud-tl{position:absolute;left:32px;top:28px;border-left:8px solid var(--acid);padding-left:14px}
+.hud-tl .tn{font:400 44px/.9 var(--display);text-transform:uppercase}
+.hud-tl .tn small{font:700 12px var(--mono);color:var(--dim);vertical-align:top;margin-right:6px}
+.hud-tl .bpm{display:flex;align-items:center;gap:10px;margin-top:8px;font:700 13px var(--mono)}
+.hud-tl .bpm .pips i{width:14px;height:14px}
+.hud-tc{position:absolute;left:50%;top:28px;transform:translateX(-50%);text-align:center}
+.hud-tc .lbl{font:700 11px var(--mono);letter-spacing:.14em;color:var(--dim)}
+.hud-tc .bots{font:400 34px/1 var(--display);margin-top:2px}
+.hud-tc .bots span{color:var(--dim);font-size:22px}
+.segs{display:flex;gap:2px;margin-top:6px}
+.segs i{width:8px;height:6px;background:rgba(239,234,223,.18);display:block}
+.segs i.d{background:var(--paper)}
+.segs i.c{background:var(--acid);height:10px;margin-top:-2px}
+.hud-tr{position:absolute;right:32px;top:24px;text-align:right}
+.hud-tr .sc{font:400 72px/.9 var(--display);letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.hud-tr .row{display:flex;justify-content:flex-end;gap:0;margin-top:8px;border-top:3px solid var(--paper)}
+.hud-tr .row div{padding:6px 0 0 18px;font:700 11px var(--mono);color:var(--dim);letter-spacing:.1em;text-align:right}
+.hud-tr .row b{display:block;font:400 26px/1 var(--display);color:var(--paper);letter-spacing:.02em}
+.hud-tr .row .pace b{color:var(--ink);background:var(--acid);padding:0 6px}
+.hud-bl{position:absolute;left:32px;bottom:28px;display:flex;align-items:flex-end;gap:10px}
+.hud-bl .cb{font:400 128px/.78 var(--display);letter-spacing:-.01em}
+.hud-bl .cl{font:700 11px var(--mono);color:var(--dim);letter-spacing:.14em;line-height:1.6;padding-bottom:2px}
+.hud-bl .cl b{display:block;font:400 26px/1 var(--display);color:var(--acid);letter-spacing:.02em}
+.hud-br{position:absolute;right:32px;bottom:28px;text-align:right;width:280px}
+.hud-br .lbl{font:700 11px var(--mono);color:var(--dim);letter-spacing:.14em;border-bottom:3px solid var(--paper);padding-bottom:4px;display:flex;justify-content:space-between}
+.hud-br .log{display:flex;justify-content:flex-end;gap:10px;margin-top:10px;align-items:center}
+.hud-br .log .shape{opacity:.35}
+.hud-br .log .shape:nth-last-child(-n+4){opacity:.7}
+.hud-br .log .shape:last-child{opacity:1;transform:rotate(45deg) scale(1.15)}
+.hud-br .cs{margin-top:12px;display:flex;justify-content:flex-end;align-items:center;gap:8px;font:700 12px var(--mono);color:var(--paper)}
+.hud-br .cs .key{height:22px;min-width:22px;font-size:11px}
+.hud-br .cs .key.hot{background:var(--acid);border-color:var(--acid);color:var(--ink)}
+.judge{position:absolute;left:50%;top:478px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;background:var(--ink);padding:6px 16px 6px 12px;border:3px solid var(--acid)}
+.judge .shape{width:22px;height:22px}
+.judge b{font:400 46px/1 var(--display);color:var(--acid);letter-spacing:.04em}
+.judge span{font:700 22px var(--mono);color:var(--paper)}
+.judge em{font:700 11px var(--mono);font-style:normal;color:var(--ink);background:var(--paper);padding:2px 6px;letter-spacing:.08em}
+.vel{position:absolute;left:50%;top:560px;width:600px;transform:translateX(-50%)}
+.vel .top{display:flex;justify-content:space-between;font:700 11px var(--mono);color:var(--dim);letter-spacing:.12em;margin-bottom:6px}
+.vel .top b{color:var(--paper);font-size:13px}
+.vel .bar{position:relative;height:30px;background:rgba(12,12,11,.85);border:3px solid var(--paper)}
+.vel .z{position:absolute;top:0;bottom:0}
+.vel .zl{background:repeating-linear-gradient(135deg,rgba(162,157,146,.55) 0 3px,transparent 3px 8px)}
+.vel .zg{background:rgba(239,234,223,.55)}
+.vel .zp{background:var(--acid)}
+.vel .tick{position:absolute;top:-8px;bottom:-8px;width:2px;background:var(--paper);left:50%;margin-left:-1px}
+.vel .mk{position:absolute;top:-14px;bottom:-14px;width:6px;background:var(--ink);outline:2px solid var(--paper)}
+.vel .mk::before{content:"";position:absolute;left:50%;top:-10px;transform:translateX(-50%);border-left:9px solid transparent;border-right:9px solid transparent;border-top:10px solid var(--paper)}
+.vel .legend{display:flex;justify-content:center;gap:22px;margin-top:10px;font:700 11px var(--mono);letter-spacing:.08em;color:var(--paper-2)}
+.vel .legend span{display:inline-flex;align-items:center;gap:6px}
+.vel .legend .shape{width:11px;height:11px}
+.vel .legend .sh-l{border-left-width:6px;border-right-width:6px;border-bottom-width:11px}
+
+/* ---------- FRAME 4: results ---------- */
+.f4 .head{position:absolute;left:48px;top:28px;right:556px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:6px solid var(--paper);padding-bottom:8px}
+.f4 .head h2{font:400 30px/1 var(--display);text-transform:uppercase}
+.f4 .head span{font:700 12px var(--mono);color:var(--dim);letter-spacing:.1em}
+.rank{position:absolute;left:36px;top:84px;font:400 340px/.82 var(--display);color:var(--acid);letter-spacing:-.02em}
+.rank-cap{position:absolute;left:48px;top:370px;font:700 11px var(--mono);color:var(--ink);background:var(--paper);padding:3px 8px;letter-spacing:.12em}
+.headline{position:absolute;left:300px;top:90px;width:424px}
+.headline small{font:700 11px var(--mono);color:var(--dim);letter-spacing:.14em;display:block}
+.headline .score{font:400 92px/.9 var(--display);letter-spacing:.005em;font-variant-numeric:tabular-nums}
+.headline .pb{display:inline-block;font:700 11px var(--mono);background:var(--acid);color:var(--ink);padding:2px 6px;letter-spacing:.1em;margin-top:6px}
+.headline .acc{display:flex;gap:24px;margin-top:14px;border-top:3px solid var(--paper);padding-top:8px}
+.headline .acc b{display:block;font:400 40px/1 var(--display)}
+.headline .acc .stars{font-size:30px;color:var(--acid);letter-spacing:3px;line-height:1.3}
+.headline .acc .stars s{text-decoration:none;color:var(--ink-4)}
+.jt{position:absolute;left:48px;top:398px;width:676px;display:grid;grid-template-columns:repeat(4,1fr);border-top:3px solid var(--paper);border-bottom:3px solid var(--paper)}
+.jt div{padding:8px 12px 8px;border-right:1px solid var(--ink-4);display:flex;flex-direction:column}
+.jt div:first-child{padding-left:0}
+.jt div:last-child{border-right:0}
+.jt small{display:flex;align-items:center;gap:8px;font:700 11px var(--mono);letter-spacing:.12em}
+.jt b{font:400 44px/1 var(--display);margin-top:2px}
+.jt div:first-child b{color:var(--acid)}
+.ex{position:absolute;left:48px;top:490px;width:300px;font:700 12px var(--mono);color:var(--paper-2)}
+.ex div{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--ink-3);padding:4px 0}
+.ex b{color:var(--paper);font:400 20px/1 var(--display);letter-spacing:.04em}
+.hist{position:absolute;left:376px;top:490px;width:348px}
+.hist .lbl{display:flex;justify-content:space-between;font:700 10px var(--mono);color:var(--dim);letter-spacing:.12em}
+.hist .lbl b{color:var(--paper)}
+.hist .bars{position:relative;height:50px;display:flex;align-items:flex-end;gap:3px;border-bottom:3px solid var(--paper);margin-top:6px}
+.hist .bars i{flex:1;background:var(--paper);display:block}
+.hist .bars i.z{background:var(--acid)}
+.hist .bars .zero{position:absolute;left:50%;top:-6px;bottom:0;width:0;border-left:2px dashed var(--dim)}
+.hist .bars .mean{position:absolute;top:-10px;bottom:-3px;width:3px;background:var(--acid);left:calc(50% - 6px)}
+.hist .ax{display:flex;justify-content:space-between;font:700 10px var(--mono);color:var(--mute);margin-top:4px}
+.acts{position:absolute;left:48px;bottom:70px;display:flex;gap:12px}
+.btn{display:flex;align-items:center;gap:12px;height:56px;padding:0 18px;border:3px solid var(--paper);color:var(--paper);font:400 28px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;background:var(--ink)}
+.btn:hover{background:var(--ink-3)}
+.btn.focus{background:var(--acid);border-color:var(--acid);color:var(--ink);box-shadow:8px 8px 0 var(--paper)}
+.btn.focus .key{border-color:var(--ink);color:var(--ink)}
+.btn.focus .pad{background:var(--ink);color:var(--acid)}
+.board{position:absolute;right:0;top:0;bottom:60px;width:532px;background:var(--paper);color:var(--ink);padding:28px 32px 0}
+.board .tabs{display:flex;gap:0;border-bottom:6px solid var(--ink)}
+.board .tabs > span{font:400 22px/1 var(--display);text-transform:uppercase;padding:0 14px 8px 0;color:var(--mute);letter-spacing:.03em;cursor:pointer}
+.board .tabs > span.on{color:var(--ink);position:relative}
+.board .tabs > span.on::after{content:"";position:absolute;left:0;right:14px;bottom:-6px;height:6px;background:var(--acid)}
+.board .tabs .pg{margin-left:auto;display:flex;gap:4px;align-items:flex-start}
+.board .tabs .pg .key{border-color:var(--ink);color:var(--ink);height:22px;min-width:24px;font-size:10px}
+.board .meta{display:flex;justify-content:space-between;font:700 11px var(--mono);letter-spacing:.08em;color:var(--ink-4);padding:8px 0}
+.lr{display:grid;grid-template-columns:44px 1fr 92px 64px 48px 28px;align-items:center;column-gap:8px;height:38px;border-bottom:1px solid var(--paper-2);font:700 12px var(--mono);cursor:pointer}
+.lr.h{height:24px;font-size:10px;color:var(--mute);letter-spacing:.1em;border-bottom:3px solid var(--ink)}
+.lr .pos{font:400 22px/1 var(--display)}
+.lr .nm{font:800 14px var(--body);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr .nm small{font:700 10px var(--mono);color:var(--mute);margin-left:6px}
+.lr .num{text-align:right;font-variant-numeric:tabular-nums}
+.lr .rp{width:26px;height:22px;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center}
+.lr .rp::after{content:"";border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--ink);margin-left:2px}
+.lr:not(.h):hover{background:var(--paper-2)}
+.lr.top .pos{background:var(--ink);color:var(--acid);text-align:center;padding:4px 0;width:36px}
+.lr.me{background:var(--ink);color:var(--paper);height:46px;margin:0 -12px;padding:0 12px;border:0;box-shadow:inset 8px 0 0 var(--acid)}
+.lr.me .pos{color:var(--acid);padding-left:6px}
+.lr.me .nm small{background:var(--acid);color:var(--ink);padding:1px 4px}
+.lr.me .rp{border-color:var(--acid)}
+.lr.me .rp::after{border-left-color:var(--acid)}
+.lr.gap{height:22px;justify-content:center;display:flex;color:var(--mute);font-size:14px;letter-spacing:.4em;border-bottom:0}
+.board .foot{position:absolute;left:32px;right:32px;bottom:14px;font:700 11px var(--mono);color:var(--ink-4);display:flex;justify-content:space-between;border-top:3px solid var(--ink);padding-top:8px}
+</style>
+</head>
+<body>
+
+<!-- ======= reusable art: range backdrop + six track covers ======= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1d1a"/><stop offset="1" stop-color="#2a2925"/></linearGradient>
+    <linearGradient id="gFloor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1a17"/><stop offset="1" stop-color="#0c0c0b"/></linearGradient>
+    <linearGradient id="gSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e0e0d"/><stop offset="1" stop-color="#1b1b18"/></linearGradient>
+    <linearGradient id="gSideR" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#0e0e0d"/><stop offset="1" stop-color="#1b1b18"/></linearGradient>
+    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="8" fill="#efeadf"/></pattern>
+  </defs>
+
+  <symbol id="range" viewBox="0 0 1280 720">
+    <rect width="1280" height="720" fill="#0c0c0b"/>
+    <polygon points="0,0 1280,0 920,140 360,140" fill="#121210"/>
+    <polygon points="0,0 360,140 360,360 0,720" fill="url(#gSide)"/>
+    <polygon points="1280,0 920,140 920,360 1280,720" fill="url(#gSideR)"/>
+    <rect x="360" y="140" width="560" height="220" fill="url(#gWall)"/>
+    <polygon points="0,720 360,360 920,360 1280,720" fill="url(#gFloor)"/>
+    <!-- ceiling light strips -->
+    <g fill="#efeadf" opacity=".22">
+      <polygon points="560,140 600,140 520,40 420,40"/>
+      <polygon points="680,140 720,140 860,40 760,40"/>
+    </g>
+    <!-- side wall panels -->
+    <g stroke="#2c2b27" stroke-width="2">
+      <line x1="120" y1="47" x2="120" y2="600"/><line x1="240" y1="94" x2="240" y2="480"/>
+      <line x1="1160" y1="47" x2="1160" y2="600"/><line x1="1040" y1="94" x2="1040" y2="480"/>
+    </g>
+    <!-- back wall stencils -->
+    <g font-family="Anton,Impact,sans-serif" font-size="74" fill="#efeadf" opacity=".08" text-anchor="middle">
+      <text x="453" y="300">01</text><text x="640" y="300">02</text><text x="827" y="300">03</text>
+    </g>
+    <rect x="360" y="330" width="560" height="10" fill="url(#hatch)" opacity=".18"/>
+    <!-- lanes -->
+    <g stroke="#efeadf" stroke-width="2" opacity=".28">
+      <line x1="453" y1="360" x2="-159" y2="720"/><line x1="547" y1="360" x2="242" y2="720"/>
+      <line x1="733" y1="360" x2="1038" y2="720"/><line x1="827" y1="360" x2="1439" y2="720"/>
+    </g>
+    <line x1="640" y1="360" x2="640" y2="720" stroke="#efeadf" stroke-width="2" opacity=".14" stroke-dasharray="10 12"/>
+    <g stroke="#efeadf" stroke-width="1.5" opacity=".14">
+      <line x1="340" y1="380" x2="940" y2="380"/><line x1="310" y1="410" x2="970" y2="410"/>
+      <line x1="265" y1="455" x2="1015" y2="455"/><line x1="200" y1="520" x2="1080" y2="520"/>
+      <line x1="110" y1="610" x2="1170" y2="610"/>
+    </g>
+    <!-- firing line -->
+    <polygon points="70,650 1210,650 1235,675 45,675" fill="#e2ff1f" opacity=".12"/>
+  </symbol>
+
+  <symbol id="bot" viewBox="0 0 120 240">
+    <ellipse cx="60" cy="236" rx="46" ry="5" fill="#000" opacity=".5"/>
+    <circle cx="60" cy="26" r="20" fill="#d9d3c5"/>
+    <rect x="52" y="44" width="16" height="10" fill="#a29d92"/>
+    <path d="M24 56 H96 L88 150 H32 Z" fill="#d9d3c5"/>
+    <path d="M24 56 H60 V150 H32 Z" fill="#efeadf"/>
+    <rect x="46" y="76" width="28" height="28" fill="none" stroke="#0c0c0b" stroke-width="4"/>
+    <path d="M34 150 H58 L56 236 H40 Z M62 150 H86 L80 236 H64 Z" fill="#a29d92"/>
+  </symbol>
+
+  <symbol id="cv-range" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#0c0c0b"/>
+    <g fill="none" stroke="#efeadf" stroke-width="5"><circle cx="50" cy="50" r="40"/><circle cx="50" cy="50" r="27"/></g>
+    <circle cx="50" cy="50" r="13" fill="#e2ff1f"/>
+    <rect x="47.5" y="0" width="5" height="100" fill="#0c0c0b"/><rect x="0" y="47.5" width="100" height="5" fill="#0c0c0b"/>
+  </symbol>
+  <symbol id="cv-lofi" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#efeadf"/>
+    <circle cx="50" cy="62" r="30" fill="#0c0c0b"/>
+    <g fill="#efeadf"><rect y="64" width="100" height="4"/><rect y="74" width="100" height="5"/><rect y="85" width="100" height="6"/></g>
+    <rect y="92" width="100" height="8" fill="#0c0c0b"/>
+    <circle cx="78" cy="22" r="6" fill="#e2ff1f" stroke="#0c0c0b" stroke-width="2"/>
+  </symbol>
+  <symbol id="cv-neon" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#e2ff1f"/>
+    <g stroke="#0c0c0b" stroke-width="5"><line x1="-10" y1="30" x2="30" y2="-10"/><line x1="-10" y1="50" x2="50" y2="-10"/><line x1="-10" y1="70" x2="70" y2="-10"/></g>
+    <circle cx="60" cy="60" r="30" fill="#0c0c0b"/>
+    <circle cx="60" cy="60" r="12" fill="none" stroke="#efeadf" stroke-width="5"/>
+  </symbol>
+  <symbol id="cv-break" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#0c0c0b"/>
+    <g fill="#e2ff1f"><polygon points="10,20 30,20 52,50 30,80 10,80 32,50"/><polygon points="44,20 64,20 86,50 64,80 44,80 66,50" fill="#efeadf"/></g>
+  </symbol>
+  <symbol id="cv-vault" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#efeadf"/>
+    <g fill="#0c0c0b">
+      <rect x="10" y="10" width="17" height="17"/><rect x="31" y="10" width="17" height="17"/><rect x="52" y="10" width="17" height="17"/><rect x="73" y="10" width="17" height="17"/>
+      <rect x="10" y="31" width="17" height="17"/><rect x="52" y="31" width="17" height="17"/><rect x="73" y="31" width="17" height="17"/>
+      <rect x="10" y="52" width="17" height="17"/><rect x="31" y="52" width="17" height="17"/><rect x="52" y="52" width="17" height="17"/>
+      <rect x="10" y="73" width="17" height="17"/><rect x="31" y="73" width="17" height="17"/><rect x="52" y="73" width="17" height="17"/><rect x="73" y="73" width="17" height="17"/>
+    </g>
+    <rect x="31" y="31" width="17" height="17" fill="#e2ff1f" stroke="#0c0c0b" stroke-width="3"/>
+    <rect x="73" y="52" width="17" height="17" fill="none" stroke="#0c0c0b" stroke-width="3"/>
+  </symbol>
+  <symbol id="cv-over" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#0c0c0b"/>
+    <g stroke="#efeadf" stroke-width="5">
+      <line x1="50" y1="10" x2="50" y2="20" transform="rotate(-120 50 55)"/><line x1="50" y1="10" x2="50" y2="20" transform="rotate(-90 50 55)"/>
+      <line x1="50" y1="10" x2="50" y2="20" transform="rotate(-60 50 55)"/><line x1="50" y1="10" x2="50" y2="20" transform="rotate(-30 50 55)"/>
+      <line x1="50" y1="10" x2="50" y2="20"/><line x1="50" y1="10" x2="50" y2="20" transform="rotate(30 50 55)"/>
+      <line x1="50" y1="10" x2="50" y2="20" transform="rotate(60 50 55)"/>
+    </g>
+    <g stroke="#e2ff1f" stroke-width="5"><line x1="50" y1="10" x2="50" y2="20" transform="rotate(90 50 55)"/><line x1="50" y1="10" x2="50" y2="20" transform="rotate(120 50 55)"/></g>
+    <line x1="50" y1="55" x2="82" y2="38" stroke="#e2ff1f" stroke-width="7"/>
+    <circle cx="50" cy="55" r="8" fill="#efeadf"/>
+    <rect x="0" y="86" width="100" height="14" fill="#efeadf"/>
+  </symbol>
+</svg>
+
+<div class="doc">
+  <header class="doc-head">
+    <span class="tag">DIRECTION C / 03</span>
+    <h1>Bold<br>Editorial</h1>
+    <p>CounterBeat dressed like a record label: <b>poster-sized type</b>, black and bone paper, <b>one acid colour</b> that only ever means "this is live / this is you".</p>
+  </header>
+
+  <div class="system">
+    <span class="sw"><i style="background:#0c0c0b"></i>INK #0C0C0B</span>
+    <span class="sw"><i style="background:#efeadf"></i>PAPER #EFEADF</span>
+    <span class="sw"><i style="background:#e2ff1f"></i>ACID #E2FF1F</span>
+    <span class="sw"><i style="background:#a29d92"></i>DIM #A29D92</span>
+    <span>ANTON / ARCHIVO / SPACE MONO</span>
+    <span class="jl"><i class="shape sh-p"></i>PERFECT</span>
+    <span class="jl"><i class="shape sh-g"></i>GOOD</span>
+    <span class="jl"><i class="shape sh-l"></i>LOOSE</span>
+    <span class="jl"><i class="shape sh-m"></i>MISS</span>
+    <span>judgements read by shape + brightness, never hue alone</span>
+  </div>
+
+  <!-- ================= FRAME 1 ================= -->
+  <section class="plate">
+    <div class="plate-label"><b>01</b> Main menu &mdash; focus on Quick Play</div>
+    <div class="viewport"><div class="frame f1">
+      <svg class="bg" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice"><use href="#range"/><use href="#bot" x="860" y="220" width="90" height="180"/></svg>
+      <div class="fade"></div>
+
+      <div class="brand"><div class="mark"></div><span>COUNTERBEAT</span><em>BUILD 0.9.2</em></div>
+      <div class="player">
+        <div><small>PLAYER</small><b>NEMO_</b></div>
+        <div><small>RANKED</small><b>GOLD II</b></div>
+        <div class="lv"><small>LEVEL</small><b>23</b></div>
+      </div>
+
+      <div class="menu">
+        <div class="eyebrow"><span>MAIN</span><span>02 / 09</span></div>
+        <div class="mi"><span class="n">01</span><span class="t">Campaign</span><span class="meta">CH.3 &mdash; 62%</span></div>
+        <div class="mi focus"><span class="n">02</span><span class="t">Quick Play</span><span class="meta">6 TRACKS<br>4 DIFFICULTIES</span></div>
+        <div class="mi"><span class="n">03</span><span class="t">Daily</span><span class="meta">NEW &bull; 06:12:40</span></div>
+        <div class="mi"><span class="n">04</span><span class="t">Ranked</span><span class="meta">SEASON 1</span></div>
+        <div class="sub">
+          <a><small>05</small>Custom<span class="beta">BETA</span></a>
+          <a><small>06</small>Practice</a>
+          <a><small>07</small>Settings</a>
+          <a><small>08</small>Credits</a>
+          <a><small>09</small>Quit</a>
+        </div>
+      </div>
+
+      <div class="bignum">02</div>
+
+      <div class="context">
+        <div class="hd"><span>QUICK PLAY &mdash; RESUME</span><span>LAST SESSION</span></div>
+        <div class="bd">
+          <svg viewBox="0 0 100 100"><use href="#cv-neon"/></svg>
+          <div>
+            <h3>Neon<br>/ Hard</h3>
+            <p>One track, one difficulty, straight in. Your last pick is pre-loaded.</p>
+          </div>
+        </div>
+        <div class="row">
+          <div>BPM<b>128</b></div>
+          <div>BEST<b>A</b></div>
+          <div>ACC<b>94.1%</b></div>
+        </div>
+      </div>
+
+      <div class="prompts">
+        <span class="p"><span class="key">W</span><span class="key">S</span><span class="sl">/</span><span class="pad sq">D&#8209;PAD</span>Navigate</span>
+        <span class="p"><span class="key">ENTER</span><span class="sl">/</span><span class="pad">A</span>Select</span>
+        <span class="p"><span class="key">ESC</span><span class="sl">/</span><span class="pad">B</span>Back</span>
+        <span class="right">NOW PLAYING &mdash; LO-FI DRIFT &middot; 84 BPM <span class="pips"><i></i><i class="on"></i><i></i><i></i></span></span>
+      </div>
+    </div></div>
+    <div class="why"><h4>Rationale</h4><p>The four modes people actually launch are set at headline size; utility items drop to a single ruled row so the hierarchy reads in one glance. Focus is a full-bleed acid slab with a pointer and an index counter (02 / 09), visible from a couch and identical on keyboard or pad. The right side previews the focused item with real data instead of decoration, and the live range behind it says "this is a game" before any text does.</p></div>
+  </section>
+
+  <!-- ================= FRAME 2 ================= -->
+  <section class="plate">
+    <div class="plate-label"><b>02</b> Song select &mdash; Neon on Hard</div>
+    <div class="viewport"><div class="frame f2">
+      <div class="topbar">
+        <h2>Select track</h2>
+        <span class="crumb">QUICK PLAY / 06 TRACKS</span>
+        <span class="sort"><span class="key">TAB</span>SORT: ORDER &nbsp; <span class="key">F</span>FAVOURITES</span>
+      </div>
+
+      <div class="cover-xl">
+        <svg viewBox="0 0 100 100"><use href="#cv-neon"/></svg>
+        <div class="stamp">A<small>BEST RANK</small></div>
+        <div class="side">SIDE A &mdash; TRACK 03</div>
+      </div>
+      <div class="play"><span class="tri"></span><b>PLAY</b><span class="g"><span class="key">ENTER</span><span class="pad">A</span></span></div>
+
+      <div class="detail">
+        <div class="no">03 / 06 &nbsp;&mdash;&nbsp; SYNTHWAVE &nbsp;&mdash;&nbsp; 32 BOTS ON HARD</div>
+        <h3>Neon</h3>
+        <div class="by">Steady four-on-the-floor. Bots step across lanes on every second bar.</div>
+        <div class="stats">
+          <div><small>BPM</small><b>128</b></div>
+          <div><small>LENGTH</small><b>2:48</b></div>
+          <div><small>BEST SCORE</small><b>381,940</b></div>
+          <div><small>STARS / HARD</small><span class="stars">&#9733;&#9733;<s>&#9733;</s></span></div>
+        </div>
+        <div class="diff">
+          <span class="lb"><span class="key">Q</span>&nbsp;<span class="pad sq">LB</span></span>
+          <button><span>Easy</span><small>&#9733;&#9733;&#9733;</small></button>
+          <button><span>Normal</span><small>&#9733;&#9733;&#9733;</small></button>
+          <button class="on"><span>Hard</span><small>A</small></button>
+          <button><span>Expert</span><small>&mdash;</small></button>
+          <span class="rb"><span class="pad sq">RB</span>&nbsp;<span class="key">E</span></span>
+        </div>
+        <div class="list">
+          <div class="hd"><span>#</span><span></span><span>TRACK</span><span>BPM</span><span>LEN</span><span>RANK</span><span>STARS</span></div>
+          <div class="tr"><span>01</span><svg viewBox="0 0 100 100"><use href="#cv-range"/></svg><span class="tt">Range</span><span>100</span><span>1:30</span><span class="rk">S</span><span class="st">&#9733;&#9733;&#9733;</span></div>
+          <div class="tr"><span>02</span><svg viewBox="0 0 100 100"><use href="#cv-lofi"/></svg><span class="tt">Lo-fi Drift</span><span>84</span><span>2:56</span><span class="rk">S</span><span class="st">&#9733;&#9733;&#9733;</span></div>
+          <div class="tr sel"><span>03</span><svg viewBox="0 0 100 100"><use href="#cv-neon"/></svg><span class="tt">Neon</span><span>128</span><span>2:48</span><span class="rk">A</span><span class="st">&#9733;&#9733;<s>&#9733;</s></span></div>
+          <div class="tr"><span>04</span><svg viewBox="0 0 100 100"><use href="#cv-break"/></svg><span class="tt">Breakneck</span><span>174</span><span>2:12</span><span class="rk">B</span><span class="st">&#9733;<s>&#9733;&#9733;</s></span></div>
+          <div class="tr"><span>05</span><svg viewBox="0 0 100 100"><use href="#cv-vault"/></svg><span class="tt">Vault</span><span>140</span><span>3:05</span><span class="rk">C</span><span class="st">&#9733;<s>&#9733;&#9733;</s></span></div>
+          <div class="tr"><span>06</span><svg viewBox="0 0 100 100"><use href="#cv-over"/></svg><span class="tt">Overclock</span><span>190</span><span>2:34</span><span class="rk lock">&mdash;</span><span class="st"><s>&#9733;&#9733;&#9733;</s></span></div>
+        </div>
+      </div>
+
+      <div class="prompts">
+        <span class="p"><span class="key">W</span><span class="key">S</span><span class="sl">/</span><span class="pad sq">D&#8209;PAD</span>Track</span>
+        <span class="p"><span class="key">Q</span><span class="key">E</span><span class="sl">/</span><span class="pad sq">LB</span><span class="pad sq">RB</span>Difficulty</span>
+        <span class="p"><span class="key">ENTER</span><span class="sl">/</span><span class="pad">A</span>Play</span>
+        <span class="p"><span class="key">R</span><span class="sl">/</span><span class="pad">Y</span>Leaderboard</span>
+        <span class="p"><span class="key">ESC</span><span class="sl">/</span><span class="pad">B</span>Back</span>
+      </div>
+    </div></div>
+    <div class="why"><h4>Rationale</h4><p>Laid out like the back of a record sleeve: the cover is the hero, the tracklist is the navigation, and every fact a player compares (BPM, length, rank, stars) sits in a fixed mono column so scanning down is instant. Difficulty is a bumper-driven segmented bar, never a dropdown, and PLAY is the only acid object on screen, so the next action is unambiguous. Each cover is pure geometry, cheap to make and instantly recognisable at 28px or 440px.</p></div>
+  </section>
+
+  <!-- ================= FRAME 3 ================= -->
+  <section class="plate">
+    <div class="plate-label"><b>03</b> In-game HUD &mdash; bot 14, perfect stop</div>
+    <div class="viewport"><div class="frame f3">
+      <svg class="bg" viewBox="0 0 1280 720">
+        <use href="#range"/>
+        <use href="#bot" x="616" y="242" width="120" height="240"/>
+        <!-- approach ring on head (head centre 676,268) -->
+        <circle cx="676" cy="268" r="58" fill="none" stroke="#e2ff1f" stroke-width="4"/>
+        <circle cx="676" cy="268" r="24" fill="none" stroke="#efeadf" stroke-width="2" stroke-dasharray="4 5"/>
+        <g fill="#e2ff1f"><rect x="673" y="203" width="6" height="10"/><rect x="673" y="323" width="6" height="10"/><rect x="611" y="265" width="10" height="6"/><rect x="731" y="265" width="10" height="6"/></g>
+        <!-- crosshair -->
+        <g fill="#efeadf" stroke="#0c0c0b" stroke-width="1">
+          <rect x="638" y="342" width="4" height="12"/><rect x="638" y="366" width="4" height="12"/>
+          <rect x="622" y="358" width="12" height="4"/><rect x="646" y="358" width="12" height="4"/>
+          <rect x="638.5" y="358.5" width="3" height="3"/>
+        </g>
+      </svg>
+
+      <div class="hud-tl">
+        <div class="tn"><small>03</small>Neon</div>
+        <div class="bpm">128 BPM <span class="pips"><i></i><i></i><i class="on"></i><i></i></span> <span style="color:var(--dim)">HARD</span></div>
+      </div>
+
+      <div class="hud-tc">
+        <div class="lbl">BOT</div>
+        <div class="bots">14 <span>/ 32</span></div>
+        <div class="segs">
+          <i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <div class="hud-tr">
+        <div class="sc">184,220</div>
+        <div class="row">
+          <div>ACCURACY<b>96.42%</b></div>
+          <div>HEAD<b>9/13</b></div>
+          <div class="pace">PACE<b>S</b></div>
+        </div>
+      </div>
+
+      <div class="hud-bl">
+        <div class="cb">47</div>
+        <div class="cl">COMBO<b>&times;4</b>MULT</div>
+      </div>
+
+      <div class="hud-br">
+        <div class="lbl"><span>LAST 8</span><span>STOP</span></div>
+        <div class="log">
+          <i class="shape sh-g"></i><i class="shape sh-p"></i><i class="shape sh-p"></i><i class="shape sh-l"></i><i class="shape sh-g"></i><i class="shape sh-p"></i><i class="shape sh-p"></i><i class="shape sh-p"></i>
+        </div>
+        <div class="cs"><span class="key">A</span>&rarr;<span class="key hot">D</span> COUNTER-STRAFE +150</div>
+      </div>
+
+      <div class="judge"><i class="shape sh-p"></i><b>PERFECT</b><span>&minus;8ms</span><em>HEAD</em></div>
+
+      <div class="vel">
+        <div class="top"><span>&larr; A &nbsp;STOP METER</span><b>+12 u/s</b><span>D &rarr;</span></div>
+        <div class="bar">
+          <!-- 600px = &plusmn;200 u/s ; 1.5 px per u/s ; loose &plusmn;140=210px, good &plusmn;65=97.5px, perfect &plusmn;20=30px -->
+          <div class="z zl" style="left:84px;width:420px"></div>
+          <div class="z zg" style="left:197px;width:194px"></div>
+          <div class="z zp" style="left:264px;width:60px"></div>
+          <div class="tick"></div>
+          <div class="mk" style="left:309px"></div>
+        </div>
+        <div class="legend">
+          <span><i class="shape sh-p"></i>PERFECT &le;20</span>
+          <span><i class="shape sh-g"></i>GOOD &le;65</span>
+          <span><i class="shape sh-l"></i>LOOSE &le;140</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="why"><h4>Rationale</h4><p>The centre third holds only the bot, a single approach ring and the crosshair; all persistent data lives in four corner blocks anchored by thick rules, so peripheral vision can read score and combo without a glance. Stop quality and timing share one bottom-centre column (judgement directly above the meter) so the counter-strafe feedback loop is a single eye position. Every judgement pairs a shape (diamond / circle / triangle / cross) with brightness, so it survives any colour-vision type and any monitor.</p></div>
+  </section>
+
+  <!-- ================= FRAME 4 ================= -->
+  <section class="plate">
+    <div class="plate-label"><b>04</b> Results + rankings &mdash; Neon / Hard</div>
+    <div class="viewport"><div class="frame f4">
+      <div class="head"><h2>Neon &mdash; Hard</h2><span>RESULT &middot; 128 BPM &middot; 32 BOTS</span></div>
+      <div class="rank">S</div>
+      <div class="rank-cap">RANK &mdash; NEW BEST (WAS A)</div>
+
+      <div class="headline">
+        <small>SCORE</small>
+        <div class="score">412,880</div>
+        <span class="pb">+30,940 PERSONAL BEST</span>
+        <div class="acc">
+          <div><small>ACCURACY</small><b>97.18%</b></div>
+          <div><small>BEST COMBO</small><b>31</b></div>
+          <div><small>STARS</small><span class="stars">&#9733;&#9733;&#9733;</span></div>
+        </div>
+      </div>
+
+      <div class="jt">
+        <div><small><i class="shape sh-p"></i>PERFECT</small><b>24</b></div>
+        <div><small><i class="shape sh-g"></i>GOOD</small><b>6</b></div>
+        <div><small><i class="shape sh-l"></i>LOOSE</small><b>1</b></div>
+        <div><small><i class="shape sh-m"></i>MISSED</small><b>1</b></div>
+      </div>
+
+      <div class="ex">
+        <div><span>COUNTER-STRAFE BONUS</span><b>&times;27 &middot; +4,050</b></div>
+        <div><span>HEADSHOTS</span><b>22 / 31</b></div>
+        <div><span>AVG STOP SPEED</span><b>14 u/s</b></div>
+      </div>
+
+      <div class="hist">
+        <div class="lbl"><span>&larr; EARLY</span><span>MEAN <b>&minus;3ms</b> &middot; SD 11ms</span><span>LATE &rarr;</span></div>
+        <div class="bars">
+          <i style="height:4%"></i><i style="height:8%"></i><i style="height:18%"></i><i style="height:40%"></i><i style="height:72%"></i><i class="z" style="height:100%"></i><i class="z" style="height:86%"></i><i style="height:52%"></i><i style="height:26%"></i><i style="height:10%"></i><i style="height:6%"></i><i style="height:0%"></i><i style="height:4%"></i>
+          <span class="zero"></span><span class="mean"></span>
+        </div>
+        <div class="ax"><span>&minus;60</span><span>&minus;30</span><span>0</span><span>+30</span><span>+60ms</span></div>
+      </div>
+
+      <div class="acts" style="gap:14px">
+        <div class="btn focus"><span class="key">R</span>Retry<span class="pad">A</span></div>
+        <div class="btn"><span class="key">N</span>Next track</div>
+        <div class="btn"><span class="key">ESC</span>Song select</div>
+      </div>
+
+      <aside class="board">
+        <div class="tabs"><span class="on">Global</span><span>Friends</span><span>Daily</span><span class="pg"><span class="key">Q</span><span class="key">E</span></span></div>
+        <div class="meta"><span>NEON / HARD &mdash; 18,204 ENTRIES</span><span>TOP 0.8%</span></div>
+        <div class="lr h"><span>#</span><span>PLAYER</span><span class="num">SCORE</span><span class="num">ACC</span><span class="num">CMB</span><span></span></div>
+        <div class="lr top"><span class="pos">1</span><span class="nm">kovalski.cs</span><span class="num">498,210</span><span class="num">99.71%</span><span class="num">32</span><span class="rp"></span></div>
+        <div class="lr top"><span class="pos">2</span><span class="nm">metronomad</span><span class="num">496,880</span><span class="num">99.52%</span><span class="num">32</span><span class="rp"></span></div>
+        <div class="lr top"><span class="pos">3</span><span class="nm">deadstop</span><span class="num">494,005</span><span class="num">99.40%</span><span class="num">32</span><span class="rp"></span></div>
+        <div class="lr"><span class="pos">4</span><span class="nm">ferrofluid</span><span class="num">489,330</span><span class="num">99.02%</span><span class="num">30</span><span class="rp"></span></div>
+        <div class="lr"><span class="pos">5</span><span class="nm">tap_tap_jiggle</span><span class="num">486,100</span><span class="num">98.88%</span><span class="num">32</span><span class="rp"></span></div>
+        <div class="lr gap">&middot;&middot;&middot;</div>
+        <div class="lr"><span class="pos">144</span><span class="nm">quietpeek</span><span class="num">413,560</span><span class="num">97.30%</span><span class="num">29</span><span class="rp"></span></div>
+        <div class="lr me"><span class="pos">145</span><span class="nm">NEMO_<small>YOU &uarr;1,203</small></span><span class="num">412,880</span><span class="num">97.18%</span><span class="num">31</span><span class="rp"></span></div>
+        <div class="lr"><span class="pos">146</span><span class="nm">bpm_hunter</span><span class="num">412,410</span><span class="num">97.20%</span><span class="num">27</span><span class="rp"></span></div>
+        <div class="lr"><span class="pos">147</span><span class="nm">lowsens.exe</span><span class="num">411,900</span><span class="num">96.95%</span><span class="num">30</span><span class="rp"></span></div>
+        <div class="foot"><span>&#9654; = WATCH REPLAY</span><span><span class="key" style="border-color:var(--ink);color:var(--ink);height:20px">Y</span> JUMP TO TOP</span></div>
+      </aside>
+
+      <div class="prompts" style="right:532px">
+        <span class="p"><span class="key">&larr;</span><span class="key">&rarr;</span><span class="sl">/</span><span class="pad sq">D&#8209;PAD</span>Choose</span>
+        <span class="p"><span class="key">ENTER</span><span class="sl">/</span><span class="pad">A</span>Confirm</span>
+        <span class="p"><span class="key">TAB</span><span class="sl">/</span><span class="pad">X</span>Board</span>
+      </div>
+      <div class="prompts" style="left:auto;width:532px;background:var(--paper);border-top-color:var(--ink);color:var(--ink);gap:16px;padding:0 32px">
+        <span class="p" style="color:var(--ink)"><span class="key" style="border-color:var(--ink);color:var(--ink)">W</span><span class="key" style="border-color:var(--ink);color:var(--ink)">S</span>Scroll</span>
+        <span class="p" style="color:var(--ink)"><span class="pad" style="background:var(--ink);color:var(--paper)">A</span>Watch replay</span>
+      </div>
+    </div></div>
+    <div class="why"><h4>Rationale</h4><p>The rank letter is the poster: 340px of acid, read before anything else, with score and personal-best delta as the subhead. Below it sits the "why" (judgement split, counter-strafe bonus, headshots, and an early/late histogram with its mean marked) so players learn whether to shoot earlier or stop cleaner. The leaderboard is a printed paper sheet so it reads as a separate surface; your row is the only inked line, pinned in context with the players directly above and below, and Retry is pre-focused because that is what a rhythm player presses 80% of the time.</p></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  function fit(){
+    document.querySelectorAll('.viewport').forEach(function(v){
+      v.querySelector('.frame').style.setProperty('--s', v.clientWidth/1280);
+    });
+  }
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script>
+</body>
+</html>

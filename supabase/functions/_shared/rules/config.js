@@ -6,6 +6,8 @@
  * makes the judging logic straightforward to reason about.
  */
 
+import { STOP_SPEED, COUNTER_STRAFE_WINDOW_MS } from './rules.js';
+
 /**
  * The track the player strafes along is measured in abstract "track units"
  * (0 .. 1024) so the movement model, the chart generator and the headless
@@ -40,9 +42,9 @@ export const WORLD = Object.freeze({
  * a dead stop the player was at the moment they fired.
  */
 export const SPEED_GRADE = Object.freeze({
-    pinPoint: 20,
-    tight: 65,
-    loose: 140,
+    pinPoint: STOP_SPEED.perfect,
+    tight: STOP_SPEED.good,
+    loose: STOP_SPEED.loose,
 });
 
 /**
@@ -92,7 +94,7 @@ export const FOCUS_MAX = 100;
  * many milliseconds of the shot.  Long enough to be generous, short enough
  * that simply releasing the key never qualifies.
  */
-export const COUNTER_STRAFE_MEMORY_MS = 320;
+export const COUNTER_STRAFE_MEMORY_MS = COUNTER_STRAFE_WINDOW_MS;
 
 /**
  * How far the player may tune movement speed and acceleration.  The range
@@ -114,8 +116,11 @@ export const APPROACH_BEATS = 2;
  *      clock), notes expired after a tick's shots.
  *   4  shots judged on the tick clock itself, notes spawned and expired at
  *      every tick before its shots, chart processing stops at a failure.
+ *   5  official charts regenerated from data/rules.json densities (T3) with
+ *      phrase variation kept; earlier replays no longer match their charts.
+ *   6  the log records the run mode (daily/ranked), which decides fail-out.
  */
-export const LOG_VERSION = 4;
+export const LOG_VERSION = 6;
 
 /** Grade names used throughout the game and the score records. */
 export const GRADE = Object.freeze({
@@ -144,7 +149,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     sensitivity: 1.6,       // CS-style
     dpi: 800,
     fov: 103,               // horizontal, Valorant's fixed value
-    crosshairColour: '#7effba',
+    crosshairColour: '#e2ff1f',
     crosshairLength: 7,
     crosshairGap: 4,
     crosshairThickness: 2,
@@ -154,5 +159,16 @@ export const DEFAULT_SETTINGS = Object.freeze({
     moveAccel: 1,           // multiplier on acceleration
     beatRing: true,         // the pulsing circle around the crosshair
     noteHighway: true,      // the upcoming-beats strip at the bottom of the HUD
+    targetSkin: 'pulse-range-issue', // id in data/targets.json (cosmetic only)
     audioOffset: 0,         // seconds; measured by the calibration screen
+    reducedEffects: false,  // no pulse, camera kick or hit-stop; flashes stay capped
+    hitVolume: 0.8,         // 0..1, the in-key hit sound
+    windowed: false,        // desktop shell only: true = windowed instead of fullscreen
+    plainHitSounds: false,  // true = the original unpitched hit samples
+    musicVolume: 0.55,      // 0..1
+    sfxVolume: 0.8,         // 0..1
+    judgementPalette: 'default', // 'default' (Direction C set; legacy saved id 'neon' is migrated) | 'safe' (high contrast)
+    reducedFlash: false,    // cap flashes at 3 per second without the other reduced effects
+    beatCue: false,         // on-screen beat cue (a pulse at screen centre on every beat)
+    bindings: { strafeLeft: 'KeyA', strafeRight: 'KeyD', fire: 'Space' },
 });

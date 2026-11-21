@@ -11,7 +11,7 @@ export class Storage {
      *   site's data cannot collide with anything else on the same origin.
      * @param {globalThis.Storage} [backing] injected for testing.
      */
-    constructor(namespace, backing = window.localStorage) {
+    constructor(namespace, backing = globalThis.localStorage) {
         this.namespace = namespace;
         this.backing = backing;
     }
@@ -67,6 +67,19 @@ export class Storage {
         } catch (error) {
             console.warn(`Storage: could not remove "${key}"`, error);
         }
+    }
+
+    /** @returns {string[]} un-namespaced keys currently stored. */
+    keys() {
+        const prefix = `${this.namespace}:`;
+        const out = [];
+        try {
+            for (let i = 0; i < this.backing.length; i++) {
+                const k = this.backing.key(i);
+                if (k && k.startsWith(prefix)) out.push(k.slice(prefix.length));
+            }
+        } catch (error) { /* unreadable storage: no keys */ }
+        return out;
     }
 
     /** @returns {boolean} whether local storage is usable in this browser. */

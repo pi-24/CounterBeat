@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "thumbNote": "Level thumbnails (images/levels) are composites of each theme floor and wall texture made by tools/build-art.mjs, not live captures.",
+  "palette": {
+    "tolerance": 0.2,
+    "pixelTolerance": 0.25,
+    "maxOutlierFraction": 0.02,
+    "colours": [
+      "#0c0c0b",
+      "#161614",
+      "#22221f",
+      "#34332e",
+      "#efeadf",
+      "#d9d3c5",
+      "#a29d92",
+      "#6c6961",
+      "#e2ff1f",
+      "#b8d000"
+    ],
+    "spriteColours": [
+      "#070b1a",
+      "#0f1730",
+      "#1b2547",
+      "#49e3ff",
+      "#ff3fb4",
+      "#ffffff",
+      "#ffd23f",
+      "#ff8a2a",
+      "#7dffbb",
+      "#8a929c",
+      "#3b4048",
+      "#5a4630"
+    ],
+    "spriteNote": "Swatches that bot sheets and brand art (emblem) may use on top of the range palette: the shop's bot skins keep their own colourways. Room textures and thumbnails are checked against 'colours' only."
+  },
+  "themes": [
+    {
+      "id": "range",
+      "name": "Range",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 0,
+      "floorTexture": "images/textures/floor-range.png",
+      "wallTexture": "images/textures/wall-range.png",
+      "thumb": "images/levels/level-1.png",
+      "sky": [
+        0.0863,
+        0.0863,
+        0.0784
+      ],
+      "fog": {
+        "colour": [
+          0.0863,
+          0.0863,
+          0.0784
+        ],
+        "density": 0.02
+      },
+      "accent": [
+        0.8863,
+        1,
+        0.1216
+      ],
+      "ambient": 0.6,
+      "decor": "crates",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "author": "Kenney (kenney.nl) - Prototype Textures, recoloured by CounterBeat",
+      "thumbSource": "fc564c63f2a60670176d0f685b9743ef782b5a145ee0ec2441fa7c187ff75884"
+    },
+    {
+      "id": "neon",
+      "name": "Neon",
+      "placeholder": false,
+      "starCost": 0,
+      "coinPrice": 0,
+      "floorTexture": "images/textures/floor-neon.png",
+      "wallTexture": "images/textures/wall-neon.png",
+      "thumb": "images/levels/level-2.png",
+      "sky": [
+        0.0471,
+        0.0471,
+        0.0431
+      ],
+      "fog": {
+        "colour": [
+          0.0471,
+          0.0471,
+          0.0431
+        ],
+        "density": 0.032
+      },
+      "accent": [
+        0.8863,
+        1,
+        0.1216
+      ],
+      "ambient": 0.4,
+      "decor": "neon",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "author": "Kenney (kenney.nl) - Prototype Textures, recoloured by CounterBeat",
+      "thumbSource": "6cfff465f4347bbee4ad0bc04234a79267af8c999f2c582602825374c07951d1"
+    },
+    {
+      "id": "vault",
+      "name": "Vault",
+      "placeholder": false,
+      "starCost": 12,
+      "coinPrice": 300,
+      "floorTexture": "images/textures/floor-vault.png",
+      "wallTexture": "images/textures/wall-vault.png",
+      "thumb": "images/levels/level-3.png",
+      "sky": [
+        0.851,
+        0.8275,
+        0.7725
+      ],
+      "fog": {
+        "colour": [
+          0.851,
+          0.8275,
+          0.7725
+        ],
+        "density": 0.014
+      },
+      "accent": [
+        0.8863,
+        1,
+        0.1216
+      ],
+      "ambient": 0.75,
+      "decor": "racks",
+      "licence": "LICENSES/kenney-prototype-textures.txt",
+      "author": "Kenney (kenney.nl) - Prototype Textures, recoloured by CounterBeat",
+      "thumbSource": "550fd8bc28abdb1ba5d4ee3d174abaee9479e9bff7348a6314401628f26a139c"
+    }
+  ],
+  "paletteNote": "Direction C (docs/design/ui-direction-c.html) range palette: the neutrals and acid from src/styles/tokens.css, mirrored in src/game/fps/rangePalette.js. Scene sky, fog and accent colours below must be one of these swatches (tests/unit/palette-tokens.test.mjs)."
+}

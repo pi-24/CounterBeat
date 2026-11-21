@@ -9,8 +9,12 @@
  * Pausing suspends the whole context, which freezes that clock too, so the
  * Conductor never has to special-case a pause.
  */
+import { streamBytes } from '../../audio/streamLoader.js';
+
 export class AudioEngine {
     constructor() {
+        this.musicLevel = 0.55;
+        this.sfxLevel = 0.8;
         /** @type {AudioContext | null} */
         this.context = null;
         /** @type {Map<string, AudioBuffer>} */
@@ -80,12 +84,25 @@ export class AudioEngine {
         this.context = new Ctor({ latencyHint: 'interactive' });
 
         this.sfxGain = this.context.createGain();
-        this.sfxGain.gain.value = 0.8;
+        this.sfxGain.gain.value = this.sfxLevel;
         this.sfxGain.connect(this.context.destination);
 
         this.musicGain = this.context.createGain();
-        this.musicGain.gain.value = 0.55;
+        this.musicGain.gain.value = this.musicLevel;
         this.musicGain.connect(this.context.destination);
+    }
+
+    /**
+     * Applies the player's music and SFX volumes (0..1); works before init().
+     * @param {number} music @param {number} sfx
+     */
+    setVolumes(music, sfx) {
+        this.musicLevel = music;
+        this.sfxLevel = sfx;
+        if (this.context) {
+            this.musicGain.gain.setValueAtTime(music, this.context.currentTime);
+            this.sfxGain.gain.setValueAtTime(sfx, this.context.currentTime);
+        }
     }
 
     /** @returns {boolean} whether init() has run. */
@@ -123,11 +140,10 @@ export class AudioEngine {
     async fetchFirst(urls) {
         for (const url of urls) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) {
+                const bytes = await streamBytes(url);
+                if (!bytes) {
                     continue;
                 }
-                const bytes = await response.arrayBuffer();
                 return await this.context.decodeAudioData(bytes);
             } catch (error) {
                 console.warn(`AudioEngine: could not load ${url}`, error);
@@ -218,6 +234,29 @@ export class AudioEngine {
     }
 
     /**
+     * A short synthesised pluck at a pitch, used for in-key hit sounds.
+     * @param {number} hz
+     * @param {{volume?:number}} [options]
+     */
+    playTone(hz, options = {}) {
+        if (!this.context || !this.sfxGain || !Number.isFinite(hz) || hz <= 0) {
+            return;
+        }
+        const now = this.context.currentTime;
+        const osc = this.context.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = hz;
+        const gain = this.context.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, Number.isFinite(options.volume) ? options.volume : 0.3), now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    }
+
+    /**
      * Schedules a one-shot effect at an exact context time.
      * @param {string} key
      * @param {number} when AudioContext time in seconds
@@ -241,8 +280,11 @@ export class AudioEngine {
      * Starts the level track from the beginning.
      * @param {string} key
      * @param {boolean} [loop]
+     * @param {number} [offsetSeconds] where in the track to start
+     * @param {number} [rate] playback rate, applied before the source starts so
+     *   the song position runs at that rate from the very first sample
      */
-    playMusic(key, loop = false) {
+    playMusic(key, loop = false, offsetSeconds = 0, rate = 1) {
         this.stopMusic();
         const buffer = this.buffers.get(key);
         if (!buffer || !this.context) {
@@ -252,20 +294,22 @@ export class AudioEngine {
         source.buffer = buffer;
         source.loop = loop;
         source.connect(this.musicGain);
+        const playbackRate = rate > 0 ? rate : 1;
+        source.playbackRate.value = playbackRate;
 
         // Schedule a hair in the future so the start time is exact rather
         // than "whenever the audio thread gets to it".
         const startAt = this.context.currentTime + 0.05;
-        source.start(startAt);
+        source.start(startAt, Math.max(0, offsetSeconds));
 
         this.musicSource = source;
         this.musicStartedAt = startAt;
         this.musicKey = key;
         // The song position is measured from an anchor so the playback rate
         // can change mid-track (slow-motion replays) without a jump.
-        this.musicRate = 1;
+        this.musicRate = playbackRate;
         this.musicAnchorClock = startAt;
-        this.musicAnchorPosition = 0;
+        this.musicAnchorPosition = Math.max(0, offsetSeconds);
     }
 
     /**
@@ -317,7 +361,7 @@ export class AudioEngine {
         if (this.musicGain) {
             const now = this.context.currentTime;
             this.musicGain.gain.cancelScheduledValues(now);
-            this.musicGain.gain.setValueAtTime(0.55, now);
+            this.musicGain.gain.setValueAtTime(this.musicLevel, now);
         }
     }
 

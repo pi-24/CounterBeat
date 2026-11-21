@@ -16,16 +16,32 @@
  *   inputs -> movement -> spawn notes -> expire missed notes -> shots
  * so the server lands on the same score to the point.
  */
+import { StopQuality } from '../progress/stars.js';
 import { Ray } from '../engine.js';
-import { APPROACH_BEATS, GRADE, SPEED_GRADE, SPREAD } from '../rules/config.js';
-import { resolveChart, musicUrls } from '../rules/charts.js';
+import { APPROACH_BEATS, GRADE, SPEED_GRADE } from '../rules/config.js';
+import { GAMEPAD } from '../../input/gamepadConfig.js';
+import { inputLagSeconds, MAX_INPUT_LAG } from '../../input/inputTime.js';
+import { replayCanFailOut, modeForLevel } from '../rules/failout.js';
+import { aimScalesForLevel, coneDegrees } from '../rules/aim.js';
+import { resolveChart } from '../rules/charts.js';
+import { themeProvider, trackProvider, feedbackBus } from '../providers/index.js';
+import { resolveRunMode, tutorialNeedsRestart } from '../onboarding/startFlow.js';
+import { TutorialProgress, STAGES, timeSuccess, aimSuccess } from '../onboarding/tutorialStages.js';
+import { strafeDirection } from '../input/bindings.js';
+import { FeelController } from '../feel/FeelController.js';
+import { hitPitch, SCALES } from '../audio/hitSounds.js';
 import { BeatMap } from '../rules/BeatMap.js';
 import { Conductor } from '../rules/Conductor.js';
 import { CounterStrafeBody } from '../rules/CounterStrafeBody.js';
 import { Judge } from '../rules/Judge.js';
 import { Scorer } from '../rules/Scorer.js';
 import { RunRecorder, LOG_VERSION, readLook } from '../RunRecorder.js';
+import {
+    PRACTICE_SPEED, isPractice, normaliseSection, applySection, LiveTimingReadout,
+    realTimeErrorMs, practiceHintText, recordLoopPass,
+} from '../modes/practice.js';
 import { Arena } from '../fps/Arena.js';
+import { hudDetail, isLightSky } from '../fps/hudText.js';
 import { TargetField } from '../fps/TargetField.js';
 import { Viewmodel } from '../fps/Viewmodel.js';
 
@@ -37,8 +53,6 @@ const MAX_STEP = 0.05;
 const MAX_STEPS_PER_FRAME = 50;
 /** A replay's ticks are cheap to apply, so after a stall (a hidden tab) it catches up at once. */
 const MAX_REPLAY_STEPS_PER_FRAME = 5000;
-/** An input event older than this is not trusted to back-date a shot. */
-const MAX_INPUT_LAG = 0.1;
 /** Longest the run waits for shaders to compile before starting anyway. */
 const PREPARE_TIMEOUT_MS = 1500;
 /** Pause between the last bot and the results screen. */
@@ -58,8 +72,32 @@ export class PlayScreen {
         this.level = resolveChart(chartId);
         this.chartId = chartId;
         this.replay = options.replay ?? null;
+        this.initialTutorialProgress = options.tutorialProgress ?? null;
+        /** {t:number} clock driven by the atlas screenshot hook (no audio, never finishes into results). */
+        this.atlas = options.atlas ?? null;
+        /** Atlas store captures only: a scripted run shown as live play (no REPLAY tag), optionally without the placeholder-music tag. */
+        this.atlasDemo = Boolean(options.atlas && options.replay);
+        this.atlasClean = Boolean(options.atlasClean);
+        /** Seconds added to the atlas clock so captures start just before the first note (0 outside atlas). */
+        this.leadInOffset = 0;
+        /** 'campaign' | 'quickPlay' | 'daily' | 'ranked' - decides fail-out with the difficulty. */
+        this.mode = options.mode ?? null;
+        /** Mode the run is played (and logged) in. */
+        this.runMode = resolveRunMode(this.level, this.mode, this.replay?.mode ?? modeForLevel(this.level));
+        /** Practice: 0.75x music, loop, live readout, no rewards. Derived from the resolved run mode so speed and rewards cannot disagree. */
+        this.practice = isPractice(this.runMode) && !this.replay && !this.level.tutorial && (!options.atlas || options.atlasPractice);
+        /** @type {{startBeat:number,endBeat:number}|null} */
+        this.section = options.section ?? null;
+        this.pendingStartBeat = null;
+        /** Timing errors (ms, negative early) of every shot fired at a bot, for the results histogram. */
+        this.timingErrorsMs = [];
+        this.timingReadout = new LiveTimingReadout();
+        /** Per-pass stats of a looping section, kept across passes. */
+        this.loopPasses = [];
+        /** hitbox and spread scales for this level, read once. */
+        this.aim = aimScalesForLevel(this.level);
         /** Logs from before LOG_VERSION 4 replay with the rules they were recorded under. */
-        this.legacyReplay = Boolean(this.replay && this.replay.version !== LOG_VERSION);
+        this.legacyReplay = Boolean(this.replay && this.replay.version < 5);
         this.replayCursor = 0;
         this.replayInput = 0;
         this.replayShots = 0;
@@ -70,11 +108,17 @@ export class PlayScreen {
         this.replaySpeed = 1;
 
         this.finished = false;
+        this.keysWereDown = false;
+        this.padWasDown = false;
         this.paused = false;
+        this.wasMoving = false;
+        this.lastPerfectStopAt = -Infinity;
         this.wasCounterStrafing = false;
         this.unsubscribe = [];
         this.clearedAt = undefined;
         this.tutorialStage = 0;
+        /** Stop / Time / Aim progression (tutorial level only). */
+        this.tutorialProgress = null;
         this.resultsTimer = 0;
         /** Promise of the server's token for this run (ranked runs only). */
         this.runToken = null;
@@ -87,22 +131,46 @@ export class PlayScreen {
         return this.app.current === this;
     }
 
+    /** The equipped bot design, or the free default when the setting names one that is not owned (e.g. a synced setting). */
+    targetSkinId() {
+        const wanted = this.app.settings.get('targetSkin');
+        const progress = this.app.services.progress;
+        return progress?.usable ? progress.usable(wanted, themeProvider.target().id) : wanted;
+    }
+
     // ------------------------------------------------------------ enter ----
 
     async enter() {
         const { scene, camera, hud, audio, settings } = this.app;
 
+        // An equipped, unlocked arena theme re-dresses the room (visual only; the level data is untouched).
+        const themeId = this.app.services.progress?.equipped.theme;
+        if (themeId && !this.atlas && !this.level.tutorial && themeProvider.themes.has(themeId) && this.app.services.progress.isOwned(themeId)) {
+            this.level = { ...this.level, arena: { theme: themeId } };
+        }
+
         this.beatMap = new BeatMap(this.level);
         this.lanes = this.beatMap.lanes;
         this.lead = APPROACH_BEATS * (60 / this.level.bpm);
+        this.sectionStartSeconds = 0;
+        if (this.practice) {
+            const totalBeats = (this.beatMap.duration - (this.level.gridOffset ?? 0)) / this.beatMap.secondsPerBeat;
+            // Filter to the section here, before the scorer and HUD read beatMap.total.
+            const applied = applySection(this.beatMap, this.section, this.level.gridOffset ?? 0, this.lead);
+            this.section = applied.section;
+            this.sectionStartSeconds = applied.startSeconds;
+        }
         this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
+        if (this.atlas) this.leadInOffset = Math.max(0, this.firstNoteTime - 1);
         this.judge = new Judge(this.level, this.lanes);
         this.scorer = new Scorer(this.beatMap.total);
+        this.stopQuality = new StopQuality();
         const scale = this.replay
             ? { speed: 1, accel: 1, ...(this.replay.movement ?? {}) }
             : { speed: settings.get('moveSpeed'), accel: settings.get('moveAccel') };
         this.movement = CounterStrafeBody.scaled(this.level.movement, scale);
-        this.recorder = new RunRecorder(this.chartId, scale);
+        this.recorderScale = scale;
+        this.recorder = new RunRecorder(this.chartId, scale, this.runMode);
         this.body = new CounterStrafeBody(
             this.movement,
             { min: this.lanes.left + 16, max: this.lanes.right - 16 },
@@ -110,16 +178,25 @@ export class PlayScreen {
         );
 
         this.tutorialStartX = this.body.x;
+        if (this.level.tutorial && !this.replay) {
+            this.tutorialProgress = this.initialTutorialProgress ?? new TutorialProgress();
+            this.app.tutorialPanel.show(this.tutorialProgress);
+        }
         this.arena = new Arena(scene, this.level, this.lanes);
-        this.targets = new TargetField(scene, this.lanes, camera, this.level.arena.accent);
-        this.viewmodel = new Viewmodel(scene, camera.camera);
+        const arenaLook = themeProvider.resolveArena(this.level.arena);
+        const lightRoom = isLightSky(arenaLook.sky);
+        this.targets = new TargetField(scene, this.lanes, camera, arenaLook.accent, this.targetSkinId(), this.aim.hitboxScale, lightRoom);
+        this.viewmodel = new Viewmodel(scene, camera.camera, lightRoom);
 
         camera.resetLook();
         camera.lookEnabled = true;
         camera.update(Arena.toWorldX(this.body.x), 0, 0);
 
         hud.show();
-        hud.setLevel(this.replay ? `REPLAY · ${this.level.name}` : this.level.name, this.level.bpm);
+        hud.root.classList.toggle('hud--light', lightRoom);
+        const placeholderTag = !this.atlasClean && this.level.trackId && !this.level.custom && trackProvider.isPlaceholder(this.level.trackId)
+            ? ' · placeholder music' : '';
+        hud.setLevel(this.level.trackName ?? this.level.name, this.level.bpm, hudDetail(this.level, this.replay && !this.atlasDemo, placeholderTag !== ''));
         hud.buildLanes(this.lanes.count);
         hud.applyCrosshair(settings);
         hud.applyVisibility(settings);
@@ -127,9 +204,13 @@ export class PlayScreen {
         hud.setScore(0, 0, 1);
         hud.setAccuracy(0);
         hud.setProgress(0, this.beatMap.total);
-        hud.setHint('');
+        hud.resetRecent();
+        this.updateHudStats();
+        hud.setHint(this.practice ? this.practiceHint() : '');
         hud.buildHighway(this.lanes.count);
 
+        this.feel = new FeelController(feedbackBus, settings, { arena: this.arena, camera, hud, field: this.targets });
+        this.unsubscribe.push(() => this.feel.dispose());
         this.unsubscribe.push(settings.onChange(() => {
             hud.applyCrosshair(settings);
             hud.applyVisibility(settings);
@@ -152,6 +233,13 @@ export class PlayScreen {
             new Promise((resolve) => { window.setTimeout(resolve, PREPARE_TIMEOUT_MS); }),
         ]);
 
+        if (this.atlas) {
+            await prepared;
+            this.conductor = new Conductor(() => this.atlas.t + this.leadInOffset, this.level.bpm, 0, this.level.gridOffset);
+            this.conductor.start();
+            return;
+        }
+
         await audio.unlock();
         if (!this.current) {
             return;
@@ -159,7 +247,7 @@ export class PlayScreen {
         if (!audio.has(this.level.musicKey)) {
             hud.setCountdown('LOADING TRACK', true);
             const ok = this.level.trackId && !this.level.custom
-                ? await audio.ensure(this.level.musicKey, musicUrls(this.level.trackId))
+                ? await audio.ensure(this.level.musicKey, trackProvider.musicUrls(this.level.trackId))
                 : false;
             if (!this.current) {
                 return;
@@ -175,7 +263,8 @@ export class PlayScreen {
             return;
         }
         audio.resetMusicVolume();
-        audio.playMusic(this.level.musicKey);
+        // Practice's 0.75x is set before the source starts, so the song position is slow from t=0.
+        audio.playMusic(this.level.musicKey, false, this.sectionStartSeconds, this.practice ? PRACTICE_SPEED : 1);
         this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm,
             this.replay ? 0 : settings.get('audioOffset'), this.level.gridOffset);
         this.conductor.start();
@@ -199,6 +288,12 @@ export class PlayScreen {
         audio.stopMusic();
         hud.hide();
         this.app.pauseOverlay.hidden = true;
+        if (this.tutorialProgress) {
+            this.app.tutorialPanel.hide();
+            if (!this.atlas) {
+                this.app.completeOnboarding(this.tutorialProgress.complete ? 'completed' : 'skipped');
+            }
+        }
 
         this.viewmodel.dispose();
         this.targets.dispose();
@@ -212,9 +307,18 @@ export class PlayScreen {
         if (this.finished || this.paused || !this.conductor) {
             return;
         }
-        const { camera, hud, audio } = this.app;
+        const { camera, hud, audio, gamepad } = this.app;
+        if (gamepad && gamepad.context === 'play' && (gamepad.look.x !== 0 || gamepad.look.y !== 0)) {
+            const toRadians = Math.PI / 180;
+            const speed = this.app.settings.get('padLookSpeed');
+            camera.nudgeLook(gamepad.look.x * GAMEPAD.lookSpeedYaw * speed * dt * toRadians, gamepad.look.y * GAMEPAD.lookSpeedPitch * speed * dt * toRadians);
+        }
         const songTime = this.conductor.songPosition;
-        this.conductor.update();
+        if (this.conductor.update()) {
+            feedbackBus.emit('beat', { strength: this.conductor.beatPosition % 4 < 1 ? 1 : 0.6 });
+            hud.pulseBeatCue(this.conductor.beatPosition % 4 < 1);
+        }
+        this.arena.updatePulse(dt);
 
         if (this.replay) {
             this.advanceReplay(songTime);
@@ -240,10 +344,21 @@ export class PlayScreen {
         this.arena.setActiveLane(nextNote ? nextNote.lane : -1);
 
         const speedFraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
-        camera.update(Arena.toWorldX(this.body.x), dt, speedFraction);
-        this.viewmodel.update(dt);
+        camera.update(Arena.toWorldX(this.body.x), this.feel.frozen ? 0 : dt, speedFraction); // hit-stop holds the kick/bob decay
+        if (!this.feel.frozen) {
+            this.viewmodel.update(dt); // hit-stop is cosmetic: only the viewmodel holds still
+        }
 
-        hud.setVelocity(this.body.velocity, this.movement.maxSpeed, SPEED_GRADE.pinPoint, SPEED_GRADE.tight);
+        hud.setVelocity(this.body.velocity, SPEED_GRADE);
+        const stopped = this.body.speed <= SPEED_GRADE.pinPoint;
+        if (stopped && this.wasMoving && songTime - this.lastPerfectStopAt >= this.conductor.secondsPerBeat) {
+            this.lastPerfectStopAt = songTime; // at most one flash per beat, independent of any shot
+            feedbackBus.emit('perfectStop', { speed: this.body.speed });
+            this.tutorialAction('stop', true);
+        }
+        if (this.body.speed > SPEED_GRADE.tight) this.wasMoving = true;
+        else if (stopped) this.wasMoving = false;
+        hud.setSpeedArc(this.body.velocity, this.movement.maxSpeed, SPEED_GRADE);
         hud.setBeat(this.conductor.beatProgress);
         hud.setLanes(nextNote ? nextNote.lane : -1,
             (this.body.x - this.lanes.left) / (this.lanes.right - this.lanes.left));
@@ -259,18 +374,33 @@ export class PlayScreen {
         if (!nextNote && this.clearedAt === undefined) {
             this.clearedAt = songTime;
         }
-        if (!this.replay && ((this.clearedAt !== undefined && songTime >= this.clearedAt + 1.2)
+        const clearedDelay = this.practice && this.section ? 0.4 : 1.2; // loops restart quickly
+        if (!this.replay && ((this.clearedAt !== undefined && songTime >= this.clearedAt + clearedDelay)
             || songTime >= this.beatMap.duration)) {
+            if (this.practice && this.section && !this.atlas) {
+                // Loop: keep this pass's stats, then rewind in place (no scene rebuild).
+                this.loopPasses = recordLoopPass(this.loopPasses, this.scorer);
+                feedbackBus.emit('practiceLoopPass', { passes: this.loopPasses.length });
+                this.resetPass();
+                return;
+            }
             this.finish(true);
         }
     }
 
     /** @returns {number} -1, 0 or 1 from the strafe keys currently held. */
     readDirection() {
-        const { input } = this.app;
-        const left = input.isDown('KeyA') || input.isDown('ArrowLeft');
-        const right = input.isDown('KeyD') || input.isDown('ArrowRight');
-        return (right ? 1 : 0) + (left ? -1 : 0);
+        const { input, gamepad } = this.app;
+        const keys = strafeDirection((code) => input.isDown(code), this.app.settings.get('bindings'));
+        // Note the device on the press edge only (this runs every physics tick).
+        const padDir = gamepad ? gamepad.strafe : 0;
+        if (keys !== 0 && !this.keysWereDown) this.recorder?.noteDevice('kbm');
+        if (padDir !== 0 && !this.padWasDown) this.recorder?.noteDevice('pad');
+        this.keysWereDown = keys !== 0;
+        this.padWasDown = padDir !== 0;
+        // The pad's strafe is already digital (-1/0/1), so it joins the keys here
+        // and everything downstream (ticks, body, grading) sees one direction.
+        return gamepad ? Math.sign(keys + gamepad.strafe) : keys;
     }
 
     /**
@@ -328,6 +458,7 @@ export class PlayScreen {
                 counterStrafed: false,
                 headshot: false,
                 reason: 'No shot',
+                shotFired: false,
             }, null);
         });
         this.checkFailure();
@@ -335,7 +466,8 @@ export class PlayScreen {
 
     /** Ends the run the moment focus runs out (the tutorial cannot be failed). */
     checkFailure() {
-        if (this.scorer.failed && !this.level.tutorial) {
+        // v5 and older replays keep their original rule: every chart but the tutorial fails out.
+        if (this.scorer.failed && replayCanFailOut(this.level, this.replay, this.runMode)) {
             this.finish(false);
         }
     }
@@ -479,46 +611,51 @@ export class PlayScreen {
     }
 
     /**
-     * Coaching for the tutorial level: one instruction at a time, each one
-     * cleared by the player actually doing it.
+     * Feeds one tutorial action (Stop / Time / Aim) into the stage progression.
+     * @param {string|undefined} stageId @param {boolean} success
      */
-    updateTutorial() {
-        const hud = this.app.hud;
-        const stage = this.tutorialStage ?? 0;
-        if (stage === 0) {
-            hud.setHint('Hold  A  or  D  to strafe along the track');
-            if (Math.abs(this.body.x - this.tutorialStartX) > 30) {
-                this.tutorialStage = 1;
-            }
-        } else if (stage === 1) {
-            hud.setHint('While moving, TAP the opposite key and let go. That is a counter-strafe');
-            if (Number.isFinite(this.body.lastPlantedAt)) {
-                this.tutorialStage = 2;
-                this.app.audio.play('sfx-perfect', { volume: 0.5 });
-            }
-        } else if (stage === 2) {
-            hud.setHint('Dead stop. Bots will step out behind a lit window: stand in front of it, stop, and click when the ring closes');
-            if (this.scorer.judged > 0) {
-                this.tutorialStage = 3;
-            }
-        } else if (stage === 3) {
-            hud.setHint('The strip at the bottom shows which window is next and when. Shots spray while you move, so stop first');
-            if (this.scorer.judged >= 4) {
-                this.tutorialStage = 4;
-            }
-        } else {
-            hud.setHint('');
+    tutorialAction(stageId, success) {
+        const progress = this.tutorialProgress;
+        if (!progress || !stageId) {
+            return;
         }
+        const result = progress.record(stageId, success);
+        if (result === 'ignored') {
+            return;
+        }
+        this.tutorialFailed = result === 'fail';
+        if (result === 'advance' || result === 'complete') {
+            this.app.audio.play('sfx-perfect', { volume: 0.5 });
+        }
+        if (result === 'complete') {
+            this.clearedAt = this.conductor.songPosition; // wind the run down
+            feedbackBus.emit('tutorialComplete', {});
+        }
+        this.app.tutorialPanel.update(progress, this.tutorialFailed);
+    }
+
+    /** Keeps the coach panel in step; the stage logic itself lives in tutorialStages.js. */
+    updateTutorial() {
+        const progress = this.tutorialProgress;
+        if (!progress) {
+            return;
+        }
+        this.app.hud.setHint('');
+        this.app.tutorialPanel.update(progress, Boolean(this.tutorialFailed));
     }
 
     /** @param {number} songTime */
     updateCountdown(songTime) {
+        if (this.atlas) {
+            this.app.hud.setCountdown('', false); // atlas frames show live play, not the lead-in
+            return;
+        }
         const first = this.firstNoteTime;
         const until = first - songTime;
         const spb = this.conductor.secondsPerBeat;
         if (until > 0 && until < spb * 4) {
             this.app.hud.setCountdown(String(Math.ceil(until / spb)), true);
-        } else if (songTime < first && !this.level.tutorial) {
+        } else if (songTime < first && !this.level.tutorial && !this.atlas) {
             this.app.hud.setCountdown('GET READY', true);
         } else {
             this.app.hud.setCountdown('', false);
@@ -554,10 +691,7 @@ export class PlayScreen {
                 return; // the music has not started: nothing to shoot at yet
             }
             if (inputTimeStamp !== undefined) {
-                const lag = (performance.now() - inputTimeStamp) / 1000;
-                if (lag > 0 && lag < MAX_INPUT_LAG) {
-                    target -= lag;
-                }
+                target -= inputLagSeconds(performance.now(), inputTimeStamp, MAX_INPUT_LAG);
             }
             // Bring the simulation (and the chart) up to the instant of the
             // shot, and judge it on the tick clock - exactly the time the
@@ -587,6 +721,7 @@ export class PlayScreen {
         if (note && songTime < note.time - this.level.timing.ok) {
             this.scorer.registerWildShot();
             hud.flashJudgement('TOO EARLY', 'Wait for the ring to close', 'wild');
+            this.tutorialAction(this.tutorialProgress?.stage?.id, false);
             hud.setFocus(this.scorer.focus / 100);
             this.targets.flinch(entry);
             this.app.services.onJudgement({
@@ -610,6 +745,7 @@ export class PlayScreen {
             }
             this.scorer.registerWildShot();
             hud.flashJudgement('WILD SHOT', 'No bot on that beat', 'wild');
+            this.tutorialAction(this.tutorialProgress?.stage?.id, false);
             hud.setFocus(this.scorer.focus / 100);
             this.app.services.onJudgement({
                 grade: GRADE.MISS, reason: 'Wild shot', timingError: 0,
@@ -633,9 +769,8 @@ export class PlayScreen {
      */
     buildShotRay() {
         const { camera } = this.app;
-        const fraction = Math.min(1, this.body.speed / this.movement.maxSpeed);
-        const coneDegrees = SPREAD.baseDegrees + SPREAD.movingDegrees * Math.pow(fraction, SPREAD.exponent);
-        const cone = (coneDegrees * Math.PI) / 180;
+        const cone = (coneDegrees(this.body.speed, this.movement.maxSpeed, this.aim.spreadScale)
+            * Math.PI) / 180;
 
         // Uniform over the disc, so the shot is as likely to land at any
         // radius inside the cone as at the centre.
@@ -651,6 +786,31 @@ export class PlayScreen {
         return new Ray(camera.position.clone(), direction, 120);
     }
 
+    /** In-key hit sound (or the plain sample when the player prefers it). */
+    playHitSound(note, judgement) {
+        const { audio, settings } = this.app;
+        const master = settings.get('hitVolume');
+        const perfect = judgement.grade === GRADE.PERFECT;
+        const track = trackProvider.get(this.level.trackId);
+        if (settings.get('plainHitSounds') || !track || !SCALES[track.scale]) {
+            audio.play(perfect ? 'sfx-perfect' : 'sfx-good', {
+                volume: (perfect ? 0.6 : 0.45) * master,
+                rate: judgement.headshot ? 1.25 : 1,
+            });
+            return;
+        }
+        const { hz } = hitPitch(track, { lane: note.lane, noteIndex: Number.isInteger(note.index) ? note.index : this.beatMap.notes.indexOf(note), mode: track.pitchMode === 'pattern' ? 'pattern' : 'lane' });
+        audio.play('sfx-good', { volume: 0.2 * master });
+        audio.playTone(judgement.headshot ? hz * 2 : hz, { volume: (perfect ? 0.45 : 0.3) * master });
+    }
+
+    /** Headshots over bots hit, and the projected rank (read-only views of the scorer). */
+    updateHudStats() {
+        const { tally } = this.scorer;
+        const hits = tally[GRADE.PERFECT] + tally[GRADE.GOOD] + tally[GRADE.OK];
+        this.app.hud.setStats({ headshots: this.scorer.headshots, hits, rank: this.scorer.rank, judged: this.scorer.judged });
+    }
+
     /**
      * @param {object} note
      * @param {object|null} entry
@@ -663,25 +823,53 @@ export class PlayScreen {
 
         const { hud, audio } = this.app;
         const result = this.scorer.apply(judgement);
+        if (judgement.shotFired !== false) {
+            this.stopQuality.add(judgement.speed);
+            // Practice music runs at 0.75x, so song-time errors are shown as real-time ms.
+            const errorMs = realTimeErrorMs(judgement.timingError, this.practice ? PRACTICE_SPEED : 1);
+            if (errorMs !== null) {
+                this.timingErrorsMs.push(errorMs);
+                if (this.practice) {
+                    this.timingReadout.add(errorMs);
+                    this.app.hud.setHint(this.practiceHint());
+                }
+            }
+        }
         const hit = judgement.grade !== GRADE.MISS;
+        if (this.tutorialProgress) {
+            const id = this.tutorialProgress.stage?.id;
+            if (id === 'stop') {
+                if (judgement.shotFired !== false && judgement.speed > SPEED_GRADE.tight) {
+                    this.tutorialAction('stop', false);
+                }
+            } else if (id === 'time') {
+                this.tutorialAction('time', timeSuccess(judgement));
+            } else if (id === 'aim') {
+                this.tutorialAction('aim', aimSuccess(judgement));
+            }
+        }
 
-        hud.showJudgement(judgement.grade, judgement.reason, result.points, result.bonus);
+        hud.showJudgement(judgement.grade, judgement.reason, result.points, result.bonus, {
+            timingError: judgement.timingError, headshot: judgement.headshot,
+        });
         hud.setScore(this.scorer.score, this.scorer.combo, this.scorer.multiplier);
         hud.setAccuracy(this.scorer.accuracy);
         hud.setFocus(this.scorer.focus / 100);
         hud.setProgress(this.scorer.judged, this.beatMap.total);
+        this.updateHudStats();
 
         if (hit) {
-            hud.showHitmarker(judgement.headshot);
-            audio.play(judgement.grade === GRADE.PERFECT ? 'sfx-perfect' : 'sfx-good', {
-                volume: judgement.grade === GRADE.PERFECT ? 0.6 : 0.45,
-                rate: judgement.headshot ? 1.25 : 1,
-            });
+            this.playHitSound(note, judgement);
+            const perfect = judgement.grade === GRADE.PERFECT;
+            feedbackBus.emit('hit', { perfect, headshot: judgement.headshot });
         } else {
-            audio.play('sfx-miss', { volume: 0.5 });
+            audio.play('sfx-miss', { volume: 0.5 * this.app.settings.get('hitVolume') });
         }
 
         if (entry) {
+            if (hit) {
+                feedbackBus.emit('shatter', { point, headshot: judgement.headshot, perfect: judgement.grade === GRADE.PERFECT });
+            }
             this.targets.resolve(entry, hit, point, judgement.headshot);
         }
 
@@ -722,6 +910,105 @@ export class PlayScreen {
         this.paused = false;
     }
 
+    /** The practice HUD line: loop state, the live readout and the loop keys. */
+    practiceHint() {
+        return practiceHintText({ section: this.section, pendingStartBeat: this.pendingStartBeat, readoutText: this.timingReadout.text(), showLegend: this.timingReadout.last === null || this.pendingStartBeat !== null });
+    }
+
+    /**
+     * Practice loop keys: [ marks the start at the current beat, ] marks the
+     * end and begins looping, \ clears the loop.
+     * @param {string} code
+     */
+    practiceKey(code) {
+        if (!this.practice || this.finished || this.paused || !this.conductor) {
+            return;
+        }
+        const beat = Math.round(this.conductor.beatPosition);
+        if (code === 'BracketLeft') {
+            this.pendingStartBeat = Math.max(0, beat);
+        } else if (code === 'BracketRight' && this.pendingStartBeat !== null) {
+            const section = normaliseSection({ startBeat: this.pendingStartBeat, endBeat: beat }, Infinity);
+            if (section) {
+                this.pendingStartBeat = null;
+                this.setSection(section);
+                return;
+            }
+        } else if (code === 'Backslash') {
+            this.pendingStartBeat = null;
+            if (this.section) {
+                this.setSection(null);
+                return;
+            }
+        } else if (code === 'Enter') {
+            this.endPractice();
+            return;
+        } else {
+            return;
+        }
+        this.app.hud.setHint(this.practiceHint());
+    }
+
+    /** Sets or clears the looping section and rewinds in place. */
+    setSection(section) {
+        this.beatMap = new BeatMap(this.level);
+        const grid = this.level.gridOffset ?? 0;
+        const applied = applySection(this.beatMap, section, grid, this.lead);
+        this.section = applied.section;
+        this.sectionStartSeconds = applied.startSeconds;
+        this.loopPasses = [];
+        this.resetPass();
+    }
+
+    /**
+     * Rewinds the chart, scorer, clock and music to the start of the section
+     * (or the track) without rebuilding the scene. Timing history and stop
+     * stats carry over; each pass keeps its own score and accuracy.
+     */
+    resetPass() {
+        const { audio, settings, hud } = this.app;
+        for (const entry of [...this.targets.entries]) {
+            this.targets.remove(entry);
+        }
+        for (const note of this.beatMap.notes) {
+            note.resolved = false;
+            note.spawned = false;
+            note.grade = null;
+        }
+        this.beatMap.spawnCursor = 0;
+        this.beatMap.pendingCursor = 0;
+        this.firstNoteTime = this.beatMap.notes.length ? this.beatMap.notes[0].time : 0;
+        this.scorer = new Scorer(this.beatMap.total);
+        this.clearedAt = undefined;
+        this.simSongTime = undefined;
+        this.clockMs = 0;
+        this.recorder = new RunRecorder(this.chartId, this.recorderScale, this.runMode);
+        this.lastPerfectStopAt = -Infinity;
+        // Every pass starts from lane centre at rest, so passes are comparable.
+        this.body.x = this.lanes.centre(Math.floor(this.level.lanes / 2));
+        this.body.velocity = 0;
+        // timingErrorsMs deliberately accumulates across passes: the results histogram covers the whole session.
+        hud.setFocus(1);
+        hud.setScore(0, 0, 1);
+        hud.setAccuracy(0);
+        hud.setProgress(0, this.beatMap.total);
+        hud.resetRecent();
+        this.updateHudStats();
+        hud.setHint(this.practiceHint());
+        audio.playMusic(this.level.musicKey, false, this.sectionStartSeconds, PRACTICE_SPEED);
+        this.conductor = new Conductor(() => audio.musicPosition, this.level.bpm, settings.get('audioOffset'), this.level.gridOffset);
+        this.conductor.start();
+    }
+
+    /** Ends a practice session early (loop or not) and shows its results. */
+    endPractice() {
+        if (this.section && this.scorer.judged > 0) {
+            this.loopPasses = recordLoopPass(this.loopPasses, this.scorer);
+            feedbackBus.emit('practiceLoopPass', { passes: this.loopPasses.length });
+        }
+        this.finish(true);
+    }
+
     restart() {
         if (this.finished) {
             return; // the run is over and on its way to the results (and to being saved)
@@ -730,7 +1017,7 @@ export class PlayScreen {
             this.app.showReplay(this.chartId, this.replay);
             return;
         }
-        this.app.showPlay(this.chartId);
+        this.app.showPlay(this.chartId, this.runMode, this.practice && this.section ? { section: this.section } : {});
     }
 
     quit() {
@@ -743,6 +1030,15 @@ export class PlayScreen {
             return;
         }
         this.finished = true;
+        if (this.atlas) {
+            return;
+        }
+        if (this.tutorialProgress && tutorialNeedsRestart(this.tutorialProgress)) {
+            // The chart ran out before the stages were done: go round again on the same stage.
+            this.conductor.stop();
+            this.app.showPlay(this.chartId, 'tutorial', { tutorialProgress: this.tutorialProgress });
+            return;
+        }
         this.conductor.stop();
         this.app.camera.lookEnabled = false;
         this.app.audio.fadeMusic(0, 0.7);
@@ -760,7 +1056,17 @@ export class PlayScreen {
                 return; // the player already left this screen
             }
             this.app.camera.unlock();
-            this.app.showResults(record, this.chartId, log, { replay: Boolean(this.replay), runToken });
+            this.app.showResults(record, this.chartId, log, {
+                replay: Boolean(this.replay),
+                runToken,
+                runMode: this.runMode,
+                timingErrorsMs: this.timingErrorsMs,
+                section: this.practice ? this.section : null,
+                loopPasses: this.practice ? this.loopPasses : [],
+                // Practice timing errors are real-time ms (song-time error / 0.75), not song-time ms,
+                // so a slowed run shows what the player's hands did on the clock.
+                stopQuality: { stopShots: this.stopQuality.stopShots, stopGood: this.stopQuality.stopGood },
+            });
         }, RESULTS_DELAY_MS);
     }
 }

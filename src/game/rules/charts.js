@@ -22,39 +22,16 @@
 
 import { LAYOUT } from './config.js';
 import { CounterStrafeBody } from './CounterStrafeBody.js';
+import { RULES } from './rules.js';
+import { loadChart } from '../charts/chartLoader.js';
 
 // ------------------------------------------------------------------ arenas
+// An arena only names a theme; ThemeProvider (data/themes.json) owns textures,
+// colours and thumbnails, so rules code never holds an asset path.
 export const ARENAS = Object.freeze({
-    range: {
-        floorTexture: 'images/textures/floor-range.png',
-        wallTexture: 'images/textures/wall-range.png',
-        sky: [0.72, 0.78, 0.86],
-        fog: { colour: [0.72, 0.78, 0.86], density: 0.012 },
-        accent: [1.0, 0.54, 0.16],
-        ambient: 0.85,
-        decor: 'crates',
-        thumb: 'images/levels/level-1.png',
-    },
-    neon: {
-        floorTexture: 'images/textures/floor-neon.png',
-        wallTexture: 'images/textures/wall-neon.png',
-        sky: [0.05, 0.04, 0.12],
-        fog: { colour: [0.05, 0.04, 0.12], density: 0.028 },
-        accent: [0.42, 0.89, 1.0],
-        ambient: 0.45,
-        decor: 'neon',
-        thumb: 'images/levels/level-2.png',
-    },
-    vault: {
-        floorTexture: 'images/textures/floor-vault.png',
-        wallTexture: 'images/textures/wall-vault.png',
-        sky: [0.03, 0.08, 0.06],
-        fog: { colour: [0.03, 0.08, 0.06], density: 0.040 },
-        accent: [0.49, 1.0, 0.73],
-        ambient: 0.40,
-        decor: 'racks',
-        thumb: 'images/levels/level-3.png',
-    },
+    range: { theme: 'range' },
+    neon: { theme: 'neon' },
+    vault: { theme: 'vault' },
 });
 
 // ------------------------------------------------------------------ tracks
@@ -77,10 +54,6 @@ export function getTrack(id) {
     return TRACKS.find((track) => track.id === id);
 }
 
-/** @param {string} trackId @returns {string[]} candidate URLs, best first. */
-export function musicUrls(trackId) {
-    return [`audio/music-${trackId}.ogg`, `audio/music-${trackId}.mp3`];
-}
 
 // ------------------------------------------------------------ difficulties
 /**
@@ -106,35 +79,32 @@ const PATTERNS = Object.freeze([
  */
 export const MOVEMENT = Object.freeze({ maxSpeed: 600, accel: 11, friction: 5.2, stopSpeed: 190 });
 
+const R = RULES.difficulties;
+
+/**
+ * Per-difficulty numbers (density, windows, hitbox and spread scale, fail-out,
+ * pass accuracy) come from data/rules.json; only the chart-shape fields
+ * (lanes, scale, inset) live here.
+ */
+function difficultyFrom(id, name, tier, shape) {
+    const rules = R[id];
+    return {
+        id, name, tier, ...shape,
+        targetNps: rules.notesPerSecond,
+        timing: rules.timing,
+        movement: MOVEMENT,
+        passAccuracy: rules.passAccuracy,
+        hitboxScale: rules.hitboxScale,
+        spreadScale: rules.spreadScale,
+        failOut: rules.failOut,
+    };
+}
+
 export const DIFFICULTIES = Object.freeze([
-    {
-        id: 'easy', name: 'Easy', tier: 1, targetNps: 0.9, patterns: [0],
-        lanes: 3, trackScale: 1, laneInset: 0.66,
-        timing: { perfect: 0.065, good: 0.125, ok: 0.190 },
-        movement: MOVEMENT,
-        passAccuracy: 0.50,
-    },
-    {
-        id: 'normal', name: 'Normal', tier: 2, targetNps: 2.2, patterns: [0, 1],
-        lanes: 4, trackScale: 0.84, laneInset: 0.60,
-        timing: { perfect: 0.050, good: 0.100, ok: 0.160 },
-        movement: MOVEMENT,
-        passAccuracy: 0.58,
-    },
-    {
-        id: 'hard', name: 'Hard', tier: 3, targetNps: 2.4, patterns: [1, 2],
-        lanes: 5, trackScale: 0.78, laneInset: 0.55,
-        timing: { perfect: 0.040, good: 0.080, ok: 0.130 },
-        movement: MOVEMENT,
-        passAccuracy: 0.64,
-    },
-    {
-        id: 'expert', name: 'Expert', tier: 4, targetNps: 2.6, patterns: [2, 3],
-        lanes: 5, trackScale: 0.70, laneInset: 0.50,
-        timing: { perfect: 0.034, good: 0.068, ok: 0.110 },
-        movement: MOVEMENT,
-        passAccuracy: 0.70,
-    },
+    difficultyFrom('easy', 'Easy', 1, { lanes: 3, trackScale: 1, laneInset: 0.66 }),
+    difficultyFrom('normal', 'Normal', 2, { lanes: 4, trackScale: 0.84, laneInset: 0.60 }),
+    difficultyFrom('hard', 'Hard', 3, { lanes: 5, trackScale: 0.78, laneInset: 0.55 }),
+    difficultyFrom('expert', 'Expert', 4, { lanes: 5, trackScale: 0.70, laneInset: 0.50 }),
 ]);
 
 /** @param {string} id @returns {object|undefined} */
@@ -143,24 +113,63 @@ export function getDifficulty(id) {
 }
 
 /**
- * @param {number} bpm
- * @param {number} targetNps
- * @param {number[]} [allowed] indexes into PATTERNS this difficulty may use
- * @returns {number[][]} the primary pattern and its variation.
+ * The pattern (beat offsets inside one 4/4 bar) with exactly `count` notes:
+ * the hand-made pattern when there is one, otherwise evenly spaced on the
+ * 8th-note grid (16th-note grid above eight notes).
+ * @param {number} count
+ * @returns {number[]}
  */
-export function patternsFor(bpm, targetNps, allowed = [0, 1, 2, 3]) {
-    // The densest allowed pattern that stays within the target (with a
-    // little headroom), so a fast track thins out rather than turning into
-    // a wall of doubles; the sparsest allowed pattern when none fits.
-    let best = PATTERNS[allowed[0]];
-    for (const index of allowed) {
-        const pattern = PATTERNS[index];
-        const nps = pattern.beats.length * bpm / 240;
-        if (nps <= targetNps * 1.15) {
-            best = pattern;
+export function patternVariantsForCount(count) {
+    const k = Math.max(1, Math.min(16, Math.round(count)));
+    const known = PATTERNS.find((pattern) => pattern.beats.length === k);
+    if (known) {
+        return [known.beats, known.alt];
+    }
+    // No hand-made phrase for this count: syncopate the even grid by pushing
+    // one off-beat note half a step later, so bars still vary in feel while
+    // keeping exactly `k` notes (density is unchanged).
+    const beats = patternForCount(k);
+    const step = 4 / (k <= 8 ? 8 : 16);
+    const alt = beats.slice();
+    for (let i = alt.length - 1; i > 0; i -= 1) {
+        const pushed = alt[i] + step / 2;
+        const next = i + 1 < alt.length ? alt[i + 1] : 4;
+        if (alt[i] % 1 !== 0 && pushed < next) {
+            alt[i] = pushed;
+            break;
         }
     }
-    return [best.beats, best.alt];
+    return [beats, alt];
+}
+
+/**
+ * @param {number} count
+ * @returns {number[]} the main pattern for `count` notes
+ */
+export function patternForCount(count) {
+    const k = Math.max(1, Math.min(16, Math.round(count)));
+    const known = PATTERNS.find((pattern) => pattern.beats.length === k);
+    if (known) {
+        return known.beats;
+    }
+    const grid = k <= 8 ? 8 : 16;
+    const beats = [];
+    for (let i = 0; i < k; i += 1) {
+        beats.push(Math.floor((i * grid) / k) * (4 / grid));
+    }
+    return beats;
+}
+
+/**
+ * @param {number} bpm
+ * @param {number} targetNps notes per second the chart should average
+ * @returns {number[][]} the densest pattern a bar may use, twice (the chart
+ *   generator thins bars to hit `targetNps`; see BeatMap.generate).
+ */
+export function patternsFor(bpm, targetNps) {
+    const perBar = targetNps * (240 / bpm);
+    const pattern = patternForCount(Math.ceil(perBar));
+    return [pattern, pattern];
 }
 
 /** Lanes never get narrower than this, whatever the tempo asks for. */
@@ -210,18 +219,19 @@ const TUTORIAL = Object.freeze({
     difficulty: { id: 'tutorial', name: 'Tutorial' },
     musicKey: 'music-range',
     bpm: 90,
-    bars: 18,
-    firstNoteBar: 5,
+    bars: 24,        // the Range track's length
+    firstNoteBar: 3,
     gridOffset: 0,
     lanes: 3,
     trackScale: 1,
     laneInset: 0.70,
-    patterns: [[0]],
+    patterns: [[0, 2]],  // two bots a bar: enough for 3 stages x 5 actions with room to fail
     timing: { perfect: 0.080, good: 0.140, ok: 0.220 },
     movement: MOVEMENT,
     passAccuracy: 0,
     seed: 707,
-    arena: { ...ARENAS.range, accent: [0.49, 1.0, 0.73] },
+    // tactical range: the light bone room (vault textures and acid accent) dressed with crates
+    arena: { ...ARENAS.vault, decor: 'crates' },
 });
 
 // ------------------------------------------------------------------ builds
@@ -231,7 +241,7 @@ const TUTORIAL = Object.freeze({
  * @param {object} [extra] overrides (daily uses a different id, name and seed)
  */
 function buildTrackChart(track, difficulty, extra = {}) {
-    const patterns = patternsFor(track.bpm, difficulty.targetNps, difficulty.patterns);
+    const patterns = patternsFor(track.bpm, difficulty.targetNps);
     return {
         chartId: `t:${track.id}:${difficulty.id}`,
         kind: 'track',
@@ -249,6 +259,7 @@ function buildTrackChart(track, difficulty, extra = {}) {
         trackScale: trackScaleFor(track.bpm, patterns, difficulty),
         laneInset: difficulty.laneInset,
         patterns,
+        noteRate: difficulty.targetNps,
         timing: difficulty.timing,
         movement: difficulty.movement,
         passAccuracy: difficulty.passAccuracy,
@@ -328,7 +339,7 @@ export function buildCustomChart(song, difficultyId) {
     const bars = Math.max(4, Math.floor((song.duration - song.gridOffset - 2) / (4 * spb)));
     const arenaKeys = Object.keys(ARENAS);
     const hash = hashString(song.id);
-    const patterns = patternsFor(song.bpm, difficulty.targetNps, difficulty.patterns);
+    const patterns = patternsFor(song.bpm, difficulty.targetNps);
     const chart = {
         chartId: `custom:${song.id}:${difficulty.id}`,
         kind: 'custom',
@@ -346,6 +357,7 @@ export function buildCustomChart(song, difficultyId) {
         trackScale: trackScaleFor(song.bpm, patterns, difficulty),
         laneInset: difficulty.laneInset,
         patterns,
+        noteRate: difficulty.targetNps,
         timing: difficulty.timing,
         movement: difficulty.movement,
         passAccuracy: difficulty.passAccuracy,
@@ -358,6 +370,34 @@ export function buildCustomChart(song, difficultyId) {
 }
 
 // ----------------------------------------------------------------- resolve
+/**
+ * The hand-authored chart for a track and difficulty, if charts/ has one:
+ * its notes, version and hash go on the definition.  A file that fails
+ * verification (tampered hash, malformed) makes the chart unresolvable
+ * rather than silently falling back to generated notes.
+ */
+function authoredFor(chartId) {
+    const loaded = loadChart(chartId);
+    if (!loaded.ok) {
+        return loaded.reason === 'none' ? {} : { invalid: loaded.reason };
+    }
+    const file = loaded.chart;
+    return {
+        authoredNotes: file.notes,
+        chartVersion: file.chartVersion,
+        contentHash: file.contentHash,
+    };
+}
+
+/**
+ * The generated (procedural) chart for a track and difficulty, ignoring any
+ * authored file.  Used by tools/chart-hash.mjs to author the files.
+ * @param {string} trackId @param {string} difficultyId
+ */
+export function buildProceduralChart(trackId, difficultyId) {
+    return buildTrackChart(getTrack(trackId), getDifficulty(difficultyId));
+}
+
 /**
  * @param {string} chartId
  * @returns {object|undefined} the chart definition, or undefined when the id
@@ -374,7 +414,11 @@ export function resolveChart(chartId) {
     if (parts[0] === 't' && parts.length === 3) {
         const track = getTrack(parts[1]);
         const difficulty = getDifficulty(parts[2]);
-        return track && difficulty ? buildTrackChart(track, difficulty) : undefined;
+        if (!track || !difficulty) {
+            return undefined;
+        }
+        const authored = authoredFor(chartId);
+        return authored.invalid ? undefined : buildTrackChart(track, difficulty, authored);
     }
     if (parts[0] === 'daily' && parts.length === 2) {
         return buildDailyChart(parts[1]);
@@ -394,21 +438,4 @@ export function allTrackCharts() {
         }
     }
     return charts;
-}
-
-/**
- * The difficulty a player has to clear to open the next one on a track:
- * Easy and Normal are always open, Hard needs Normal passed, Expert needs
- * Hard passed.
- * @param {string} difficultyId
- * @returns {string|null} the difficulty that must be passed first
- */
-export function unlockRequirement(difficultyId) {
-    if (difficultyId === 'hard') {
-        return 'normal';
-    }
-    if (difficultyId === 'expert') {
-        return 'hard';
-    }
-    return null;
 }

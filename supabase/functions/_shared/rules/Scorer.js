@@ -14,6 +14,7 @@ import {
     FOCUS_MAX,
     GRADE,
 } from './config.js';
+import { RANK_A_ACCURACY } from './rules.js';
 
 /** Histogram shape shared by the client and the stats page. */
 export const TIMING_BUCKETS = 20;
@@ -174,7 +175,7 @@ export class Scorer {
         if (this.tally[GRADE.MISS] === 0 && accuracy >= 0.97) {
             return 'S';
         }
-        if (accuracy >= 0.9) {
+        if (accuracy >= RANK_A_ACCURACY) {
             return 'A';
         }
         if (accuracy >= 0.78) {

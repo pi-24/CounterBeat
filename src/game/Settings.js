@@ -8,6 +8,10 @@
  * audience already knows.
  */
 import { store } from '../core/Storage.js';
+import { sanitiseBindings } from './input/bindings.js';
+import { sanitisePadBindings } from '../input/padBindings.js';
+import { padSettingDefaults, PAD_RANGES } from '../input/gamepadConfig.js';
+import { PALETTE_IDS, migratePaletteId } from './feel/judgementPalette.js';
 import { DEFAULT_SETTINGS, VALORANT_SENS_RATIO, YAW_PER_COUNT, MOVEMENT_SCALE } from './rules/config.js';
 
 const KEY = 'settings';
@@ -16,7 +20,7 @@ const REMOTE_SAVE_DELAY_MS = 800;
 export class Settings {
     constructor(storage = store) {
         this.storage = storage;
-        this.values = { ...DEFAULT_SETTINGS, ...Settings.sanitise(this.storage.read(KEY, {})) };
+        this.values = { ...DEFAULT_SETTINGS, ...padSettingDefaults(), bindings: { ...DEFAULT_SETTINGS.bindings }, ...Settings.sanitise(this.storage.read(KEY, {})) };
         /** @type {Set<(values:object) => void>} */
         this.listeners = new Set();
         /** @type {import('../core/backend/Backend.js').Backend|null} */
@@ -80,7 +84,7 @@ export class Settings {
     }
 
     reset() {
-        this.values = { ...DEFAULT_SETTINGS };
+        this.values = { ...DEFAULT_SETTINGS, ...padSettingDefaults(), bindings: { ...DEFAULT_SETTINGS.bindings } };
         this.storage.write(KEY, this.values);
         this.scheduleRemoteSave();
         for (const listener of this.listeners) {
@@ -142,6 +146,9 @@ export class Settings {
         if ('crosshairDot' in changes) {
             out.crosshairDot = Boolean(changes.crosshairDot);
         }
+        if ('targetSkin' in changes && /^[\w-]{1,32}$/.test(String(changes.targetSkin))) {
+            out.targetSkin = String(changes.targetSkin);
+        }
         if ('viewBob' in changes) {
             out.viewBob = Boolean(changes.viewBob);
         }
@@ -158,6 +165,42 @@ export class Settings {
         }
         if ('noteHighway' in changes) {
             out.noteHighway = Boolean(changes.noteHighway);
+        }
+        if ('reducedEffects' in changes) {
+            out.reducedEffects = Boolean(changes.reducedEffects);
+        }
+        if ('windowed' in changes) {
+            out.windowed = Boolean(changes.windowed);
+        }
+        if ('plainHitSounds' in changes) {
+            out.plainHitSounds = Boolean(changes.plainHitSounds);
+        }
+        if ('hitVolume' in changes) {
+            out.hitVolume = Math.round(Settings.clamp(Number(changes.hitVolume), 0, 1) * 100) / 100;
+        }
+        for (const name of ['musicVolume', 'sfxVolume']) {
+            if (name in changes) {
+                out[name] = Math.round(Settings.clamp(Number(changes[name]), 0, 1) * 100) / 100;
+            }
+        }
+        if ('judgementPalette' in changes && PALETTE_IDS.includes(migratePaletteId(changes.judgementPalette))) {
+            out.judgementPalette = migratePaletteId(changes.judgementPalette);
+        }
+        for (const name of ['reducedFlash', 'beatCue']) {
+            if (name in changes) {
+                out[name] = Boolean(changes[name]);
+            }
+        }
+        if ('bindings' in changes) {
+            out.bindings = sanitiseBindings(changes.bindings);
+        }
+        if ('padBindings' in changes) {
+            out.padBindings = sanitisePadBindings(changes.padBindings);
+        }
+        for (const [name, { min, max }] of Object.entries(PAD_RANGES)) {
+            if (name in changes) {
+                out[name] = Math.round(Settings.clamp(Number(changes[name]), min, max) * 100) / 100;
+            }
         }
         if ('audioOffset' in changes) {
             out.audioOffset = Settings.clamp(Number(changes.audioOffset), -0.25, 0.25);

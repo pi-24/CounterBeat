@@ -1,0 +1,33 @@
+{
+  "appId": 480,
+  "appIdIsPlaceholder": true,
+  "note": "480 is Valve's public Spacewar test app. Replace with the real App ID once the creator has created the Steamworks app.",
+  "achievements": [
+    "ACH_FIRST_CLEAR",
+    "ACH_STARS_10",
+    "ACH_STARS_25",
+    "ACH_STARS_40",
+    "ACH_CAMPAIGN_COMPLETE",
+    "ACH_FIRST_S_RANK",
+    "ACH_FULL_COMBO",
+    "ACH_HARD_CLEAR",
+    "ACH_EXPERT_CLEAR",
+    "ACH_TUTORIAL_COMPLETE",
+    "ACH_PRACTICE_LOOP",
+    "ACH_FIRST_PERFECT_STOP",
+    "ACH_PERFECT_STOPS_250",
+    "ACH_HEADSHOTS_100"
+  ],
+  "cloud": {
+    "file": "counterbeat-save.json",
+    "root": "WinAppDataRoaming",
+    "subdirectory": "CounterBeat",
+    "recursive": false,
+    "platforms": [
+      "Windows"
+    ],
+    "maxFiles": 1,
+    "maxBytes": 1048576,
+    "note": "Auto-Cloud config for the Steamworks partner site; see docs/steam-cloud.md"
+  }
+}

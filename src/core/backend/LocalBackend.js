@@ -6,6 +6,8 @@
  * tests run against.  There is no server, so the replay validator runs in
  * the page instead, and runs are stored with the score it recomputes.
  */
+import { canSubmitRankedRun } from '../../net/submit.js';
+import { currentChartVersions } from '../../net/versions.js';
 import { AuthService } from '../AuthService.js';
 import { UserRepository } from '../UserRepository.js';
 import { ScoreRepository } from '../ScoreRepository.js';
@@ -14,6 +16,8 @@ import { validateRun } from '../../game/rules/validateRun.js';
 import { resolveChart } from '../../game/rules/charts.js';
 
 const SETTINGS_KEY = 'settings';
+/** The account-side copy; ProgressStore keeps the device copy under 'progress'. */
+const PROGRESS_KEY = 'account.progress';
 
 export class LocalBackend {
     constructor() {
@@ -96,12 +100,24 @@ export class LocalBackend {
             return { saved: false, accepted: false, rejected: true, reason: 'unknown chart',
                 score: record.score, personalBest: false };
         }
+        const gate = canSubmitRankedRun({ chartId: record.chartId, kind: record.kind, difficulty: record.difficulty,
+            mode: log?.mode, speed: log?.speed });
+        if (!gate.ok) {
+            // Easy, Normal, Campaign: kept as a local personal best only, never on the leaderboard (AC12).
+            if (log?.mode === 'practice' || record.kind === 'tutorial') {
+                return { saved: false, accepted: false, ranked: false, localOnly: true, reason: gate.reason,
+                    score: record.score, personalBest: false };
+            }
+            const stored = this.scores.add({ ...record, ...owner, chartVersion: level.chartVersion ?? 0, verified: false }, log);
+            return { saved: true, accepted: true, ranked: false, localOnly: true, reason: gate.reason,
+                score: stored.score, personalBest: !previous || stored.score > previous.score };
+        }
         const verdict = log ? validateRun(level, log, record.score) : { ok: true, record };
         if (!verdict.ok) {
             return { saved: false, accepted: false, rejected: true, reason: verdict.reason,
                 score: record.score, personalBest: false };
         }
-        const stored = this.scores.add({ ...verdict.record, ...owner, verified: Boolean(log) }, log);
+        const stored = this.scores.add({ ...verdict.record, ...owner, chartVersion: level.chartVersion ?? 0, verified: Boolean(log) }, log);
         return {
             saved: true,
             accepted: true,
@@ -132,7 +148,7 @@ export class LocalBackend {
     }
 
     async leaderboard(chartFilter = 'best') {
-        return this.scores.leaderboard(this.users.all(), chartFilter);
+        return this.scores.leaderboard(this.users.all(), chartFilter, currentChartVersions());
     }
 
     async replay(runId) {
@@ -151,5 +167,13 @@ export class LocalBackend {
 
     async saveSettings(values) {
         store.write(SETTINGS_KEY, values);
+    }
+
+    async loadProgress() {
+        return store.read(PROGRESS_KEY, null);
+    }
+
+    async saveProgress(values) {
+        store.write(PROGRESS_KEY, values);
     }
 }

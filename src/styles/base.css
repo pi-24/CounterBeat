@@ -4,27 +4,6 @@
    ========================================================================== */
 
 :root {
-    /* Surfaces */
-    --c-bg: #0b0e15;
-    --c-bg-alt: #10141d;
-    --c-surface: #161c28;
-    --c-surface-2: #1e2533;
-    --c-line: #2a3444;
-
-    /* Text */
-    --c-text: #e8edf6;
-    --c-text-dim: #98a4b8;
-    --c-text-faint: #6b7789;
-
-    /* Accents */
-    --c-accent: #ff8a2a;
-    --c-accent-dk: #d96a12;
-    --c-mint: #7effba;
-    --c-cyan: #6ce2ff;
-    --c-pink: #ff5cb0;
-    --c-danger: #ff5f6d;
-    --c-warn: #ffd166;
-
     /* Spacing scale */
     --s-1: 0.25rem;
     --s-2: 0.5rem;
@@ -35,17 +14,15 @@
     --s-7: 3rem;
     --s-8: 4rem;
 
-    --radius: 10px;
-    --radius-lg: 16px;
+    /* Square corners: the editorial system has no rounded cards */
+    --radius: 0;
+    --radius-lg: 0;
 
-    --font-body: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --font-display: "Segoe UI Semibold", "Trebuchet MS", Verdana, sans-serif;
-    --font-mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
 
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-    --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --shadow: none;
+    --shadow-sm: none;
 
-    --transition: 160ms ease;
+    --transition: 120ms ease;
 }
 
 *,
@@ -71,12 +48,8 @@ body {
     display: flex;
     flex-direction: column;
     background-color: var(--c-bg);
-    background-image:
-        radial-gradient(circle at 15% -10%, rgba(255, 138, 42, 0.14), transparent 45%),
-        radial-gradient(circle at 85% 0%, rgba(108, 226, 255, 0.10), transparent 40%);
-    background-attachment: fixed;
     color: var(--c-text);
-    font-family: var(--font-body);
+    font-family: var(--body);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
 }
@@ -85,10 +58,12 @@ h1,
 h2,
 h3,
 h4 {
-    font-family: var(--font-display);
-    line-height: 1.2;
+    font-family: var(--display);
+    font-weight: 400;
+    text-transform: uppercase;
+    line-height: 1;
     margin: 0 0 var(--s-3);
-    letter-spacing: -0.01em;
+    letter-spacing: 0.005em;
 }
 
 h1 {
@@ -109,14 +84,14 @@ p {
 }
 
 a {
-    color: var(--c-mint);
+    color: var(--c-primary);
     text-decoration: none;
     transition: color var(--transition);
 }
 
 a:hover,
 a:focus-visible {
-    color: #ffffff;
+    color: var(--c-text);
     text-decoration: underline;
 }
 
@@ -133,65 +108,107 @@ li {
 code,
 kbd,
 .mono {
-    font-family: var(--font-mono);
+    font-family: var(--mono);
 }
 
 kbd {
-    display: inline-block;
-    min-width: 1.9rem;
-    padding: 0.15rem 0.45rem;
-    border: 1px solid var(--c-line);
-    border-bottom-width: 3px;
-    border-radius: 6px;
-    background: var(--c-surface-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7rem;
+    height: 1.7rem;
+    padding: 0 0.4rem;
+    border: 2px solid var(--paper);
+    background: transparent;
     color: var(--c-text);
-    font-size: 0.85rem;
-    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 :focus-visible {
-    outline: 3px solid var(--c-mint);
-    outline-offset: 2px;
+    outline: 3px solid var(--acid);
+    outline-offset: 3px;
 }
 
 /* --------------------------------------------------------------- buttons */
+/* Thick paper outline on ink; hover inverts to a paper slab; focus is the acid slab with a hard offset shadow. */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--s-2);
-    padding: 0.7rem 1.4rem;
-    border: 1px solid transparent;
-    border-radius: var(--radius);
-    background: var(--c-surface-2);
-    color: var(--c-text);
-    font: inherit;
-    font-weight: 600;
+    gap: var(--s-3);
+    min-height: 3rem;
+    padding: 0.55rem 1.3rem;
+    border: var(--rule) solid var(--paper);
+    border-radius: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     text-decoration: none;
     cursor: pointer;
-    transition: transform var(--transition), background var(--transition),
-        border-color var(--transition), color var(--transition);
+    transition: background var(--transition), border-color var(--transition),
+        color var(--transition), box-shadow var(--transition);
 }
 
-.btn:hover,
-.btn:focus-visible {
-    transform: translateY(-2px);
+.btn:hover {
+    background: var(--paper);
+    border-color: var(--paper);
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.btn:focus-visible,
+.btn.is-focus {
+    background: var(--acid);
+    border-color: var(--acid);
+    color: var(--ink);
+    box-shadow: var(--offset-shadow);
+    outline: none;
     text-decoration: none;
 }
 
 .btn:active {
-    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* Windows high-contrast: system colours replace ours, so keep a real outline on focus. */
+@media (forced-colors: active) {
+    .btn:focus-visible,
+    .btn.is-focus {
+        outline: 3px solid Highlight;
+        outline-offset: 3px;
+    }
+}
+
+.btn kbd {
+    border-color: currentColor;
+    color: inherit;
 }
 
 .btn--primary {
-    background: linear-gradient(135deg, var(--c-accent), var(--c-accent-dk));
-    color: #17110a;
+    background: var(--acid);
+    border-color: var(--acid);
+    color: var(--ink);
 }
 
-.btn--primary:hover,
+.btn--primary:hover {
+    background: var(--acid-dk);
+    border-color: var(--acid-dk);
+    color: var(--ink);
+}
+
 .btn--primary:focus-visible {
-    background: linear-gradient(135deg, #ffa257, var(--c-accent));
-    color: #17110a;
+    background: var(--acid);
+    border-color: var(--paper);
+    color: var(--ink);
 }
 
 .btn--ghost {
@@ -200,16 +217,30 @@ kbd {
     color: var(--c-text-dim);
 }
 
-.btn--ghost:hover,
-.btn--ghost:focus-visible {
-    border-color: var(--c-mint);
-    color: var(--c-mint);
+.btn--ghost:hover {
+    border-color: var(--paper);
+    color: var(--paper);
 }
 
 .btn--danger {
     background: transparent;
-    border-color: rgba(255, 95, 109, 0.5);
-    color: var(--c-danger);
+    border-style: dashed;
+    color: var(--paper);
+}
+
+/* Destructive: a warning cross before the label (shape, not hue) and an inverted paper slab on
+   hover, so it never reads as a plain ghost button. */
+.btn--danger::before {
+    content: "\00D7";
+    margin-right: 0.5em;
+    font-size: 0.85em;
+}
+
+.btn--danger:hover,
+.btn--danger:focus-visible {
+    background: var(--paper);
+    color: var(--ink);
+    border-style: solid;
 }
 
 .btn--block {
@@ -219,7 +250,7 @@ kbd {
 .btn[disabled] {
     opacity: 0.45;
     cursor: not-allowed;
-    transform: none;
+    box-shadow: none;
 }
 
 /* ----------------------------------------------------------------- forms */
@@ -231,9 +262,11 @@ kbd {
     display: block;
     margin-bottom: var(--s-2);
     color: var(--c-text);
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 .field__hint {
@@ -246,8 +279,8 @@ kbd {
 .field__control {
     width: 100%;
     padding: 0.7rem 0.85rem;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
+    border: 2px solid var(--c-line);
+    border-radius: 0;
     background: var(--c-bg-alt);
     color: var(--c-text);
     font: inherit;
@@ -259,8 +292,8 @@ kbd {
 }
 
 .field__control:focus {
-    border-color: var(--c-mint);
-    box-shadow: 0 0 0 3px rgba(126, 255, 186, 0.15);
+    border-color: var(--acid);
+    box-shadow: 4px 4px 0 var(--acid);
     outline: none;
 }
 
@@ -274,11 +307,12 @@ kbd {
 
 .field--invalid .field__control {
     border-color: var(--c-danger);
-    box-shadow: 0 0 0 3px rgba(255, 95, 109, 0.12);
+    border-style: dashed;
+    box-shadow: none;
 }
 
 .field--valid .field__control {
-    border-color: rgba(126, 255, 186, 0.55);
+    border-color: var(--mix-prim-55);
 }
 
 select.field__control {

@@ -6,27 +6,58 @@
  * stays a self-contained simulation and the website keeps ownership of the
  * player's data.
  */
+import { canSubmitRankedRun } from '../net/submit.js';
+import { LocalBestStore } from '../net/localBest.js';
+import { store } from '../core/Storage.js';
+import { applyPlatform, setDesktopWindowed } from '../platform/platform.js';
 import { initNavigation } from '../ui/Navigation.js';
-import { GameApp } from '../game/GameApp.js';
 import { REPLAYABLE_VERSIONS } from '../game/RunRecorder.js';
-import { TRACKS, DIFFICULTIES, resolveChart } from '../game/rules/charts.js';
-import { GRADE_LABEL } from '../game/rules/config.js';
+import { resolveChart } from '../game/rules/charts.js';
+import { bootCloudSave } from '../progress/cloudSave.js';
 import { settings } from '../game/Settings.js';
-import { formatScore, formatAccuracy, el } from '../ui/format.js';
+import { ProgressStore } from '../game/progress/store.js';
+import { shopCatalogue } from '../game/providers/index.js';
+import { formatScore } from '../ui/format.js';
+import { RunHistory } from '../ui/runHistory.js';
 import { toast } from '../ui/Toast.js';
+import { early } from './game-early.js';
+import { parseAtlasParams, parseAtlasClean, atlasServices, memoryStorage, showAtlasScene, markAtlasReady } from '../game/atlasHook.js';
 
+
+
+const platform = applyPlatform();
+// Desktop: merge the Steam Cloud save file before anything reads settings/progress.
+if (!parseAtlasParams(window.location.search)) bootCloudSave(store);
 const backend = await initNavigation('game');
 await settings.sync(backend);
 
-const user = backend.currentUser();
-const guestNotice = document.getElementById('guestNotice');
-const sessionLog = document.getElementById('sessionLog');
-const personalBests = document.getElementById('personalBests');
-
-if (!user) {
-    guestNotice.hidden = false;
+if (platform === 'desktop') {
+    for (const node of document.querySelectorAll('[data-desktop-only]')) {
+        node.hidden = false;
+    }
+    for (const node of document.querySelectorAll('[data-desktop-quit]')) {
+        node.addEventListener('click', () => window.counterbeatDesktop.quit?.());
+    }
+    setDesktopWindowed(settings.get('windowed'));
+    let lastWindowed = settings.get('windowed');
+    settings.onChange((values) => {
+        if (values.windowed !== lastWindowed) {
+            lastWindowed = values.windowed;
+            setDesktopWindowed(values.windowed);
+        }
+    });
+    // Alt+Enter is handled by the main process; mirror it into the saved setting.
+    window.counterbeatDesktop.onWindowedChange?.((value) => settings.update({ windowed: value }));
 }
 
+const starProgress = new ProgressStore(undefined, { catalogue: shopCatalogue });
+// The screenshot hook (?atlas_scene=) never touches saved progress.
+const atlasParams = parseAtlasParams(window.location.search);
+if (!atlasParams) {
+    await starProgress.sync(backend);
+}
+
+const user = backend.currentUser();
 /**
  * Best score and pass state per chart over every run the player has stored
  * (not just the recent ones), cached so the menu can read it synchronously.
@@ -34,8 +65,11 @@ if (!user) {
  */
 let progress = user ? await loadProgress() : new Map();
 
-/** Guest progress and scores only last as long as the page is open. */
-const guestState = { passed: new Set(), bestByChart: new Map() };
+/** Durable local bests and passes for runs that are never ranked (guests; Easy, Normal, Campaign). */
+const localBests = new LocalBestStore(store, user ? user.id : 'guest');
+
+/** Last session and best ranks, for the main menu's preview panel (local only). */
+const history = new RunHistory(store);
 
 /** @returns {Promise<Map<string, object>>} */
 async function loadProgress() {
@@ -50,6 +84,24 @@ async function loadProgress() {
 /** @param {string} chartId */
 function bestOf(chartId) {
     return progress.get(chartId)?.bestScore ?? 0;
+}
+
+/**
+ * Loads a stored replay for playback, or null when it is unavailable.
+ * @param {string} runId
+ * @returns {Promise<{chartId:string, log:object, run:object}|null>}
+ */
+async function loadReplay(runId) {
+    try {
+        const found = await backend.replay(runId);
+        if (!found || !resolveChart(found.run.chartId) || !REPLAYABLE_VERSIONS.includes(found.log.version)) {
+            return null;
+        }
+        return { chartId: found.run.chartId, log: found.log, run: found.run };
+    } catch (error) {
+        console.warn(error);
+        return null;
+    }
 }
 
 /** A replay requested in the URL (?replay=<run id>), loaded before boot. */
@@ -74,8 +126,29 @@ async function pendingReplay() {
 
 /** @type {import('../game/GameApp.js').GameServices} */
 const services = {
+    progress: starProgress,
+    history,
+
     getPlayerName() {
         return user ? user.displayName : 'Guest';
+    },
+
+    getUserId() {
+        return user ? user.id : null;
+    },
+
+    /** Best verified run per player on a chart, for the results leaderboard. */
+    async leaderboard(chartId) {
+        return backend.leaderboard(chartId);
+    },
+
+    /** A stored replay for the leaderboard's watch buttons (null with a toast when unavailable). */
+    async replay(runId) {
+        const found = await loadReplay(runId);
+        if (!found) {
+            toast.error("That replay isn't available. Only each player's best run on a chart keeps its replay.");
+        }
+        return found;
     },
 
     isLoggedIn() {
@@ -84,13 +157,13 @@ const services = {
 
     hasPassed(chartId) {
         if (!user) {
-            return guestState.passed.has(chartId);
+            return localBests.hasPassed(chartId);
         }
-        return Boolean(progress.get(chartId)?.passed);
+        return Boolean(progress.get(chartId)?.passed) || localBests.hasPassed(chartId);
     },
 
     getPersonalBest(chartId) {
-        return user ? bestOf(chartId) : (guestState.bestByChart.get(chartId) ?? 0);
+        return user ? Math.max(bestOf(chartId), localBests.bestOf(chartId)) : localBests.bestOf(chartId);
     },
 
     startRun(chartId) {
@@ -99,17 +172,20 @@ const services = {
     },
 
     async onRunComplete(record, log, runToken) {
+        history.record(record, { mode: log?.mode });
         if (!user) {
-            const previous = guestState.bestByChart.get(record.chartId) ?? 0;
-            if (record.score > previous) {
-                guestState.bestByChart.set(record.chartId, record.score);
-            }
-            if (record.passed) {
-                guestState.passed.add(record.chartId);
-            }
-            renderPersonalBests();
+            const { personalBest } = localBests.record(record);
             toast.info('Guest run finished. Log in before playing to save scores to the rankings.');
-            return { saved: false, personalBest: record.score > previous, score: record.score };
+            return { saved: false, localOnly: true, reason: 'guest', personalBest, score: record.score };
+        }
+
+        // Easy, Normal, Campaign and Practice never reach the ranked server:
+        // they keep a local personal best only (AC12).
+        const gate = canSubmitRankedRun({ chartId: record.chartId, kind: record.kind, difficulty: record.difficulty, mode: log?.mode, speed: log?.speed });
+        if (!gate.ok) {
+            runToken?.catch?.(() => {});
+            const { personalBest } = localBests.record(record);
+            return { saved: true, localOnly: true, reason: gate.reason, personalBest, score: record.score };
         }
 
         const token = runToken ? await runToken : null;
@@ -128,7 +204,6 @@ const services = {
         }
 
         progress = await loadProgress();
-        renderPersonalBests();
         if (record.kind === 'custom') {
             toast.success(result.personalBest
                 ? `New personal best on ${record.levelName}: ${formatScore(result.score)} (your own song, not ranked).`
@@ -141,78 +216,40 @@ const services = {
         return { saved: true, personalBest: result.personalBest, score: result.score };
     },
 
-    onJudgement(judgement) {
-        appendToSessionLog(judgement);
-    },
+    onJudgement() {},
 };
 
-/** @param {object} judgement */
-function appendToSessionLog(judgement) {
-    if (sessionLog.dataset.ready !== 'true') {
-        sessionLog.replaceChildren();
-        sessionLog.dataset.ready = 'true';
+/** Embedded launch (Play on the web pages): chrome hidden, a way back to the site. */
+function setupEmbedded() {
+    if (new URLSearchParams(window.location.search).get('embed') !== '1' || window.parent === window) {
+        return;
     }
-    const row = el('div', 'session-log__row');
-    const flags = [judgement.counterStrafed ? '+CS' : '', judgement.headshot ? 'HS' : '']
-        .filter(Boolean).join(' ');
-    const label = flags ? `${GRADE_LABEL[judgement.grade]} ${flags}` : GRADE_LABEL[judgement.grade];
-    const detail = judgement.grade === 'miss'
-        ? judgement.reason
-        : `${judgement.timingError >= 0 ? '+' : ''}${Math.round(judgement.timingError * 1000)} ms  ${Math.round(judgement.speed)} u/s`;
-    row.append(el('span', `session-log__grade--${judgement.grade}`, label), el('span', '', detail));
-    sessionLog.prepend(row);
-    while (sessionLog.childElementCount > 40) {
-        sessionLog.lastElementChild.remove();
+    document.body.classList.add('is-embedded');
+    const exit = document.getElementById('embedExit');
+    if (exit) {
+        exit.hidden = false;
+        exit.addEventListener('click', () => {
+            window.parent.postMessage({ type: 'counterbeat-exit' }, window.location.origin);
+        });
     }
 }
 
-function renderPersonalBests() {
-    personalBests.replaceChildren();
-    const list = el('ul', 'rail__list');
-    for (const track of TRACKS) {
-        let best = 0;
-        let bestDifficulty = null;
-        for (const difficulty of DIFFICULTIES) {
-            const score = services.getPersonalBest(`t:${track.id}:${difficulty.id}`);
-            if (score > best) {
-                best = score;
-                bestDifficulty = difficulty;
-            }
-        }
-        const item = document.createElement('li');
-        item.append(
-            el('span', '', track.name),
-            el('span', 'mono', best ? `${formatScore(best)} · ${bestDifficulty.name}` : '-'),
-        );
-        list.append(item);
-    }
-    personalBests.append(list);
-
-    let best = null;
-    for (const entry of progress.values()) {
-        if ((entry.kind === 'track' || entry.kind === 'daily') && (best === null || entry.maxAccuracy > best.maxAccuracy)) {
-            best = entry;
-        }
-    }
-    if (best && best.maxAccuracy > 0) {
-        const name = resolveChart(best.chartId)?.name ?? best.chartId;
-        personalBests.append(el('p', 'card__foot',
-            `Best accuracy so far: ${formatAccuracy(best.maxAccuracy)} on ${name}.`));
-    }
-}
-
-renderPersonalBests();
+setupEmbedded();
 
 /** Starts the game, or explains why it could not start. */
 async function boot() {
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('gameCanvas');
-    const loadingText = document.getElementById('loadingText');
 
     try {
         const replay = await pendingReplay();
+        const { GameApp } = await import('../game/GameApp.js');
         const app = new GameApp({
+            early,
             replay,
+            skipStart: Boolean(atlasParams),
+            achievements: !atlasParams,
+            storage: atlasParams ? memoryStorage() : undefined,
             canvas,
             stage,
             hudRoot: document.getElementById('hud'),
@@ -224,12 +261,17 @@ async function boot() {
                 calibration: document.getElementById('calibrationOverlay'),
             },
             settingsForm: document.getElementById('settingsForm'),
-            services,
-            onProgress(done, total) {
-                loadingText.textContent = `Loading audio ${done}/${total}…`;
-            },
+            services: atlasParams ? atlasServices(services, { clean: parseAtlasClean(window.location.search) }) : services,
         });
         await app.boot();
+        if (atlasParams) {
+            await showAtlasScene(app, atlasParams);
+        } else {
+            // Plain load too: the splash is on screen, but the flag waits until the lazily loaded
+            // chunks and streamed audio are in, so a screenshot harness never stops the server
+            // mid-fetch.
+            markAtlasReady(app);
+        }
     } catch (error) {
         console.error(error);
         showError(error instanceof Error ? error.message : String(error));

@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CounterBeat Bot Concepts</title>
+<style>
+:root{
+  --bg:#0b0d14; --panel:#131722; --panel2:#181d2b; --line:#262c3d; --ink:#e8ecf4; --mute:#8d96ab;
+  --hot:#ff4f9a; --cool:#36f0ff; --lime:#b8ff2e; --warn:#ffd23f;
+  --check1:#1a1f2d; --check2:#151927;
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  --sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+a{color:var(--cool)}
+.wrap{max-width:1140px;margin:0 auto;padding:28px 16px 80px}
+header.top{display:flex;flex-wrap:wrap;gap:18px 32px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+h1{font-size:30px;line-height:1.1;margin:0;letter-spacing:-.01em}
+h1 b{color:var(--hot)}
+.kicker{font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--cool);margin-bottom:10px}
+.lede{color:var(--mute);max-width:640px;margin:10px 0 0}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:600 13px/1 var(--sans);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+button:hover{border-color:#3a4258}
+button[aria-pressed="true"]{background:#23304a;border-color:var(--cool);color:#fff}
+button:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:10px;padding:12px 14px;color:var(--mute);font-size:13.5px;margin:0 0 26px}
+.note code{font:12.5px var(--mono);color:var(--ink)}
+
+/* range backdrops */
+.range-dark{background:
+  linear-gradient(180deg,rgba(255,79,154,0) 0 54%,rgba(255,79,154,.35) 55%,rgba(255,79,154,0) 57%),
+  repeating-linear-gradient(90deg,rgba(54,240,255,.10) 0 1px,transparent 1px 28px),
+  linear-gradient(180deg,#070914 0%,#11163a 55%,#0c1030 56%,#05060f 100%);}
+.range-light{background:
+  repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 46px),
+  linear-gradient(180deg,#d9dce1 0%,#c9cdd3 55%,#a9aeb6 56%,#bfc3c9 100%);}
+.pad{position:absolute;left:50%;transform:translateX(-50%);border-radius:50%}
+.range-dark .pad{background:radial-gradient(closest-side,rgba(54,240,255,.45),rgba(54,240,255,.08) 70%,transparent);box-shadow:0 0 0 1px rgba(54,240,255,.5) inset}
+.range-light .pad{background:radial-gradient(closest-side,#8d939c,#9fa5ad 70%,transparent);box-shadow:0 0 0 1.5px #e0b300 inset}
+
+/* lineup */
+.lineup{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:34px}
+.lineup .scene{position:relative;height:150px;border-radius:12px;overflow:hidden;border:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-around;padding:0 6px 26px}
+.lineup .slot{position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;background:none;border:0;padding:0}
+.lineup .slot svg{position:relative;z-index:1;display:block}
+.lineup .slot .pad{bottom:-5px;width:42px;height:11px}
+.lineup .lbl{position:absolute;top:10px;left:12px;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.range-dark .lbl{color:#9fb0ff}.range-light .lbl{color:#4a515c}
+.lineup .nm{position:absolute;bottom:-21px;font:600 10px var(--mono);letter-spacing:.08em;white-space:nowrap}
+.range-dark .nm{color:#c9d2ff}.range-light .nm{color:#2b3038}
+
+/* cards */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 22px 24px;margin-bottom:28px;scroll-margin-top:16px}
+.card-head{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.idx{font:700 13px var(--mono);color:var(--mute);letter-spacing:.1em}
+.card h2{margin:2px 0 4px;font-size:26px;letter-spacing:.02em}
+.idea{margin:0;color:#c3cad9;max-width:620px}
+.skins{display:flex;gap:8px;flex-wrap:wrap}
+.skin{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 8px 7px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;color:var(--ink);font:600 11px var(--sans)}
+.skin svg{display:block;background:repeating-conic-gradient(var(--check1) 0 25%,var(--check2) 0 50%) 0 0/10px 10px;border-radius:6px}
+.skin small{font:500 10px var(--mono);color:var(--mute)}
+.skin[aria-pressed="true"]{border-color:var(--cool);box-shadow:0 0 0 1px var(--cool) inset;background:#1d2740}
+
+.sec{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:0 0 8px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.strip-wrap{overflow-x:auto;padding-bottom:6px;margin-bottom:18px}
+.strip{display:flex;gap:10px;width:max-content}
+.grp{display:flex;flex-direction:column;gap:5px}
+.grp .gl{font:600 10.5px var(--mono);letter-spacing:.12em;padding-left:2px}
+.grp.idle .gl{color:var(--cool)}.grp.hit .gl{color:var(--warn)}.grp.death .gl{color:var(--hot)}
+.cells{display:flex;gap:4px}
+.cell{position:relative;padding:0;border:1px solid var(--line);border-radius:4px;background:repeating-conic-gradient(var(--check1) 0 25%,var(--check2) 0 50%) 0 0/16px 16px;cursor:pointer}
+.cell svg{display:block}
+.cell i{position:absolute;left:4px;top:2px;font:600 9.5px var(--mono);font-style:normal;color:var(--mute)}
+.cell[aria-pressed="true"]{border-color:var(--cool);box-shadow:0 0 0 1px var(--cool)}
+
+.cols{display:grid;grid-template-columns:auto 1fr 1fr;gap:20px}
+.big{position:relative;border-radius:10px;border:1px solid var(--line);background:repeating-conic-gradient(var(--check1) 0 25%,var(--check2) 0 50%) 0 0/24px 24px;width:290px}
+.big svg{display:block}
+.big-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}
+.meters{margin-top:12px;display:grid;gap:7px;width:290px}
+.meter{display:grid;grid-template-columns:92px 1fr 42px;gap:8px;align-items:center;font:600 11px var(--mono);color:var(--mute)}
+.meter .bar{height:7px;border-radius:4px;background:#22283a;overflow:hidden}
+.meter .bar span{display:block;height:100%;border-radius:4px}
+.meter b{color:var(--ink);text-align:right;font-weight:600}
+.hint{font-size:12px;color:var(--mute);margin-top:8px;max-width:290px}
+
+.stage{position:relative;height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.stage svg{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:1}
+.stage .pad{bottom:16px;width:150px;height:34px}
+.stage .readout{position:absolute;top:10px;left:12px;font:600 11px var(--mono);letter-spacing:.1em;z-index:2}
+.range-dark .readout{color:#b9c6ff}.range-light .readout{color:#2b3038}
+.stage-ctl{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+.read{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mini{position:relative;height:118px;border-radius:10px;overflow:hidden;border:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-evenly;padding-bottom:18px}
+.mini .b{position:relative;display:flex;flex-direction:column;align-items:center}
+.mini .b svg{position:relative;z-index:1;display:block}
+.mini .b .pad{bottom:-5px;width:40px;height:10px}
+.mini .b:last-child .pad{width:26px;height:7px;bottom:-4px}
+.mini .lbl{position:absolute;top:7px;left:9px;font:600 10px var(--mono);letter-spacing:.1em}
+.range-dark.mini .lbl{color:#9fb0ff}.range-light.mini .lbl{color:#4a515c}
+.notes{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:6px;font-size:13px;color:#c3cad9}
+.notes li{padding-left:16px;position:relative}
+.notes li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:2px;background:var(--cool)}
+.notes li.warn::before{background:var(--warn)}
+.export{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.export span{font-size:12px;color:var(--mute)}
+
+footer{color:var(--mute);font-size:12.5px;margin-top:30px}
+@media (max-width:980px){.cols{grid-template-columns:1fr 1fr}.cols>div:first-child{grid-column:1/-1}}
+@media (max-width:680px){.cols{grid-template-columns:1fr}.lineup{grid-template-columns:1fr}.big,.meters,.hint{width:100%}.big svg{width:100%;height:auto}h1{font-size:24px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<!-- shared SVG defs (filters) used by every inline sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="sharedDefs"></defs></svg>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="kicker">CounterBeat / target bot redesign</div>
+      <h1>Five bots to <b>counter-strafe</b> and shoot</h1>
+      <p class="lede">Each concept is drawn as a real 96&times;128 sprite cell with the game's 10-frame layout: idle 0&ndash;3, hit 4&ndash;5, death 6&ndash;9. Pick a skin, click any frame to inspect it at 3&times;, and toggle the hitbox to see what counts as a body or head shot.</p>
+    </div>
+    <div class="controls" role="group" aria-label="Page controls">
+      <button id="gHit" aria-pressed="false">Hitboxes: off</button>
+      <button id="gMotion" aria-pressed="true">Motion: on</button>
+    </div>
+  </header>
+
+  <p class="note"><b style="color:var(--ink)">Hitbox note.</b> The zones are taken from <code>src/game/rules/aim.js</code> (<code>HITBOX</code>) with <code>botHeight 2.0</code>, so the sprite is 1.5 &times; 2.0 world units (64 px per unit). <code>bodyHalfWidth 0.46</code> and <code>headRadius 0.22</code> are <em>absolute world units</em>, not fractions of the cell width. In cell pixels: body box x 18.6&ndash;77.4, y 30.7&ndash;125.4 (59 &times; 95 px); head disc centre (48, 20.5), radius 14.1 px. Every concept below is built to that real box, not the wider one in the brief, so a shot at painted pixels is a hit and a shot at empty space is a miss. Animation timings in the preview match <code>TargetField.js</code>: idle 170 ms per frame, hit 55 ms, death 70 ms after a kill.</p>
+
+  <section aria-label="Lineup at in-game size">
+    <div class="sec"><span>Lineup at in-game size (about 40 px tall)</span><span>click a bot to jump to it</span></div>
+    <div class="lineup">
+      <div class="scene range-dark" id="lineDark"><span class="lbl">Neon range</span></div>
+      <div class="scene range-light" id="lineLight"><span class="lbl">Tactical range</span></div>
+    </div>
+  </section>
+
+  <main id="cards"></main>
+
+  <footer>All five bots are original vector drawings generated by the script in this file. "Download sheet" exports a transparent 480&times;256 PNG (5&times;2 grid of 96&times;128 cells, frames 0&ndash;9 in reading order), the same layout as the current <code>public/images/bot-sheet.png</code>.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- geometry from the game ---------- */
+// 64 px per world unit (botHeight 2.0 -> 128 px). Body: |dx| <= 0.46u, 0.04u <= y <= 0.76*h. Head: centre 0.84*h, r 0.22u.
+const HB = { x: 48 - 29.44, y: 128 - 0.76 * 128, w: 58.88, h: 0, hx: 48, hy: 128 - 0.84 * 128, hr: 14.08 };
+HB.h = 128 - 2.56 - HB.y;
+
+const DEFS = `
+<filter id="cbGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="cbFlash" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix type="matrix" values="0.3 0 0 0 0.72  0 0.3 0 0 0.72  0 0 0.3 0 0.72  0 0 0 1 0"/></filter>
+<filter id="cbHurt" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix type="matrix" values="0.55 0.2 0.2 0 0.4  0.1 0.45 0.1 0 0  0.1 0.1 0.45 0 0.04  0 0 0 1 0"/></filter>`;
+document.getElementById("sharedDefs").innerHTML = DEFS;
+
+let UID = 0;
+const uid = () => "u" + (++UID);
+const n = (v) => (Math.round(v * 100) / 100).toString();
+const st = (p, w = 2.5) => `stroke="${p.o}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+const GLOW = `filter="url(#cbGlow)"`;
+
+/* death-part motion: v = {x,y,r,cx,cy,g} velocity-ish offsets reached at the last frame */
+const DT = [0.3, 0.6, 0.85, 1], DOP = [1, 0.82, 0.42, 0.09];
+function P(f, v, c) {
+  if (f < 6) return c;
+  const k = f - 6, t = DT[k];
+  const dx = (v.x || 0) * t, dy = (v.y || 0) * t + (v.g ?? 22) * t * t, r = (v.r || 0) * t;
+  return `<g opacity="${DOP[k]}" transform="translate(${n(dx)} ${n(dy)}) rotate(${n(r)} ${v.cx ?? 48} ${v.cy ?? 70})">${c}</g>`;
+}
+function star(cx, cy, R, r, pts, rot = 0) {
+  let d = "";
+  for (let i = 0; i < pts * 2; i++) {
+    const a = rot + (Math.PI * i) / pts, rr = i % 2 ? r : R;
+    d += (i ? "L" : "M") + n(cx + Math.cos(a) * rr) + " " + n(cy + Math.sin(a) * rr);
+  }
+  return d + "Z";
+}
+function ringBits(cx, cy, R, count, size, color, op, rot = 0) {
+  let s = "";
+  for (let i = 0; i < count; i++) {
+    const a = rot + (i / count) * Math.PI * 2;
+    const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.9;
+    s += `<rect x="${n(x - size / 2)}" y="${n(y - size / 2)}" width="${size}" height="${size}" fill="${color}" opacity="${op}" transform="rotate(${n(a * 57.3)} ${n(x)} ${n(y)})"/>`;
+  }
+  return s;
+}
+function impact(p, f) {
+  if (f === 4) return `<path d="${star(60, 50, 12, 4.2, 6, 0.3)}" fill="#fff" stroke="${p.fx}" stroke-width="1.6" stroke-linejoin="round"/>`;
+  if (f === 5) return `<g stroke="${p.fx}" stroke-width="2" stroke-linecap="round"><path d="M64 46 L70 41"/><path d="M66 53 L73 54"/><path d="M60 43 L61 36"/></g>`;
+  return "";
+}
+function deathFx(p, f) {
+  const k = f - 6, c = 48, cy = 64;
+  if (k === 0) return `<path d="${star(c, cy, 21, 8, 8, 0.2)}" fill="#fff" opacity=".92" stroke="${p.fx}" stroke-width="2" stroke-linejoin="round"/>`;
+  if (k === 1) return `<circle cx="${c}" cy="${cy}" r="25" fill="none" stroke="${p.fx}" stroke-width="3" opacity=".85"/>` + ringBits(c, cy, 21, 7, 4, p.fx, 0.9);
+  if (k === 2) return `<circle cx="${c}" cy="${cy}" r="34" fill="none" stroke="${p.fx}" stroke-width="1.4" opacity=".35"/>` + ringBits(c, cy, 31, 7, 3, p.fx, 0.55, 0.4);
+  return ringBits(c, cy - 4, 38, 5, 2, p.fx, 0.28, 0.9);
+}
+
+/* ---------- 1. PULSE ---------- */
+function drawPulse(p, f) {
+  const scan = f < 4 ? [40, 46, 52, 56][f] : 48;
+  const eyeOn = f < 6;
+  const base = P(f, { y: 3, g: 4, cy: 121 }, `<ellipse cx="48" cy="121" rx="21" ry="4.5" fill="${p.s}" ${st(p)}/><path d="M33 121 H63" stroke="${p.t}" stroke-width="2.2" stroke-linecap="round"/>`);
+  const legs = P(f, { x: 2, y: 4, r: 8, cx: 48, cy: 108 }, `<path d="M30 90 L66 90 L68 119 L53 119 L51 103 L45 103 L43 119 L28 119 Z" fill="${p.s}" ${st(p)}/><path d="M32 109 H40 M56 109 H64" stroke="${p.t}" stroke-width="2.4" stroke-linecap="round"/>`);
+  const arm = (x, sgn) => P(f, { x: 16 * sgn, y: -4, r: 45 * sgn, cx: x + 5, cy: 44 },
+    `<rect x="${x}" y="40" width="10" height="47" rx="5" fill="${p.m}" ${st(p)}/><rect x="${x + 1}" y="81" width="8" height="10" rx="3" fill="${p.s}" ${st(p, 2)}/>`);
+  const neck = P(f, { y: -10 }, `<rect x="43.5" y="29" width="9" height="9" rx="2" fill="${p.s}" ${st(p, 2)}/>`);
+  const torso = P(f, { x: 0, y: -6, r: -16, cx: 48, cy: 64 },
+    `<path d="M24 37 Q48 30 72 37 L76 48 L68 93 L28 93 L20 48 Z" fill="${p.m}" ${st(p, 3)}/>
+     <path d="M60 34.4 Q67 35 72 37 L76 48 L68 93 L60 93 Z" fill="${p.s}" opacity=".45"/>
+     <path d="M35 49 L48 57 L61 49" fill="none" stroke="${p.t}" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+     <circle cx="48" cy="69" r="6" fill="${p.v}" ${st(p, 2)}/><circle cx="48" cy="69" r="3" fill="${eyeOn ? p.e : p.s}" ${eyeOn ? GLOW : ""}/>
+     <rect x="28.5" y="85" width="39" height="6" rx="2" fill="${p.t}" ${st(p, 2)}/>
+     <circle cx="25" cy="41" r="6.5" fill="${p.t}" ${st(p, 2.2)}/><circle cx="71" cy="41" r="6.5" fill="${p.t}" ${st(p, 2.2)}/>`);
+  let eye;
+  if (!eyeOn) eye = `<rect x="39" y="19" width="18" height="2.2" rx="1.1" fill="${p.s}"/>`;
+  else if (f >= 4) eye = `<rect x="38.5" y="17.5" width="19" height="5" rx="2.5" fill="${f === 4 ? "#fff" : p.e}" ${GLOW}/>`;
+  else eye = `<rect x="39" y="19" width="18" height="2.2" rx="1.1" fill="${p.e}" opacity=".35"/><circle cx="${scan}" cy="20.1" r="2.7" fill="${p.e}" ${GLOW}/>`;
+  const head = P(f, { x: 8, y: -24, r: 60, cx: 48, cy: 20 },
+    `<circle cx="35.2" cy="21" r="2.6" fill="${p.t}" ${st(p, 1.6)}/><circle cx="60.8" cy="21" r="2.6" fill="${p.t}" ${st(p, 1.6)}/>
+     <ellipse cx="48" cy="20.5" rx="12.6" ry="14" fill="${p.m}" ${st(p, 3)}/>
+     <path d="M53 7.4 Q60.6 11 60.6 20.5 Q60.6 30 53 33.6 Q57 26 57 20.5 Q57 15 53 7.4Z" fill="${p.s}" opacity=".5"/>
+     <rect x="36.5" y="15" width="23" height="10.5" rx="5.2" fill="${p.v}" ${st(p, 1.5)}/>${eye}
+     <path d="M48 7 V10.5" stroke="${p.t}" stroke-width="2" stroke-linecap="round"/>`);
+  return base + legs + neck + arm(16.5, -1) + arm(69.5, 1) + torso + head;
+}
+
+/* ---------- 2. WOOFER ---------- */
+function drawWoofer(p, f) {
+  const cone = f < 4 ? [14.5, 16.5, 14.5, 12.8][f] : f < 6 ? 17.5 : 14.5;
+  const leds = f < 4 ? [1, 2, 3, 2][f] : f < 6 ? 3 : 0;
+  const feet = P(f, { y: 4, g: 2, cy: 120 }, `<rect x="23" y="113" width="20" height="12" rx="5.5" fill="${p.t}" ${st(p, 2)}/><rect x="53" y="113" width="20" height="12" rx="5.5" fill="${p.t}" ${st(p, 2)}/>`);
+  const hand = (cx, sgn) => P(f, { x: 18 * sgn, y: -8, r: 90 * sgn, cx, cy: 82 }, `<circle cx="${cx}" cy="82" r="6" fill="${p.m}" ${st(p, 2.5)}/>`);
+  let ledSvg = "";
+  for (let i = 0; i < 3; i++) ledSvg += `<rect x="${40 + i * 6}" y="58" width="4" height="4" rx="1" fill="${i < leds ? p.e : p.s}" ${i < leds ? GLOW : ""} ${st(p, 1)}/>`;
+  const cab = P(f, { x: 0, y: 6, r: -10, cx: 48, cy: 76 },
+    `<rect x="19.5" y="33" width="57" height="84" rx="10" fill="${p.m}" ${st(p, 3)}/>
+     <rect x="64" y="36" width="10" height="78" rx="5" fill="${p.s}" opacity=".55"/>
+     <path d="M25 39 H55" stroke="#fff" stroke-width="2" opacity=".45" stroke-linecap="round"/>
+     <circle cx="31" cy="47" r="5.6" fill="${p.t}" ${st(p, 2)}/><circle cx="31" cy="47" r="2.2" fill="${p.c}"/>
+     <circle cx="65" cy="47" r="5.6" fill="${p.t}" ${st(p, 2)}/><circle cx="65" cy="47" r="2.2" fill="${p.c}"/>${ledSvg}`);
+  const woof = P(f, { x: 10, y: -34, r: 160, cx: 48, cy: 86, g: 30 },
+    `<circle cx="48" cy="87" r="20" fill="${p.t}" ${st(p, 2.5)}/>
+     <circle cx="48" cy="87" r="${cone}" fill="${p.c}" ${st(p, 1.5)}/>
+     <circle cx="48" cy="87" r="${n(cone * 0.62)}" fill="#000" opacity=".2"/>
+     <circle cx="48" cy="87" r="5.2" fill="${p.t}" ${st(p, 1.5)}/>
+     <path d="M${n(48 - cone * 0.7)} ${n(87 - cone * 0.45)} A${cone} ${cone} 0 0 1 ${n(48 - cone * 0.1)} ${n(87 - cone * 0.82)}" fill="none" stroke="#fff" stroke-width="2" opacity=".55" stroke-linecap="round"/>`);
+  let eyes;
+  if (f >= 6) eyes = `<g stroke="${p.e}" stroke-width="2" stroke-linecap="round"><path d="M41.5 18.5 L45.5 22.5 M45.5 18.5 L41.5 22.5"/><path d="M50.5 18.5 L54.5 22.5 M54.5 18.5 L50.5 22.5"/></g>`;
+  else if (f === 4) eyes = `<g stroke="#fff" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M41.5 18 L45.5 20.5 L41.5 23"/><path d="M54.5 18 L50.5 20.5 L54.5 23"/></g>`;
+  else if (f === 5) eyes = `<g stroke="${p.e}" stroke-width="1.8" fill="none"><circle cx="43.5" cy="20.5" r="2.6"/><circle cx="52.5" cy="20.5" r="2.6"/></g>`;
+  else if (f === 3) eyes = `<g stroke="${p.e}" stroke-width="2.2" stroke-linecap="round"><path d="M41.5 21 H45.5 M50.5 21 H54.5"/></g>`;
+  else eyes = `<ellipse cx="43.5" cy="20.5" rx="2.6" ry="3.6" fill="${p.e}" ${GLOW}/><ellipse cx="52.5" cy="20.5" rx="2.6" ry="3.6" fill="${p.e}" ${GLOW}/><circle cx="44.3" cy="19.2" r="1" fill="#fff"/><circle cx="53.3" cy="19.2" r="1" fill="#fff"/>`;
+  const head = P(f, { x: -8, y: -26, r: -70, cx: 48, cy: 20 },
+    `<circle cx="48" cy="21" r="13.5" fill="${p.m}" ${st(p, 3)}/>
+     <rect x="37.5" y="14.5" width="21" height="13" rx="5.5" fill="${p.t}" ${st(p, 1.5)}/>${eyes}
+     <path d="M33.5 18 A14.5 14.5 0 0 1 62.5 18" fill="none" stroke="${p.o}" stroke-width="6.5" stroke-linecap="round"/>
+     <path d="M33.5 18 A14.5 14.5 0 0 1 62.5 18" fill="none" stroke="${p.h}" stroke-width="3.5" stroke-linecap="round"/>
+     <rect x="30" y="15" width="6.5" height="13" rx="3" fill="${p.h}" ${st(p, 2)}/><rect x="59.5" y="15" width="6.5" height="13" rx="3" fill="${p.h}" ${st(p, 2)}/>`);
+  return feet + hand(17, -1) + hand(79, 1) + cab + woof + head;
+}
+
+/* ---------- 3. IRIS ---------- */
+function drawIris(p, f) {
+  const cb = f < 4 ? [0, -0.5, -1, -0.5][f] : 0;
+  const ob = f < 4 ? [0, -1.2, -2.2, -1.2][f] : 0;
+  const pdx = f < 4 ? [-2.4, 0, 2.4, 0][f] : 0;
+  const fl = f < 4 ? [6, 8.5, 6, 4.5][f] : f < 6 ? 3 : 0;
+  const flame = fl ? P(f, { y: 4, cy: 118 }, `<path d="M40.5 116 Q48 ${116 + fl * 1.4} 55.5 116 Z" fill="${p.t}" ${GLOW} opacity=".95"/><path d="M44.5 116 Q48 ${116 + fl * 0.8} 51.5 116 Z" fill="#fff"/>`) : "";
+  const pod = (x, sgn) => P(f, { x: 18 * sgn, y: 4, r: 70 * sgn, cx: x + 4, cy: 66 },
+    `<rect x="${x}" y="53" width="9" height="27" rx="3" fill="${p.s}" ${st(p, 2.5)}/><rect x="${x + 2}" y="78" width="5" height="7" rx="1" fill="${p.o}"/><rect x="${x + 2.5}" y="58" width="4" height="3" rx="1" fill="${p.t}"/>`);
+  const chassis = P(f, { y: 2, r: 12, cx: 48, cy: 80 },
+    `<path d="M22 42 L74 42 L78 60 L72 100 L60 118 L36 118 L24 100 L18 60 Z" fill="${p.m}" ${st(p, 3)}/>
+     <path d="M62 42 L74 42 L78 60 L72 100 L60 118 L56 118 Z" fill="${p.s}" opacity=".5"/>
+     <rect x="30" y="40" width="36" height="7" rx="3.5" fill="${p.s}" ${st(p, 2)}/>
+     <path d="M27 60 L48 70 L69 60" fill="none" stroke="${p.o}" stroke-width="1.8" stroke-linejoin="round"/>
+     <path d="M48 75 L56 86 L48 97 L40 86 Z" fill="${p.o}"/>
+     <path d="M48 79 L52.5 86 L48 93 L43.5 86 Z" fill="${f < 6 ? p.t : p.s}" ${f < 6 ? GLOW : ""}/>
+     <path d="M40 106 H56 M42 110.5 H54" stroke="${p.t}" stroke-width="2" stroke-linecap="round" opacity=".9"/>`);
+  const halo = f < 6 ? `<ellipse cx="48" cy="37.5" rx="11" ry="2.6" fill="none" stroke="${p.t}" stroke-width="2" ${GLOW} opacity="${f < 4 ? [1, .7, 1, .7][f] : 1}"/>` : "";
+  let eye;
+  if (f >= 6) eye = `<circle cx="48" cy="20.5" r="8.5" fill="${p.o}"/><circle cx="48" cy="20.5" r="5" fill="${p.i}" opacity=".35"/><path d="M40 12 L46 19 L43 23 L49 29" fill="none" stroke="${p.o}" stroke-width="1.6"/>`;
+  else if (f === 4) eye = `<circle cx="48" cy="20.5" r="8.5" fill="${p.o}"/><circle cx="48" cy="20.5" r="7" fill="#fff" ${GLOW}/><circle cx="48" cy="20.5" r="1.4" fill="${p.o}"/>`;
+  else {
+    const ix = 48 + pdx;
+    eye = `<circle cx="${n(48 + pdx * 0.35)}" cy="20.5" r="8.5" fill="${p.o}"/><circle cx="${ix}" cy="20.5" r="5.8" fill="${p.i}" ${GLOW}/><circle cx="${ix}" cy="20.5" r="${f === 5 ? 3.4 : 2.4}" fill="${p.o}"/><circle cx="${n(ix - 2)}" cy="18.4" r="1.3" fill="#fff"/>`;
+  }
+  const orb = P(f, { x: 6, y: -30, r: 30, cx: 48, cy: 20.5 },
+    `<g transform="translate(0 ${ob})">
+     <path d="M35 16 L30.5 20.5 L35 25 Z" fill="${p.m}" ${st(p, 1.6)}/><path d="M61 16 L65.5 20.5 L61 25 Z" fill="${p.m}" ${st(p, 1.6)}/>
+     <circle cx="48" cy="20.5" r="13.8" fill="${p.w}" ${st(p, 3)}/>
+     <circle cx="48" cy="20.5" r="11.9" fill="none" stroke="${p.t}" stroke-width="1.3" opacity=".9"/>
+     <path d="M38 12 A13 13 0 0 1 50 7.6" fill="none" stroke="#fff" stroke-width="2" opacity=".6" stroke-linecap="round"/>${eye}</g>`);
+  return flame + `<g transform="translate(0 ${cb})">` + pod(13.5, -1) + pod(73.5, 1) + chassis + `</g>` + halo + orb;
+}
+
+/* ---------- 4. BULLSEYE ---------- */
+function drawBullseye(p, f) {
+  const sway = f < 4 ? [0, 1.2, 0, -1.2][f] : 0;
+  const stand = P(f, { y: 3, g: 3, cy: 118 },
+    `<g stroke-linecap="round"><path d="M40 108 L28 124 M56 108 L68 124 M31 119.5 H65" stroke="${p.o}" stroke-width="6"/>
+     <path d="M40 108 L28 124 M56 108 L68 124 M31 119.5 H65" stroke="${p.t}" stroke-width="3"/></g>
+     <rect x="44" y="100" width="8" height="15" rx="1.5" fill="${p.t}" ${st(p, 2)}/>`);
+  const cid = uid();
+  let stripes = "";
+  for (let x = 14; x < 84; x += 8) stripes += `<path d="M${x} 108 L${x + 4} 108 L${x + 12} 96 L${x + 8} 96 Z" fill="${p.t}"/>`;
+  const platePath = "M27 34 L69 34 L78 44 L78 92 L67 106 L29 106 L18 92 L18 44 Z";
+  const plate = P(f, { x: 0, y: 8, r: f >= 6 ? -26 : 0, cx: 48, cy: 106, g: 10 },
+    `<clipPath id="${cid}"><path d="${platePath}"/></clipPath>
+     <path d="${platePath}" fill="${p.m}"/>
+     <g clip-path="url(#${cid})"><path d="M68 30 L82 44 L82 110 L64 110 Z" fill="${p.s}" opacity=".55"/><rect x="10" y="96" width="80" height="14" fill="${p.r}"/>${stripes}</g>
+     <path d="${platePath}" fill="none" ${st(p, 3)}/>
+     <circle cx="48" cy="66" r="17" fill="${p.r}" ${st(p, 2)}/><circle cx="48" cy="66" r="12.5" fill="${p.t}"/><circle cx="48" cy="66" r="8" fill="${p.r}"/>
+     <circle cx="48" cy="66" r="3.8" fill="${f === 4 ? "#fff" : p.a}"/>
+     <path d="M48 44 V48 M48 84 V88 M26 66 H30 M66 66 H70" stroke="${p.t}" stroke-width="2" stroke-linecap="round"/>
+     <g fill="${p.t}"><circle cx="24" cy="45" r="1.8"/><circle cx="72" cy="45" r="1.8"/><circle cx="24" cy="89" r="1.8"/><circle cx="72" cy="89" r="1.8"/></g>`);
+  const eyeCol = f >= 6 ? p.s : f >= 4 ? p.a : p.e;
+  const eyeOp = f === 2 ? 0.75 : 1;
+  const eyeH = f >= 4 && f < 6 ? 5 : 3;
+  const head = P(f, { x: 12, y: -28, r: 80, cx: 48, cy: 20 },
+    `<rect x="44" y="29" width="8" height="7" fill="${p.t}" ${st(p, 1.5)}/>
+     <path d="M34 20.5 L41 8.4 L55 8.4 L62 20.5 L55 32.6 L41 32.6 Z" fill="${p.m}" ${st(p, 3)}/>
+     <path d="M55 8.4 L62 20.5 L55 32.6 L52 32.6 L57.5 20.5 L52 8.4 Z" fill="${p.s}" opacity=".55"/>
+     <path d="M36 16.5 L60 16.5 L57.5 25.5 L38.5 25.5 Z" fill="${p.t}"/>
+     <rect x="40" y="${n(21 - eyeH / 2)}" width="16" height="${eyeH}" rx="1.2" fill="${eyeCol}" opacity="${eyeOp}" ${f < 6 ? GLOW : ""}/>
+     <path d="M48 9.5 V13" stroke="${p.r}" stroke-width="1.8" stroke-linecap="round"/>`);
+  const swing = `<g transform="rotate(${sway} 48 112)">${plate}${head}</g>`;
+  return stand + swing;
+}
+
+/* ---------- 5. PHANTOM ---------- */
+const SIL = [
+  "M21 43 Q48 33 75 43 L73 58 L64 66 L62 92 L34 92 L32 66 L23 58 Z",
+  "M19 46 L25 45 L31 86 L26 90 L21 88 L17 62 Z",
+  "M77 46 L71 45 L65 86 L70 90 L75 88 L79 62 Z",
+  "M34 92 L47 92 L46 113 L37 113 Z",
+  "M49 92 L62 92 L59 113 L50 113 Z",
+  "M44 30 L52 30 L53 38 L43 38 Z",
+  "M48 7 C57 7 61 13 61 21 C61 29 56 34 48 34 C40 34 35 29 35 21 C35 13 39 7 48 7 Z",
+];
+function phantomFigure(p, f, opts = {}) {
+  const cid = uid();
+  const scanOff = f < 4 ? f : 0;
+  let scan = "";
+  for (let y = 6 + scanOff; y < 116; y += 4) scan += `<path d="M14 ${y} H82"/>`;
+  const sil = SIL.map((d) => `<path d="${d}"/>`).join("");
+  const eyeCol = opts.eye || p.t;
+  return `
+   <path d="M33 120 L63 120 L77 42 L19 42 Z" fill="${p.m}" opacity=".1"/>
+   <ellipse cx="48" cy="121" rx="19" ry="4.5" fill="${p.s}" ${st(p, 2.5)}/><ellipse cx="48" cy="119.6" rx="12" ry="2" fill="${p.m}" ${GLOW}/>
+   <g fill="none" stroke="${p.o}" stroke-width="4" stroke-linejoin="round">${sil}</g>
+   <g fill="${p.m}" opacity=".62">${sil}</g>
+   <clipPath id="${cid}">${sil}</clipPath>
+   <g clip-path="url(#${cid})" stroke="${p.s}" stroke-width="1.3" opacity=".55">${scan}</g>
+   <g fill="none" stroke="${p.m}" stroke-width="1.5" stroke-linejoin="round">${sil}</g>
+   <path d="M34 112 L46 112 M50 112 L59 112" stroke="${p.m}" stroke-width="1" opacity=".5"/>
+   <path d="M33 47 L42 51 M63 47 L54 51" stroke="#fff" stroke-width="1.4" opacity=".55" stroke-linecap="round"/>
+   <path d="M48 51 L56 62 L40 62 Z" fill="${p.t}" ${GLOW}/>
+   <path d="M40 74 H56 M41 80 H55" stroke="${p.m}" stroke-width="1.6" opacity=".8"/>
+   <path d="M37 16.5 L59 16.5 L58 26 L38 26 Z" fill="${p.o}" opacity=".7"/>
+   <path d="M39 19 L46 21 L45.2 24 L39 22.6 Z" fill="${eyeCol}" ${GLOW}/><path d="M57 19 L50 21 L50.8 24 L57 22.6 Z" fill="${eyeCol}" ${GLOW}/>
+   <path d="M48 8.5 V12" stroke="#fff" stroke-width="1.4" opacity=".7" stroke-linecap="round"/>`;
+}
+function phantomSolid(color) {
+  return `<g fill="${color}">${SIL.map((d) => `<path d="${d}"/>`).join("")}</g>`;
+}
+function drawPhantom(p, f) {
+  if (f < 4) {
+    const fig = phantomFigure(p, f, { eye: f === 3 ? "#fff" : p.t });
+    if (f !== 2) return `<g opacity="${f === 1 ? 0.92 : 1}">${fig}</g>`;
+    const c1 = uid(), c2 = uid();
+    return `<clipPath id="${c1}"><rect x="0" y="0" width="96" height="55"/><rect x="0" y="61" width="96" height="67"/></clipPath>
+      <clipPath id="${c2}"><rect x="0" y="55" width="96" height="6"/></clipPath>
+      <g clip-path="url(#${c1})">${fig}</g><g clip-path="url(#${c2})" transform="translate(3 0)">${phantomFigure(p, f)}</g>`;
+  }
+  if (f === 4) {
+    return `<g transform="translate(-3.5 0)" opacity=".85">${phantomSolid(p.t)}</g><g transform="translate(3 0)" opacity=".8">${phantomSolid(p.m)}</g>
+      <g filter="url(#cbFlash)">${phantomFigure(p, f, { eye: "#fff" })}</g>` + impact(p, 4);
+  }
+  if (f === 5) {
+    const bands = [[0, 30, -2], [30, 14, 4], [44, 20, -1], [64, 10, 5], [74, 54, 0]];
+    let s = "";
+    for (const [y, h, dx] of bands) {
+      const c = uid();
+      s += `<clipPath id="${c}"><rect x="-10" y="${y}" width="116" height="${h}"/></clipPath><g clip-path="url(#${c})" transform="translate(${dx} 0)">${phantomFigure(p, f, { eye: "#fff" })}</g>`;
+    }
+    return s + impact(p, 5);
+  }
+  // death: horizontal slices shear apart and dissolve upward into pixels
+  const k = f - 6, t = DT[k];
+  let s = "";
+  const N = 9, H = 128 / N;
+  for (let i = 0; i < N; i++) {
+    const c = uid();
+    const dir = i % 2 ? 1 : -1;
+    const dx = dir * t * (5 + ((i * 7) % 5) * 3);
+    const op = Math.max(0, 1 - t * (0.75 + ((N - i) / N) * 0.5));
+    const sh = H * (1 - t * 0.6);
+    s += `<clipPath id="${c}"><rect x="-20" y="${n(i * H)}" width="136" height="${n(sh)}"/></clipPath><g clip-path="url(#${c})" transform="translate(${n(dx)} ${n(-t * 4)})" opacity="${n(op)}">${phantomFigure(p, 0)}</g>`;
+  }
+  let px = "";
+  const count = [10, 16, 14, 7][k];
+  for (let i = 0; i < count; i++) {
+    const x = 22 + ((i * 37) % 52), y0 = 30 + ((i * 53) % 84);
+    const y = y0 - t * (18 + (i % 5) * 6);
+    const sz = [3, 3, 2.5, 2][k];
+    px += `<rect x="${n(x)}" y="${n(y)}" width="${sz}" height="${sz}" fill="${i % 3 ? p.m : p.t}" opacity="${[0.95, 0.8, 0.55, 0.25][k]}"/>`;
+  }
+  return s + px;
+}
+
+/* ---------- catalogue ---------- */
+const BOTS = [
+  { id: "pulse", name: "PULSE", bob: true, draw: drawPulse,
+    idea: "A sleek padded training mannequin. A visor with a scanning LED tracks the beat, and orange pads mark the shoulders and belt.",
+    notes: ["The scanning eye dot sweeps across the visor over the 4 idle frames, so it reads as alive even at 40 px.", "The torso and legs fill the body box almost edge to edge, and the arm pads sit right on its sides.", "Death: the pads, arms and head pop off and the visor goes dark."],
+    skins: [
+      { name: "Range Issue", unlock: "default", p: { m: "#f2f4f8", s: "#a9b4c6", t: "#ff6a1a", v: "#11151e", e: "#36f0ff", o: "#0b0e16", fx: "#ffb000" } },
+      { name: "Crimson Ops", unlock: "clear 10 songs", p: { m: "#ff4b5c", s: "#b0233a", t: "#ffe14a", v: "#170a10", e: "#ffffff", o: "#12060a", fx: "#ffe14a" } },
+      { name: "Arctic", unlock: "S rank on any chart", p: { m: "#c9f3ff", s: "#77b4d4", t: "#2d6bff", v: "#0b1430", e: "#ff9a1f", o: "#06102a", fx: "#ff9a1f" } },
+    ] },
+  { id: "woofer", name: "WOOFER", bob: true, draw: drawWoofer,
+    idea: "A chunky, cute speaker-cabinet mascot with headphones. Its woofer cone pumps on every idle frame, so the target literally bounces to the music.",
+    notes: ["The cabinet is a near-rectangle the size of the body box, the most generous and honest fill of the five.", "Three LEDs on the chest work as a beat meter (1-2-3-2 across the idle loop).", "Big eyes on a dark face screen make the headshot target obvious. On a hit the eyes go > < and then dizzy, and on death the cone flies out."],
+    skins: [
+      { name: "Boombox", unlock: "default", p: { m: "#ffd23f", s: "#e0951a", t: "#22243a", c: "#ff4f9a", e: "#5ff6ff", h: "#7b5cff", o: "#120f1c", fx: "#ff4f9a" } },
+      { name: "Mint Bass", unlock: "50 perfect stops", p: { m: "#7dffc4", s: "#2fbf8a", t: "#1b2433", c: "#ff7a3d", e: "#fff36b", h: "#ff7a3d", o: "#0b1512", fx: "#ff7a3d" } },
+      { name: "Midnight Disco", unlock: "full combo on Hard", p: { m: "#b994ff", s: "#7a55d8", t: "#17112b", c: "#39f3ff", e: "#ffef5a", h: "#ff58c8", o: "#0d0818", fx: "#39f3ff" } },
+    ] },
+  { id: "iris", name: "IRIS", bob: false, draw: drawIris,
+    idea: "A hovering sentry: a white eyeball orb floats above a shield-shaped chassis on a thruster flame. The orb is the head, so the headshot is the eye.",
+    notes: ["The orb sits almost exactly on the head disc, the clearest headshot cue of the five.", "The iris glances left and right while the orb and chassis bob out of phase (the orb moves more), and the thruster flickers.", "A glowing coupling ring bridges the orb and chassis, so the neck gap does not read as empty space."],
+    skins: [
+      { name: "Watcher", unlock: "default", p: { m: "#8592b0", s: "#4c5672", t: "#b8ff2e", w: "#eef2f6", i: "#ff2d55", o: "#070910", fx: "#b8ff2e" } },
+      { name: "Ember", unlock: "100 headshots", p: { m: "#ff9d3c", s: "#c25a10", t: "#fff04a", w: "#3b3046", i: "#ff3a2e", o: "#0e0806", fx: "#fff04a" } },
+      { name: "Ghost White", unlock: "Expert clear", p: { m: "#e6eaf1", s: "#a3aec0", t: "#2ee6ff", w: "#ffffff", i: "#7a3cff", o: "#0a0d16", fx: "#2ee6ff" } },
+    ] },
+  { id: "bullseye", name: "BULLSEYE", bob: false, draw: drawBullseye,
+    idea: "An angular steel target dummy: a hi-vis octagon plate with a bullseye and a hazard band, bolted to an A-frame stand. Its head is a hex plate with a visor slit.",
+    notes: ["The most tactical of the five, and it suits the light grey range. The bullseye also shows the player where centre mass is.", "Idle: the plate sways about 1.2 degrees on its stand and the visor flickers. On a hit the eye turns red.", "Death: the plate topples back, the head plate spins off and the stand stays briefly before fading."],
+    skins: [
+      { name: "Hi-Vis", unlock: "default", p: { m: "#ff7a1a", s: "#c24c06", t: "#1c1d22", r: "#f6f3ea", e: "#ffe24a", a: "#ff2a3d", o: "#0e0e12", fx: "#ffe24a" } },
+      { name: "Hazard Lime", unlock: "clear Normal set", p: { m: "#c8ff2e", s: "#86ba0c", t: "#16180f", r: "#ffffff", e: "#ff4fd8", a: "#ff4fd8", o: "#0b0c06", fx: "#ff4fd8" } },
+      { name: "Cobalt", unlock: "daily streak 7", p: { m: "#3b82ff", s: "#1c4fc0", t: "#0f1424", r: "#f4f7ff", e: "#ffd23a", a: "#ffd23a", o: "#050812", fx: "#ffd23a" } },
+    ] },
+  { id: "phantom", name: "PHANTOM", bob: true, draw: drawPhantom,
+    idea: "A stylised humanoid hologram projected from a floor emitter, with scanlines, slanted glowing eyes and a chest sigil. It glitches on idle and shears into slices on death.",
+    notes: ["A translucent fill with a 4 px dark outline plus a bright inner edge keeps it readable on the light range too.", "Idle: the scanlines crawl and frame 2 offsets one horizontal slice (a glitch). The hit flashes an RGB split and then torn bands.", "Death: 9 slices shear sideways and thin out while pixels rise. The last frame is just a few motes."],
+    skins: [
+      { name: "Cyan Signal", unlock: "default", p: { m: "#3cf2ff", s: "#1384a6", t: "#ff3ded", o: "#04121c", fx: "#ff3ded" } },
+      { name: "Solar", unlock: "clear 25 songs", p: { m: "#ffc83c", s: "#a86600", t: "#3c7bff", o: "#160d00", fx: "#3c7bff" } },
+      { name: "Toxic", unlock: "Insane chart clear", p: { m: "#6dff6a", s: "#1c8a3a", t: "#ff8a1f", o: "#031407", fx: "#ff8a1f" } },
+    ] },
+];
+
+function frameInner(bot, p, f) {
+  const inner = bot.draw(p, f);
+  if (bot.id === "phantom") {
+    const bob = bot.bob && f < 4 ? [0, -1, -1.5, -0.5][f] : 0;
+    return `<g transform="translate(0 ${bob})">${inner}</g>`;
+  }
+  if (f < 4) {
+    const bob = bot.bob ? [0, -1, -1.5, -0.5][f] : 0;
+    return `<g transform="translate(0 ${bob})">${inner}</g>`;
+  }
+  if (f === 4) return `<g filter="url(#cbFlash)" transform="rotate(-5 48 124) translate(1 0)">${inner}</g>` + impact(p, 4);
+  if (f === 5) return `<g filter="url(#cbHurt)" transform="rotate(2.5 48 124)">${inner}</g>` + impact(p, 5);
+  return inner + deathFx(p, f);
+}
+const hitboxSvg = () => `<g pointer-events="none">
+  <rect x="${n(HB.x)}" y="${n(HB.y)}" width="${n(HB.w)}" height="${n(HB.h)}" fill="rgba(54,240,255,.14)" stroke="#36f0ff" stroke-width="1" stroke-dasharray="3 2"/>
+  <circle cx="${HB.hx}" cy="${n(HB.hy)}" r="${HB.hr}" fill="rgba(255,79,154,.18)" stroke="#ff4f9a" stroke-width="1" stroke-dasharray="3 2"/>
+  <text x="${n(HB.x + 2)}" y="${n(HB.y + HB.h - 3)}" font-family="monospace" font-size="5.5" fill="#36f0ff">BODY</text>
+  <text x="${n(HB.hx + HB.hr + 2)}" y="${n(HB.hy - 6)}" font-family="monospace" font-size="5.5" fill="#ff4f9a">HEAD</text></g>`;
+const svg = (inner, w, h, extra = "") => `<svg viewBox="0 0 96 128" width="${w}" height="${h}" ${extra} aria-hidden="true">${inner}</svg>`;
+const standalone = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="128" viewBox="0 0 96 128"><defs>${DEFS}</defs>${inner}</svg>`;
+
+/* ---------- state ---------- */
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+const G = { hit: false, motion: !reduce.matches };
+const S = BOTS.map(() => ({ skin: 0, big: 0, hit: null, bg: "dark", anim: null, frame: 0 }));
+const pal = (i) => BOTS[i].skins[S[i].skin].p;
+
+/* ---------- lineup ---------- */
+function renderLineup() {
+  for (const [id] of [["lineDark"], ["lineLight"]]) {
+    const el = document.getElementById(id);
+    el.querySelectorAll(".slot").forEach((s) => s.remove());
+    BOTS.forEach((b, i) => {
+      const s = document.createElement("button");
+      s.className = "slot"; s.type = "button";
+      s.setAttribute("aria-label", "Jump to " + b.name);
+      s.innerHTML = `<span class="pad"></span>${svg(frameInner(b, pal(i), 0), 30, 40)}<span class="nm">${b.name}</span>`;
+      s.onclick = () => document.getElementById("card-" + b.id).scrollIntoView({ behavior: G.motion ? "smooth" : "auto" });
+      el.appendChild(s);
+    });
+  }
+}
+
+/* ---------- cards ---------- */
+const cardsEl = document.getElementById("cards");
+BOTS.forEach((b, i) => {
+  const c = document.createElement("section");
+  c.className = "card"; c.id = "card-" + b.id;
+  c.innerHTML = `
+  <div class="card-head">
+    <div><div class="idx">CONCEPT 0${i + 1}</div><h2>${b.name}</h2><p class="idea">${b.idea}</p></div>
+    <div><div class="sec"><span>Skins</span></div><div class="skins" data-r="skins"></div></div>
+  </div>
+  <div class="sec"><span>Sprite strip, 1&times; (96&times;128 cells), click a frame to inspect it</span></div>
+  <div class="strip-wrap"><div class="strip" data-r="strip"></div></div>
+  <div class="cols">
+    <div>
+      <div class="sec"><span data-r="bigLbl">Frame 0 at 3&times;</span><button type="button" data-r="hbBtn" aria-pressed="false">Hitbox</button></div>
+      <div class="big" data-r="big"></div>
+      <div class="meters" data-r="meters"></div>
+      <p class="hint">Body fill is the share of the body box covered by paint. Head fill is the same for the head disc. Stray paint is the share of all visible pixels that sit outside both zones, so a shot there looks like a hit but scores a miss.</p>
+    </div>
+    <div>
+      <div class="sec"><span>Live preview</span><span data-r="state"></span></div>
+      <div class="stage range-dark" data-r="stage"><span class="readout" data-r="readout">IDLE</span><span class="pad"></span></div>
+      <div class="stage-ctl">
+        <button type="button" data-a="graze">Hit (survives)</button>
+        <button type="button" data-a="kill">Kill</button>
+        <button type="button" data-a="auto" aria-pressed="false">Auto demo</button>
+        <button type="button" data-a="bg">Light range</button>
+      </div>
+    </div>
+    <div>
+      <div class="sec"><span>Readability at 40 px and 26 px</span></div>
+      <div class="read">
+        <div class="mini range-dark" data-r="mDark"><span class="lbl">NEON</span></div>
+        <div class="mini range-light" data-r="mLight"><span class="lbl">TACTICAL</span></div>
+      </div>
+      <ul class="notes">${b.notes.map((t) => `<li>${t}</li>`).join("")}</ul>
+      <div class="export"><button type="button" data-a="png">Download sheet (PNG)</button><span>480&times;256, current skin</span></div>
+    </div>
+  </div>`;
+  cardsEl.appendChild(c);
+  const r = (k) => c.querySelector(`[data-r="${k}"]`);
+  S[i].el = { c, r };
+
+  // skins
+  b.skins.forEach((sk, si) => {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "skin";
+    btn.innerHTML = `${svg(frameInner(b, sk.p, 0), 42, 56)}${sk.name}<small>${sk.unlock}</small>`;
+    btn.onclick = () => { S[i].skin = si; refresh(i); renderLineup(); };
+    r("skins").appendChild(btn);
+  });
+  r("hbBtn").onclick = () => { S[i].hit = !(S[i].hit ?? G.hit); refreshBig(i); };
+  c.querySelector('[data-a="graze"]').onclick = () => play(i, "graze");
+  c.querySelector('[data-a="kill"]').onclick = () => play(i, "kill");
+  c.querySelector('[data-a="auto"]').onclick = (e) => { const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; e.currentTarget.setAttribute("aria-pressed", on); setAuto(i, on); };
+  c.querySelector('[data-a="bg"]').onclick = (e) => {
+    S[i].bg = S[i].bg === "dark" ? "light" : "dark";
+    r("stage").className = "stage range-" + S[i].bg;
+    e.currentTarget.textContent = S[i].bg === "dark" ? "Light range" : "Neon range";
+  };
+  c.querySelector('[data-a="png"]').onclick = () => exportSheet(i);
+  refresh(i);
+  measure(i);
+});
+
+function refresh(i) {
+  const b = BOTS[i], p = pal(i), { c, r } = S[i].el;
+  c.querySelectorAll(".skin").forEach((el, si) => el.setAttribute("aria-pressed", si === S[i].skin));
+  // strip
+  const groups = [["idle", "IDLE 0-3", [0, 1, 2, 3]], ["hit", "HIT 4-5", [4, 5]], ["death", "DEATH 6-9", [6, 7, 8, 9]]];
+  r("strip").innerHTML = groups.map(([cls, lbl, fr]) => `<div class="grp ${cls}"><span class="gl">${lbl}</span><div class="cells">${fr.map((f) =>
+    `<button type="button" class="cell" data-f="${f}" aria-label="Frame ${f}" aria-pressed="${f === S[i].big}">${svg(frameInner(b, p, f), 96, 128)}<i>${f}</i></button>`).join("")}</div></div>`).join("");
+  r("strip").querySelectorAll(".cell").forEach((el) => el.onclick = () => { S[i].big = +el.dataset.f; refreshBig(i); r("strip").querySelectorAll(".cell").forEach((x) => x.setAttribute("aria-pressed", x === el)); });
+  refreshBig(i);
+  // minis
+  for (const k of ["mDark", "mLight"]) {
+    const m = r(k);
+    m.querySelectorAll(".b").forEach((x) => x.remove());
+    for (const h of [40, 26]) {
+      const d = document.createElement("div"); d.className = "b";
+      d.innerHTML = `<span class="pad"></span>${svg(frameInner(b, p, 0), h * 0.75, h)}`;
+      m.appendChild(d);
+    }
+  }
+  drawStage(i);
+}
+function refreshBig(i) {
+  const b = BOTS[i], { r } = S[i].el, show = S[i].hit ?? G.hit, f = S[i].big;
+  r("big").innerHTML = svg(frameInner(b, pal(i), f) + (show ? hitboxSvg() : ""), 288, 384);
+  r("bigLbl").textContent = `Frame ${f} (${f < 4 ? "idle" : f < 6 ? "hit" : "death"}) at 3×`;
+  r("hbBtn").setAttribute("aria-pressed", show);
+  r("hbBtn").textContent = show ? "Hitbox: on" : "Hitbox: off";
+}
+
+/* ---------- live preview ---------- */
+function drawStage(i) {
+  const st0 = S[i], stage = st0.el.r("stage");
+  let s = stage.querySelector("svg");
+  const html = st0.frame < 0 ? "" : frameInner(BOTS[i], pal(i), st0.frame);
+  if (!s) { stage.insertAdjacentHTML("beforeend", svg(html, 144, 192)); } else s.innerHTML = html;
+  st0.el.r("readout").textContent = st0.frame < 0 ? "RESPAWN…" : st0.frame < 4 ? `IDLE  f${st0.frame}` : st0.frame < 6 ? `HIT  f${st0.frame}` : `DEATH  f${st0.frame}`;
+}
+function seq(i, steps, done) {
+  const st0 = S[i];
+  clearTimeout(st0.t);
+  let k = 0;
+  const tick = () => {
+    if (k >= steps.length) { done && done(); return; }
+    const [f, ms] = steps[k++];
+    st0.frame = f; drawStage(i);
+    st0.t = setTimeout(tick, ms);
+  };
+  tick();
+}
+function idleLoop(i) {
+  const st0 = S[i];
+  clearTimeout(st0.t);
+  if (!G.motion) { st0.frame = 0; drawStage(i); return; }
+  let f = 0;
+  const tick = () => { st0.frame = f; drawStage(i); f = (f + 1) % 4; st0.t = setTimeout(tick, 170); };
+  tick();
+}
+// slow-motion factor so a 55 ms hit frame is visible to the eye in a design review
+const SLOW = 2.2;
+function play(i, kind) {
+  if (S[i].auto) setAuto(i, false, true);
+  const after = () => idleLoop(i);
+  if (kind === "graze") seq(i, [[4, 55 * SLOW], [5, 55 * SLOW], [0, 1]], after);
+  else seq(i, [[4, 55 * SLOW], [5, 55 * SLOW], [6, 70 * SLOW], [7, 70 * SLOW], [8, 70 * SLOW], [9, 70 * SLOW], [-1, 650]], after);
+}
+function setAuto(i, on, silent) {
+  const st0 = S[i];
+  st0.auto = on;
+  if (silent) st0.el.c.querySelector('[data-a="auto"]').setAttribute("aria-pressed", "false");
+  clearTimeout(st0.t);
+  if (!on) { idleLoop(i); return; }
+  const idle = (k) => Array.from({ length: k }, (_, j) => [j % 4, 170]);
+  const loop = () => {
+    if (!st0.auto) return;
+    seq(i, [...idle(8), [4, 55 * SLOW], [5, 55 * SLOW], ...idle(8), [4, 55 * SLOW], [5, 55 * SLOW], [6, 70 * SLOW], [7, 70 * SLOW], [8, 70 * SLOW], [9, 70 * SLOW], [-1, 700]], loop);
+  };
+  loop();
+}
+function startAll() { BOTS.forEach((_, i) => { if (S[i].auto && G.motion) setAuto(i, true); else idleLoop(i); }); }
+
+/* ---------- measurement + export ---------- */
+function loadImg(inner) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im); im.onerror = rej;
+    im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(standalone(inner));
+  });
+}
+async function measure(i) {
+  const el = S[i].el.r("meters");
+  try {
+    const im = await loadImg(frameInner(BOTS[i], BOTS[i].skins[0].p, 0));
+    const cv = document.createElement("canvas"); cv.width = 96; cv.height = 128;
+    const g = cv.getContext("2d"); g.drawImage(im, 0, 0, 96, 128);
+    const d = g.getImageData(0, 0, 96, 128).data;
+    let bIn = 0, bTot = 0, hIn = 0, hTot = 0, stray = 0, all = 0;
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 96; x++) {
+      const a = d[(y * 96 + x) * 4 + 3] > 110, cx = x + 0.5, cy = y + 0.5;
+      const inB = cx >= HB.x && cx <= HB.x + HB.w && cy >= HB.y && cy <= HB.y + HB.h;
+      const inH = Math.hypot(cx - HB.hx, cy - HB.hy) <= HB.hr;
+      if (inB) { bTot++; if (a) bIn++; }
+      if (inH) { hTot++; if (a) hIn++; }
+      if (a) { all++; if (!inB && !inH) stray++; }
+    }
+    const row = (lbl, v, col, good) => `<div class="meter"><span>${lbl}</span><span class="bar"><span style="width:${v}%;background:${col}"></span></span><b>${v}%</b></div>`;
+    const bf = Math.round(100 * bIn / bTot), hf = Math.round(100 * hIn / hTot), sp = Math.round(100 * stray / all);
+    el.innerHTML = row("Body fill", bf, "#36f0ff") + row("Head fill", hf, "#ff4f9a") + row("Stray paint", sp, "#ffd23f");
+  } catch (e) { el.innerHTML = `<div class="meter"><span>Coverage unavailable in this browser</span></div>`; }
+}
+async function exportSheet(i) {
+  const cv = document.createElement("canvas"); cv.width = 480; cv.height = 256;
+  const g = cv.getContext("2d");
+  for (let f = 0; f < 10; f++) {
+    const im = await loadImg(frameInner(BOTS[i], pal(i), f));
+    g.drawImage(im, (f % 5) * 96, Math.floor(f / 5) * 128, 96, 128);
+  }
+  const a = document.createElement("a");
+  a.download = `bot-sheet-${BOTS[i].id}-${BOTS[i].skins[S[i].skin].name.toLowerCase().replace(/\W+/g, "-")}.png`;
+  a.href = cv.toDataURL("image/png");
+  a.click();
+}
+
+/* ---------- global controls ---------- */
+const gHit = document.getElementById("gHit"), gMotion = document.getElementById("gMotion");
+gHit.onclick = () => { G.hit = !G.hit; S.forEach((s) => s.hit = null); gHit.setAttribute("aria-pressed", G.hit); gHit.textContent = "Hitboxes: " + (G.hit ? "on" : "off"); BOTS.forEach((_, i) => refreshBig(i)); };
+function syncMotion() { gMotion.setAttribute("aria-pressed", G.motion); gMotion.textContent = "Motion: " + (G.motion ? "on" : "off (reduced)"); startAll(); }
+gMotion.onclick = () => { G.motion = !G.motion; syncMotion(); };
+reduce.addEventListener?.("change", (e) => { G.motion = !e.matches; syncMotion(); });
+
+renderLineup();
+syncMotion();
+})();
+</script>
+</body>
+</html>

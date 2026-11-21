@@ -7,3 +7,6 @@ __pycache__/
 *.pyc
 audio_raw/
 .DS_Store
+release/
+art-src/
+.tmpshots/

@@ -56,6 +56,8 @@
  * @property {(userId:string) => Promise<void>} clearRuns
  * @property {() => Promise<object|null>} loadSettings
  * @property {(values:object) => Promise<void>} saveSettings
+ * @property {() => Promise<object|null>} loadProgress
+ * @property {(values:object) => Promise<void>} saveProgress
  */
 import { LocalBackend } from './LocalBackend.js';
 
