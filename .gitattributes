@@ -1,0 +1,3 @@
+# Keep LF everywhere, including Windows checkouts: several tests compare generated
+# text (CREDITS.md, seed migrations) byte-for-byte against the committed files.
+* text=auto eol=lf
